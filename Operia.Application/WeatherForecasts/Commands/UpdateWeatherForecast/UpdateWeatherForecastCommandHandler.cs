@@ -1,4 +1,5 @@
 using MediatR;
+using Operia.Application.Common.Interfaces;
 using Operia.Domain.Exceptions;
 using Operia.Domain.Interfaces;
 
@@ -8,10 +9,14 @@ public sealed class UpdateWeatherForecastCommandHandler
     : IRequestHandler<UpdateWeatherForecastCommand>
 {
     private readonly IWeatherForecastRepository _repository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateWeatherForecastCommandHandler(IWeatherForecastRepository repository)
+    public UpdateWeatherForecastCommandHandler(
+        IWeatherForecastRepository repository,
+        IUnitOfWork unitOfWork)
     {
         _repository = repository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task Handle(
@@ -24,6 +29,6 @@ public sealed class UpdateWeatherForecastCommandHandler
         forecast.Update(request.Date, request.TemperatureC, request.Summary);
 
         _repository.Update(forecast);
-        await _repository.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

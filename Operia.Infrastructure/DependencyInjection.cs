@@ -26,6 +26,8 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(sp =>
             sp.GetRequiredService<ApplicationDbContext>());
 
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
         services.AddScoped<IWeatherForecastRepository, WeatherForecastRepository>();
 
         return services;

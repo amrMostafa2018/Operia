@@ -33,7 +33,4 @@ public sealed class WeatherForecastRepository : IWeatherForecastRepository
 
     public void Delete(WeatherForecast entity)
         => _context.WeatherForecasts.Remove(entity);
-
-    public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-        => _context.SaveChangesAsync(cancellationToken);
 }

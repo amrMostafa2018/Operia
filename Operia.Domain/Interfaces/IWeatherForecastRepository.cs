@@ -9,5 +9,4 @@ public interface IWeatherForecastRepository
     Task AddAsync(WeatherForecast entity, CancellationToken cancellationToken = default);
     void Update(WeatherForecast entity);
     void Delete(WeatherForecast entity);
-    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

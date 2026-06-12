@@ -1,4 +1,5 @@
 using MediatR;
+using Operia.Application.Common.Interfaces;
 using Operia.Domain.Exceptions;
 using Operia.Domain.Interfaces;
 
@@ -8,10 +9,14 @@ public sealed class DeleteWeatherForecastCommandHandler
     : IRequestHandler<DeleteWeatherForecastCommand>
 {
     private readonly IWeatherForecastRepository _repository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public DeleteWeatherForecastCommandHandler(IWeatherForecastRepository repository)
+    public DeleteWeatherForecastCommandHandler(
+        IWeatherForecastRepository repository,
+        IUnitOfWork unitOfWork)
     {
         _repository = repository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task Handle(
@@ -22,6 +27,6 @@ public sealed class DeleteWeatherForecastCommandHandler
             ?? throw new NotFoundException(nameof(Domain.Entities.WeatherForecast), request.Id);
 
         _repository.Delete(forecast);
-        await _repository.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }
