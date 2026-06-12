@@ -1,3 +1,4 @@
+using AutoMapper;
 using MediatR;
 using Operia.Application.WeatherForecasts.DTOs;
 using Operia.Domain.Exceptions;
@@ -9,10 +10,14 @@ public sealed class GetWeatherForecastByIdQueryHandler
     : IRequestHandler<GetWeatherForecastByIdQuery, WeatherForecastDto>
 {
     private readonly IWeatherForecastRepository _repository;
+    private readonly IMapper _mapper;
 
-    public GetWeatherForecastByIdQueryHandler(IWeatherForecastRepository repository)
+    public GetWeatherForecastByIdQueryHandler(
+        IWeatherForecastRepository repository,
+        IMapper mapper)
     {
         _repository = repository;
+        _mapper = mapper;
     }
 
     public async Task<WeatherForecastDto> Handle(
@@ -22,6 +27,6 @@ public sealed class GetWeatherForecastByIdQueryHandler
         var forecast = await _repository.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new NotFoundException(nameof(WeatherForecastDto), request.Id);
 
-        return WeatherForecastDto.FromEntity(forecast);
+        return _mapper.Map<WeatherForecastDto>(forecast);
     }
 }

@@ -1,3 +1,5 @@
+using AutoMapper;
+using Operia.Application.Common.Mappings;
 using Operia.Domain.Entities;
 
 namespace Operia.Application.WeatherForecasts.DTOs;
@@ -7,8 +9,8 @@ public sealed record WeatherForecastDto(
     DateOnly Date,
     int TemperatureC,
     int TemperatureF,
-    string? Summary)
+    string? Summary) : IMapFrom<WeatherForecast>
 {
-    public static WeatherForecastDto FromEntity(WeatherForecast entity) =>
-        new(entity.Id, entity.Date, entity.TemperatureC, entity.TemperatureF, entity.Summary);
+    public static void Mapping(Profile profile) =>
+        profile.CreateMap<WeatherForecast, WeatherForecastDto>();
 }

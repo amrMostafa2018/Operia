@@ -1,3 +1,4 @@
+using AutoMapper;
 using MediatR;
 using Operia.Application.WeatherForecasts.DTOs;
 using Operia.Domain.Interfaces;
@@ -8,10 +9,14 @@ public sealed class GetWeatherForecastsQueryHandler
     : IRequestHandler<GetWeatherForecastsQuery, IReadOnlyList<WeatherForecastDto>>
 {
     private readonly IWeatherForecastRepository _repository;
+    private readonly IMapper _mapper;
 
-    public GetWeatherForecastsQueryHandler(IWeatherForecastRepository repository)
+    public GetWeatherForecastsQueryHandler(
+        IWeatherForecastRepository repository,
+        IMapper mapper)
     {
         _repository = repository;
+        _mapper = mapper;
     }
 
     public async Task<IReadOnlyList<WeatherForecastDto>> Handle(
@@ -19,6 +24,6 @@ public sealed class GetWeatherForecastsQueryHandler
         CancellationToken cancellationToken)
     {
         var forecasts = await _repository.GetAllAsync(cancellationToken);
-        return forecasts.Select(WeatherForecastDto.FromEntity).ToList();
+        return _mapper.Map<IReadOnlyList<WeatherForecastDto>>(forecasts);
     }
 }

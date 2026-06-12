@@ -2,25 +2,50 @@ using Operia.Application;
 using Operia.Extensions;
 using Operia.Infrastructure;
 using Operia.Middleware;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-builder.Services.AddControllers();
-builder.Services.AddSwaggerDocumentation();
+try
+{
+    Log.Information("Starting Operia API");
 
-builder.Services.AddApplicationServices();
-builder.Services.AddInfrastructureServices(builder.Configuration);
+    var builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext());
 
-app.UseSwaggerDocumentation();
+    builder.Services.AddControllers();
+    builder.Services.AddSwaggerDocumentation();
 
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+    builder.Services.AddApplicationServices();
+    builder.Services.AddInfrastructureServices(builder.Configuration);
 
-app.UseHttpsRedirection();
+    var app = builder.Build();
 
-app.UseAuthorization();
+    app.UseSerilogRequestLogging();
 
-app.MapControllers();
+    app.UseSwaggerDocumentation();
 
-app.Run();
+    app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+    app.UseHttpsRedirection();
+
+    app.UseAuthorization();
+
+    app.MapControllers();
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
