@@ -1,11 +1,13 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Common.Interfaces;
 using Operia.Domain.Entities;
+using Operia.Infrastructure.Identity;
 using Operia.SharedKernel.Interfaces;
 
 namespace Operia.Infrastructure.Persistence;
 
-public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
+public sealed class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplicationDbContext
 {
     private readonly IDateTimeProvider _dateTimeProvider;
 
@@ -17,12 +19,15 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
         _dateTimeProvider = dateTimeProvider;
     }
 
-    public DbSet<WeatherForecast> WeatherForecasts => Set<WeatherForecast>();
+    //    public DbSet<WeatherForecast> WeatherForecasts => Set<WeatherForecast>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<RegistrationRequest> RegistrationRequests => Set<RegistrationRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Ignore<Domain.Common.BaseEvent>();
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

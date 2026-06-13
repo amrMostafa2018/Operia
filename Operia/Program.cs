@@ -1,6 +1,8 @@
 using Operia.Application;
 using Operia.Extensions;
 using Operia.Infrastructure;
+using Operia.Infrastructure.Middleware;
+using Operia.Infrastructure.Persistence;
 using Operia.Middleware;
 using Serilog;
 
@@ -24,8 +26,11 @@ try
 
     builder.Services.AddApplicationServices();
     builder.Services.AddInfrastructureServices(builder.Configuration);
+    builder.Services.AddJwtAuthentication(builder.Configuration);
 
     var app = builder.Build();
+
+    await DatabaseInitializer.InitializeAsync(app.Services);
 
     app.UseSerilogRequestLogging();
 
@@ -35,6 +40,8 @@ try
 
     app.UseHttpsRedirection();
 
+    app.UseAuthentication();
+    app.UseMiddleware<SecurityStampValidationMiddleware>();
     app.UseAuthorization();
 
     app.MapControllers();

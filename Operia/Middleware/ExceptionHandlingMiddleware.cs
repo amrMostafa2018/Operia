@@ -42,11 +42,29 @@ public sealed class ExceptionHandlingMiddleware
                 "Validation Failed",
                 validation.Errors),
 
+            UnauthorizedException unauthorized => (
+                StatusCodes.Status401Unauthorized,
+                "Unauthorized",
+                new Dictionary<string, string[]> { ["detail"] = [unauthorized.Message] }),
+
+            ArgumentException argument => (
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                new Dictionary<string, string[]> { ["detail"] = [argument.Message] }),
+
+            InvalidOperationException invalidOperation => (
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                new Dictionary<string, string[]> { ["detail"] = [invalidOperation.Message] }),
+
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "An unexpected error occurred.",
                 new Dictionary<string, string[]> { ["detail"] = ["An internal server error occurred."] })
         };
+
+        if (context.Response.HasStarted)
+            throw exception;
 
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json";

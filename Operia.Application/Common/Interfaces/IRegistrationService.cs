@@ -1,0 +1,15 @@
+namespace Operia.Application.Common.Interfaces;
+
+public interface IRegistrationService
+{
+    Task<Auth.DTOs.RegisterResultDto> InitiateRegistrationAsync(
+        string email,
+        string password,
+        string phoneNumber,
+        CancellationToken cancellationToken = default);
+
+    Task<string> CompleteRegistrationAsync(
+        string registrationId,
+        string code,
+        CancellationToken cancellationToken = default);
+}
