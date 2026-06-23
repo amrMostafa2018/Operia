@@ -142,6 +142,8 @@ public sealed class RegistrationService : IRegistrationService
                     roleResult.Errors.Select(e => new ValidationFailure("identity", e.Description)));
             }
 
+            await AdminPermissionClaimHelper.AddAdminPermissionClaimsAsync(_userManager, user);
+
             _registrationRequestRepository.Remove(request);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
 

@@ -107,7 +107,12 @@ public sealed class TokenService : ITokenService
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
         var userClaims = await _userManager.GetClaimsAsync(user);
-        claims.AddRange(userClaims.Where(c => c.Type == Permissions.ClaimType));
+        var permissionClaims = userClaims
+            .Where(c => c.Type == Permissions.ClaimType)
+            .ToList();
+
+
+        claims.AddRange(permissionClaims);
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -121,6 +126,21 @@ public sealed class TokenService : ITokenService
 
         return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
     }
+
+    //private static IEnumerable<Claim> DerivePermissionClaimsFromRoles(IList<string> roles)
+    //{
+    //    if (roles.Contains(Roles.Admin))
+    //    {
+    //        yield return new Claim(Permissions.ClaimType, Permissions.Admin.Read);
+    //        yield return new Claim(Permissions.ClaimType, Permissions.Admin.Write);
+    //    }
+
+    //    if (roles.Contains(Roles.Staff))
+    //    {
+    //        yield return new Claim(Permissions.ClaimType, Permissions.Staff.Read);
+    //        yield return new Claim(Permissions.ClaimType, Permissions.Staff.Write);
+    //    }
+    //}
 
     private async Task<RefreshToken> CreateRefreshTokenAsync(
         ApplicationUser user,

@@ -27,6 +27,7 @@ try
     builder.Services.AddApplicationServices();
     builder.Services.AddInfrastructureServices(builder.Configuration);
     builder.Services.AddJwtAuthentication(builder.Configuration);
+    builder.Services.AddCorsPolicy(builder.Configuration, builder.Environment);
 
     var app = builder.Build();
 
@@ -36,9 +37,12 @@ try
 
     app.UseSwaggerDocumentation();
 
+    app.UseCorsPolicy(builder.Configuration, app.Environment);
+
     app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-    app.UseHttpsRedirection();
+    if (!app.Environment.IsDevelopment())
+        app.UseHttpsRedirection();
 
     app.UseAuthentication();
     app.UseMiddleware<SecurityStampValidationMiddleware>();

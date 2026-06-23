@@ -45,7 +45,12 @@ public static class DatabaseInitializer
         var admin = await userManager.FindByEmailAsync(adminEmail);
 
         if (admin is not null)
+        {
+            if (await userManager.IsInRoleAsync(admin, Roles.Admin))
+                await EnsurePermissionClaimsAsync(userManager, admin, Roles.Admin);
+
             return;
+        }
 
         admin = new ApplicationUser
         {
@@ -65,9 +70,30 @@ public static class DatabaseInitializer
         }
 
         await userManager.AddToRoleAsync(admin, Roles.Admin);
-        await userManager.AddClaimAsync(admin, new Claim(Permissions.ClaimType, Permissions.Admin.Read));
-        await userManager.AddClaimAsync(admin, new Claim(Permissions.ClaimType, Permissions.Admin.Write));
+        await AdminPermissionClaimHelper.AddAdminPermissionClaimsAsync(userManager, admin);
 
         logger.LogInformation("Seeded admin user {Email}", adminEmail);
+    }
+
+    private static async Task EnsurePermissionClaimsAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationUser user,
+        string role)
+    {
+        var existing = await userManager.GetClaimsAsync(user);
+        if (existing.Any(c => c.Type == Permissions.ClaimType))
+            return;
+
+        if (role == Roles.Admin)
+        {
+            await AdminPermissionClaimHelper.AddAdminPermissionClaimsAsync(userManager, user);
+            return;
+        }
+
+        if (role == Roles.Staff)
+        {
+            await userManager.AddClaimAsync(user, new Claim(Permissions.ClaimType, Permissions.Staff.Read));
+            await userManager.AddClaimAsync(user, new Claim(Permissions.ClaimType, Permissions.Staff.Write));
+        }
     }
 }

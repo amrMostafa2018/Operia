@@ -12,7 +12,7 @@ using Operia.Application.Auth.DTOs;
 namespace Operia.Controllers;
 
 [ApiController]
-[Route("auth")]
+[Route("api/auth")]
 public sealed class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
