@@ -1,0 +1,54 @@
+[
+  {
+    "Name": "EmailAlreadyRegistered",
+    "Value": "هذا البريد الإلكتروني مسجل بالفعل"
+  },
+  {
+    "Name": "EmailRequired",
+    "Value": "البريد الإلكتروني مطلوب"
+  },
+  {
+    "Name": "EmailInvalid",
+    "Value": "البريد الإلكتروني غير صحيح"
+  },
+  {
+    "Name": "PasswordRequired",
+    "Value": "كلمة المرور مطلوبة"
+  },
+  {
+    "Name": "PasswordMinLength",
+    "Value": "يجب أن تكون كلمة المرور 8 أحرف على الأقل"
+  },
+  {
+    "Name": "PasswordMismatch",
+    "Value": "كلمتا المرور غير متطابقتين"
+  },
+  {
+    "Name": "PhoneRequired",
+    "Value": "رقم الموبايل مطلوب"
+  },
+  {
+    "Name": "PhoneInvalid",
+    "Value": "رقم الهاتف غير صحيح"
+  },
+  {
+    "Name": "ConfirmPasswordRequired",
+    "Value": "تأكيد كلمة المرور مطلوب"
+  },
+  {
+    "Name": "OtpPhoneRequired",
+    "Value": "رقم الموبايل مطلوب لإرسال رمز التحقق"
+  },
+  {
+    "Name": "OtpInvalid",
+    "Value": "رمز التحقق غير صحيح"
+  },
+  {
+    "Name": "OtpExpired",
+    "Value": "انتهت صلاحية رمز التحقق"
+  },
+  {
+    "Name": "IdentityError",
+    "Value": "حدث خطأ في إنشاء الحساب. يرجى المحاولة مرة أخرى"
+  }
+]

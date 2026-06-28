@@ -1,6 +1,4 @@
-using System.Security.Cryptography;
-using FluentValidation.Results;
-using Microsoft.AspNetCore.DataProtection;
+using Operia.SharedKernel.Errors;using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Operia.Application.Auth.DTOs;
@@ -54,7 +52,7 @@ public sealed class RegistrationService : IRegistrationService
         if (await _userManager.FindByEmailAsync(email) is not null)
         {
             throw new ValidationException([
-                new ValidationFailure("email", "Email is already registered.")
+                ValidationFailureFactory.Create("email", ApiErrorCodes.Auth.EmailAlreadyRegistered)
             ]);
         }
 
@@ -64,18 +62,15 @@ public sealed class RegistrationService : IRegistrationService
         var existingRequests = await _registrationRequestRepository.GetByEmailAsync(email, cancellationToken);
         _registrationRequestRepository.RemoveRange(existingRequests);
 
-        var code = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
-        var otpHasher = new ApplicationUser();
-
         var request = new RegistrationRequest
         {
             Email = email,
             ProtectedPassword = _passwordProtector.Protect(password),
             PhoneNumber = phoneNumber,
-            OtpHash = _userManager.PasswordHasher.HashPassword(otpHasher, code),
-            OtpExpiry = _dateTimeProvider.UtcNow.AddMinutes(_otpSettings.ExpiryMinutes),
             CreatedAt = _dateTimeProvider.UtcNow
         };
+
+        var code = SetNewOtp(request);
 
         await _registrationRequestRepository.AddAsync(request, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -87,6 +82,19 @@ public sealed class RegistrationService : IRegistrationService
             RegistrationId: request.Id);
     }
 
+    public async Task ResendRegistrationOtpAsync(
+        string registrationId,
+        CancellationToken cancellationToken = default)
+    {
+        var request = await _registrationRequestRepository.GetByIdAsync(registrationId, cancellationToken)
+            ?? throw new NotFoundException(nameof(RegistrationRequest), registrationId);
+
+        var code = SetNewOtp(request);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _otpSender.SendOtpAsync(request.PhoneNumber, code, cancellationToken);
+    }
+
     public async Task<string> CompleteRegistrationAsync(
         string registrationId,
         string code,
@@ -96,18 +104,18 @@ public sealed class RegistrationService : IRegistrationService
             ?? throw new NotFoundException(nameof(RegistrationRequest), registrationId);
 
         if (request.OtpExpiry < _dateTimeProvider.UtcNow)
-            throw new UnauthorizedException("OTP has expired.");
+            throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.OtpExpired, "code");
 
         var otpHasher = new ApplicationUser();
         var otpResult = _userManager.PasswordHasher.VerifyHashedPassword(otpHasher, request.OtpHash, code);
 
         if (otpResult == PasswordVerificationResult.Failed)
-            throw new UnauthorizedException("Invalid OTP code.");
+            throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.OtpInvalid, "code");
 
         if (await _userManager.FindByEmailAsync(request.Email) is not null)
         {
             throw new ValidationException([
-                new ValidationFailure("email", "Email is already registered.")
+                ValidationFailureFactory.Create("email", ApiErrorCodes.Auth.EmailAlreadyRegistered)
             ]);
         }
 
@@ -131,7 +139,8 @@ public sealed class RegistrationService : IRegistrationService
             if (!createResult.Succeeded)
             {
                 throw new ValidationException(
-                    createResult.Errors.Select(e => new ValidationFailure("identity", e.Description)));
+                    createResult.Errors.Select(e =>
+                        ValidationFailureFactory.Create("identity", ApiErrorCodes.Auth.IdentityError, e.Description)));
             }
 
             var roleResult = await _userManager.AddToRoleAsync(user, Roles.Admin);
@@ -139,7 +148,8 @@ public sealed class RegistrationService : IRegistrationService
             if (!roleResult.Succeeded)
             {
                 throw new ValidationException(
-                    roleResult.Errors.Select(e => new ValidationFailure("identity", e.Description)));
+                    roleResult.Errors.Select(e =>
+                        ValidationFailureFactory.Create("identity", ApiErrorCodes.Auth.IdentityError, e.Description)));
             }
 
             await AdminPermissionClaimHelper.AddAdminPermissionClaimsAsync(_userManager, user);
@@ -154,6 +164,20 @@ public sealed class RegistrationService : IRegistrationService
             await _unitOfWork.RollbackTransactionAsync(cancellationToken);
             throw;
         }
+    }
+
+    private string SetNewOtp(RegistrationRequest request)
+    {
+        var otp = OtpGenerator.Generate(
+            _userManager.PasswordHasher,
+            new ApplicationUser(),
+            _dateTimeProvider,
+            _otpSettings.ExpiryMinutes);
+
+        request.OtpHash = otp.Hash;
+        request.OtpExpiry = otp.Expiry;
+
+        return otp.Code;
     }
 
     private async Task ValidatePasswordAsync(string email, string password)
@@ -177,7 +201,8 @@ public sealed class RegistrationService : IRegistrationService
         if (errors.Count > 0)
         {
             throw new ValidationException(
-                errors.Select(e => new ValidationFailure("password", e.Description)));
+                errors.Select(e =>
+                    ValidationFailureFactory.Create("password", ApiErrorCodes.Auth.PasswordMinLength, e.Description)));
         }
     }
 }

@@ -1,6 +1,8 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Operia.Application.Common.Exceptions;
 using Operia.Domain.Exceptions;
+using Operia.SharedKernel.Errors;
 
 namespace Operia.Middleware;
 
@@ -30,37 +32,55 @@ public sealed class ExceptionHandlingMiddleware
 
     private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        var (statusCode, title, errors) = exception switch
+        var language = RequestLanguageResolver.Resolve(
+            context.Request.Headers.AcceptLanguage.ToString());
+
+        var (statusCode, title, errors, errorCodes) = exception switch
         {
             NotFoundException notFound => (
                 StatusCodes.Status404NotFound,
                 "Resource Not Found",
-                new Dictionary<string, string[]> { ["detail"] = [notFound.Message] }),
+                new Dictionary<string, string[]> { ["detail"] = [notFound.Message] },
+                null),
 
             ValidationException validation => (
                 StatusCodes.Status400BadRequest,
                 "Validation Failed",
-                validation.Errors),
+                LocalizeValidationErrors(validation, language),
+                validation.ErrorCodes.Count > 0 ? validation.ErrorCodes : null),
 
             UnauthorizedException unauthorized => (
                 StatusCodes.Status401Unauthorized,
                 "Unauthorized",
-                new Dictionary<string, string[]> { ["detail"] = [unauthorized.Message] }),
+                new Dictionary<string, string[]>
+                {
+                    [unauthorized.Field] = [
+                        unauthorized.ErrorCode is not null
+                            ? ApiErrorCatalog.GetMessage(unauthorized.ErrorCode, language)
+                            : unauthorized.Message
+                    ]
+                },
+                unauthorized.ErrorCode is not null
+                    ? new Dictionary<string, string[]> { [unauthorized.Field] = [unauthorized.ErrorCode] }
+                    : null),
 
             ArgumentException argument => (
                 StatusCodes.Status400BadRequest,
                 "Bad Request",
-                new Dictionary<string, string[]> { ["detail"] = [argument.Message] }),
+                new Dictionary<string, string[]> { ["detail"] = [argument.Message] },
+                null),
 
             InvalidOperationException invalidOperation => (
                 StatusCodes.Status400BadRequest,
                 "Bad Request",
-                new Dictionary<string, string[]> { ["detail"] = [invalidOperation.Message] }),
+                new Dictionary<string, string[]> { ["detail"] = [invalidOperation.Message] },
+                null),
 
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "An unexpected error occurred.",
-                new Dictionary<string, string[]> { ["detail"] = ["An internal server error occurred."] })
+                new Dictionary<string, string[]> { ["detail"] = ["An internal server error occurred."] },
+                null)
         };
 
         if (context.Response.HasStarted)
@@ -74,14 +94,34 @@ public sealed class ExceptionHandlingMiddleware
             type = $"https://httpstatuses.com/{statusCode}",
             title,
             status = statusCode,
-            errors
+            errors,
+            errorCodes
         };
 
         var json = JsonSerializer.Serialize(problemDetails, new JsonSerializerOptions
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         });
 
         await context.Response.WriteAsync(json);
+    }
+
+    private static Dictionary<string, string[]> LocalizeValidationErrors(
+        ValidationException validation,
+        string language)
+    {
+        if (validation.ErrorCodes.Count == 0)
+        {
+            return validation.Errors.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value);
+        }
+
+        return validation.ErrorCodes.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value
+                .Select(code => ApiErrorCatalog.GetMessage(code, language))
+                .ToArray());
     }
 }

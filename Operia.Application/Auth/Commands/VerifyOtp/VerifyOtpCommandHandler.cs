@@ -1,6 +1,5 @@
 using MediatR;
 using Operia.Application.Auth.DTOs;
-using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 
 namespace Operia.Application.Auth.Commands.VerifyOtp;
@@ -18,10 +17,7 @@ public sealed class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, 
 
     public async Task<AuthResponseDto> Handle(VerifyOtpCommand request, CancellationToken cancellationToken)
     {
-        var isValid = await _otpService.VerifyOtpAsync(request.UserId, request.Code, cancellationToken);
-
-        if (!isValid)
-            throw new UnauthorizedException("Invalid or expired OTP code.");
+        await _otpService.VerifyOtpAsync(request.UserId, request.Code, cancellationToken);
 
         return await _tokenService.GenerateTokensAsync(request.UserId, cancellationToken);
     }

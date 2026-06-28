@@ -12,4 +12,8 @@ public interface IRegistrationService
         string registrationId,
         string code,
         CancellationToken cancellationToken = default);
+
+    Task ResendRegistrationOtpAsync(
+        string registrationId,
+        CancellationToken cancellationToken = default);
 }

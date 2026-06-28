@@ -1,6 +1,4 @@
-using System.Security.Cryptography;
-using FluentValidation.Results;
-using Microsoft.AspNetCore.Identity;
+using Operia.SharedKernel.Errors;using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
@@ -32,41 +30,44 @@ public sealed class OtpService : IOtpService
         var user = await _userManager.FindByIdAsync(userId)
             ?? throw new NotFoundException(nameof(ApplicationUser), userId);
 
-        var code = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
-        user.OtpHash = _userManager.PasswordHasher.HashPassword(user, code);
-        user.OtpExpiry = _dateTimeProvider.UtcNow.AddMinutes(_otpSettings.ExpiryMinutes);
+        var otp = OtpGenerator.Generate(
+            _userManager.PasswordHasher,
+            user,
+            _dateTimeProvider,
+            _otpSettings.ExpiryMinutes);
+
+        user.OtpHash = otp.Hash;
+        user.OtpExpiry = otp.Expiry;
 
         await _userManager.UpdateAsync(user);
 
         if (string.IsNullOrWhiteSpace(user.PhoneNumber))
         {
             throw new ValidationException([
-                new ValidationFailure("phoneNumber", "User phone number is required for OTP delivery.")
+                ValidationFailureFactory.Create("phoneNumber", ApiErrorCodes.Auth.OtpPhoneRequired)
             ]);
         }
 
-        await _otpSender.SendOtpAsync(user.PhoneNumber, code, cancellationToken);
+        await _otpSender.SendOtpAsync(user.PhoneNumber, otp.Code, cancellationToken);
     }
 
-    public async Task<bool> VerifyOtpAsync(string userId, string code, CancellationToken cancellationToken = default)
+    public async Task VerifyOtpAsync(string userId, string code, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByIdAsync(userId);
 
         if (user is null || user.OtpHash is null || user.OtpExpiry is null)
-            return false;
+            throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.OtpInvalid, "code");
 
         if (user.OtpExpiry < _dateTimeProvider.UtcNow)
-            return false;
+            throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.OtpExpired, "code");
 
         var result = _userManager.PasswordHasher.VerifyHashedPassword(user, user.OtpHash, code);
 
         if (result == PasswordVerificationResult.Failed)
-            return false;
+            throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.OtpInvalid, "code");
 
         user.OtpHash = null;
         user.OtpExpiry = null;
         await _userManager.UpdateAsync(user);
-
-        return true;
     }
 }

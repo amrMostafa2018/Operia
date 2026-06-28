@@ -1,0 +1,62 @@
+[
+  {
+    "Name": "EmailAlreadyRegistered",
+    "Value": "Email is already registered."
+  },
+  {
+    "Name": "EmailRequired",
+    "Value": "Email is required."
+  },
+  {
+    "Name": "EmailInvalid",
+    "Value": "Email is not valid."
+  },
+  {
+    "Name": "PasswordRequired",
+    "Value": "Password is required."
+  },
+  {
+    "Name": "PasswordMinLength",
+    "Value": "Password must be at least 8 characters."
+  },
+  {
+    "Name": "PasswordMismatch",
+    "Value": "Password and Confirm Password must match."
+  },
+  {
+    "Name": "PhoneRequired",
+    "Value": "Phone number is required."
+  },
+  {
+    "Name": "PhoneInvalid",
+    "Value": "Phone number is not valid."
+  },
+  {
+    "Name": "ConfirmPasswordRequired",
+    "Value": "Confirm Password is required."
+  },
+  {
+    "Name": "OtpPhoneRequired",
+    "Value": "User phone number is required for OTP delivery."
+  },
+  {
+    "Name": "OtpInvalid",
+    "Value": "Invalid OTP code."
+  },
+  {
+    "Name": "OtpExpired",
+    "Value": "OTP has expired."
+  },
+  {
+    "Name": "IdentityError",
+    "Value": "An error occurred while creating your account."
+  },
+  {
+    "Name": "AddProductToInventoryFailed",
+    "Value": "Add Product To Inventory Failed"
+  },
+  {
+    "Name": "UpdateInventoryItemFailed",
+    "Value": "Update Inventory Item Failed"
+  }
+]
