@@ -25,6 +25,13 @@ public sealed class RegistrationRequestRepository : IRegistrationRequestReposito
             .Where(x => x.Email == email)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<RegistrationRequest>> GetByPhoneAsync(
+        string phoneNumber,
+        CancellationToken cancellationToken = default)
+        => await _context.RegistrationRequests
+            .Where(x => x.PhoneNumber == phoneNumber)
+            .ToListAsync(cancellationToken);
+
     public Task AddAsync(RegistrationRequest request, CancellationToken cancellationToken = default)
         => _context.RegistrationRequests.AddAsync(request, cancellationToken).AsTask();
 

@@ -10,6 +10,10 @@ public interface IRegistrationRequestRepository
         string email,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<RegistrationRequest>> GetByPhoneAsync(
+        string phoneNumber,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(RegistrationRequest request, CancellationToken cancellationToken = default);
 
     void Remove(RegistrationRequest request);

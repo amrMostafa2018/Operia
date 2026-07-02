@@ -1,6 +1,7 @@
 using MediatR;
 using Operia.Application.Auth.DTOs;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Common.PhoneNumbers;
 
 namespace Operia.Application.Auth.Commands.Register;
 
@@ -15,10 +16,12 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
 
     public Task<RegisterResultDto> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
+        var phoneNumber = PhoneNumberHelper.ToE164(request.PhoneNumber);
+
         return _registrationService.InitiateRegistrationAsync(
             request.Email,
             request.Password,
-            request.PhoneNumber,
+            phoneNumber,
             cancellationToken);
     }
 }

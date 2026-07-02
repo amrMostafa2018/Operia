@@ -16,6 +16,7 @@ public static class ApiErrorCodes
         public const string PasswordMismatch = "PasswordMismatch";
         public const string PhoneRequired = "PhoneRequired";
         public const string PhoneInvalid = "PhoneInvalid";
+        public const string PhoneAlreadyRegistered = "PhoneAlreadyRegistered";
         public const string ConfirmPasswordRequired = "ConfirmPasswordRequired";
         public const string OtpPhoneRequired = "OtpPhoneRequired";
         public const string OtpInvalid = "OtpInvalid";

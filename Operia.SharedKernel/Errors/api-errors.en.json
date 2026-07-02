@@ -32,6 +32,10 @@
     "Value": "Phone number is not valid."
   },
   {
+    "Name": "PhoneAlreadyRegistered",
+    "Value": "This phone number is already registered."
+  },
+  {
     "Name": "ConfirmPasswordRequired",
     "Value": "Confirm Password is required."
   },

@@ -1,6 +1,7 @@
-using Operia.SharedKernel.Errors;using Microsoft.AspNetCore.DataProtection;
+using Operia.SharedKernel.Errors;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;using Microsoft.Extensions.Options;
 using Operia.Application.Auth.DTOs;
 using Operia.Application.Common.Authorization;
 using Operia.Application.Common.Exceptions;
@@ -18,6 +19,7 @@ public sealed class RegistrationService : IRegistrationService
     private const string PasswordProtectorPurpose = "Registration.Password";
 
     private readonly IRegistrationRequestRepository _registrationRequestRepository;
+    private readonly IIdentityService _identityService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IOtpSender _otpSender;
     private readonly IDateTimeProvider _dateTimeProvider;
@@ -27,6 +29,7 @@ public sealed class RegistrationService : IRegistrationService
 
     public RegistrationService(
         IRegistrationRequestRepository registrationRequestRepository,
+        IIdentityService identityService,
         UserManager<ApplicationUser> userManager,
         IOtpSender otpSender,
         IDateTimeProvider dateTimeProvider,
@@ -35,6 +38,7 @@ public sealed class RegistrationService : IRegistrationService
         IUnitOfWork unitOfWork)
     {
         _registrationRequestRepository = registrationRequestRepository;
+        _identityService = identityService;
         _userManager = userManager;
         _otpSender = otpSender;
         _dateTimeProvider = dateTimeProvider;
@@ -49,17 +53,9 @@ public sealed class RegistrationService : IRegistrationService
         string phoneNumber,
         CancellationToken cancellationToken = default)
     {
-        if (await _userManager.FindByEmailAsync(email) is not null)
-        {
-            throw new ValidationException([
-                ValidationFailureFactory.Create("email", ApiErrorCodes.Auth.EmailAlreadyRegistered)
-            ]);
-        }
-
         await ValidatePasswordAsync(email, password);
 
-        //TODO: Email Or Phone Number
-        var existingRequests = await _registrationRequestRepository.GetByEmailAsync(email, cancellationToken);
+        var existingRequests = await _registrationRequestRepository.GetByPhoneAsync(phoneNumber, cancellationToken);
         _registrationRequestRepository.RemoveRange(existingRequests);
 
         var request = new RegistrationRequest
@@ -118,6 +114,8 @@ public sealed class RegistrationService : IRegistrationService
                 ValidationFailureFactory.Create("email", ApiErrorCodes.Auth.EmailAlreadyRegistered)
             ]);
         }
+
+        await EnsurePhoneAvailableAsync(request.PhoneNumber, cancellationToken);
 
         var password = _passwordProtector.Unprotect(request.ProtectedPassword);
 
@@ -178,6 +176,18 @@ public sealed class RegistrationService : IRegistrationService
         request.OtpExpiry = otp.Expiry;
 
         return otp.Code;
+    }
+
+    private async Task EnsurePhoneAvailableAsync(
+        string phoneNumber,
+        CancellationToken cancellationToken)
+    {
+        if (await _identityService.IsPhoneRegisteredAsync(phoneNumber, cancellationToken))
+        {
+            throw new ValidationException([
+                ValidationFailureFactory.Create("phoneNumber", ApiErrorCodes.Auth.PhoneAlreadyRegistered)
+            ]);
+        }
     }
 
     private async Task ValidatePasswordAsync(string email, string password)

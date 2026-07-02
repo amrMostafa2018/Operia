@@ -1,11 +1,13 @@
 using FluentValidation;
+using Operia.Application.Common.Interfaces;
+using Operia.Application.Common.PhoneNumbers;
 using Operia.SharedKernel.Errors;
 
 namespace Operia.Application.Auth.Commands.Register;
 
 public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand>
 {
-    public RegisterCommandValidator()
+    public RegisterCommandValidator(IIdentityService identityService)
     {
         RuleFor(x => x.Email)
             .NotEmpty().WithErrorCode(ApiErrorCodes.Auth.EmailRequired)
@@ -22,6 +24,11 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
 
         RuleFor(x => x.PhoneNumber)
             .NotEmpty().WithErrorCode(ApiErrorCodes.Auth.PhoneRequired)
-            .MinimumLength(10).WithErrorCode(ApiErrorCodes.Auth.PhoneInvalid);
+            .Must(PhoneNumberHelper.IsValid).WithErrorCode(ApiErrorCodes.Auth.PhoneInvalid)
+            .MustAsync(async (phoneNumber, cancellationToken) =>
+                !await identityService.IsPhoneRegisteredAsync(
+                    PhoneNumberHelper.ToE164(phoneNumber),
+                    cancellationToken))
+            .WithErrorCode(ApiErrorCodes.Auth.PhoneAlreadyRegistered);
     }
 }

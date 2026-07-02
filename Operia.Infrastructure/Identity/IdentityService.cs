@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Operia.Application.Common.Interfaces;
 using Operia.Domain.Exceptions;
 namespace Operia.Infrastructure.Identity;
@@ -20,18 +21,27 @@ public sealed class IdentityService : IIdentityService
     }
 
     public async Task<(bool Succeeded, string UserId, IEnumerable<string> Errors)> ValidateCredentialsAsync(
-        string email,
+        string phoneNumber,
         string password,
         CancellationToken cancellationToken = default)
     {
-        var user = await _userManager.FindByEmailAsync(email);
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber, cancellationToken);
 
         if (user is null || !await _userManager.CheckPasswordAsync(user, password))
         {
-            return (false, string.Empty, ["Invalid email or password."]);
+            return (false, string.Empty, ["Invalid phone number or password."]);
         }
 
         return (true, user.Id, []);
+    }
+
+    public async Task<bool> IsPhoneRegisteredAsync(
+        string phoneNumber,
+        CancellationToken cancellationToken = default)
+    {
+        return await _userManager.Users
+            .AnyAsync(u => u.PhoneNumber == phoneNumber, cancellationToken);
     }
 
     public async Task LogoutAsync(string userId, CancellationToken cancellationToken = default)

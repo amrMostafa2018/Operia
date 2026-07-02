@@ -32,6 +32,10 @@
     "Value": "رقم الهاتف غير صحيح"
   },
   {
+    "Name": "PhoneAlreadyRegistered",
+    "Value": "رقم الموبايل مسجل بالفعل"
+  },
+  {
     "Name": "ConfirmPasswordRequired",
     "Value": "تأكيد كلمة المرور مطلوب"
   },

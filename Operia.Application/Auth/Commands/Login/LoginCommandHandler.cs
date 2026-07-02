@@ -2,6 +2,7 @@ using MediatR;
 using Operia.Application.Auth.DTOs;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Common.PhoneNumbers;
 
 namespace Operia.Application.Auth.Commands.Login;
 
@@ -18,13 +19,15 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, LoginRes
 
     public async Task<LoginResultDto> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
+        var phoneNumber = PhoneNumberHelper.ToE164(request.PhoneNumber);
+
         var (succeeded, userId, errors) = await _identityService.ValidateCredentialsAsync(
-            request.Email,
+            phoneNumber,
             request.Password,
             cancellationToken);
 
         if (!succeeded)
-            throw new UnauthorizedException(errors.FirstOrDefault() ?? "Invalid email or password.");
+            throw new UnauthorizedException(errors.FirstOrDefault() ?? "Invalid phone number or password.");
 
         await _otpService.GenerateAndSendOtpAsync(userId, cancellationToken);
 
