@@ -40,19 +40,21 @@ public static class DatabaseInitializer
         UserManager<ApplicationUser> userManager,
         ILogger logger)
     {
+        const string adminPhoneNumber = "+10000000000";
         const string adminEmail = "admin@operia.com";
         const string adminPassword = "Admin@12345";
 
-        var admin = await userManager.FindByEmailAsync(adminEmail);
+        var admin = await userManager.Users
+            .FirstOrDefaultAsync(u => u.PhoneNumber == adminPhoneNumber);
 
         if (admin is not null)
             return;
 
         admin = new ApplicationUser
         {
-            UserName = "+10000000000",
+            UserName = adminPhoneNumber,
             Email = adminEmail,
-            PhoneNumber = "+10000000000",
+            PhoneNumber = adminPhoneNumber,
             EmailConfirmed = true
         };
 
@@ -67,6 +69,6 @@ public static class DatabaseInitializer
 
         await userManager.AddToRoleAsync(admin, Roles.Admin);
 
-        logger.LogInformation("Seeded admin user {Email}", adminEmail);
+        logger.LogInformation("Seeded admin user {PhoneNumber}", adminPhoneNumber);
     }
 }
