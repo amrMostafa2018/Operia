@@ -32,6 +32,8 @@ namespace Operia.Infrastructure.Migrations
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     OtpHash = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     OtpExpiry = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ResetPasswordOtpHash = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ResetPasswordOtpExpiry = table.Column<DateTime>(type: "datetime2", nullable: true),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),

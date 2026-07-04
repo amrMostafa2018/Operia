@@ -1,7 +1,7 @@
 using Operia.SharedKernel.Errors;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
 using Operia.Application.Auth.DTOs;
 using Operia.Application.Common.Authorization;
 using Operia.Application.Common.Exceptions;
@@ -53,7 +53,7 @@ public sealed class RegistrationService : IRegistrationService
         string phoneNumber,
         CancellationToken cancellationToken = default)
     {
-        await ValidatePasswordAsync(email, password);
+        await ValidatePasswordAsync(phoneNumber, password);
 
         var existingRequests = await _registrationRequestRepository.GetByPhoneAsync(phoneNumber, cancellationToken);
         _registrationRequestRepository.RemoveRange(existingRequests);
@@ -108,20 +108,13 @@ public sealed class RegistrationService : IRegistrationService
         if (otpResult == PasswordVerificationResult.Failed)
             throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.OtpInvalid, "code");
 
-        if (await _userManager.FindByEmailAsync(request.Email) is not null)
-        {
-            throw new ValidationException([
-                ValidationFailureFactory.Create("email", ApiErrorCodes.Auth.EmailAlreadyRegistered)
-            ]);
-        }
-
         await EnsurePhoneAvailableAsync(request.PhoneNumber, cancellationToken);
 
         var password = _passwordProtector.Unprotect(request.ProtectedPassword);
 
         var user = new ApplicationUser
         {
-            UserName = request.Email,
+            UserName = request.PhoneNumber,
             Email = request.Email,
             PhoneNumber = request.PhoneNumber,
             EmailConfirmed = true,
@@ -149,8 +142,6 @@ public sealed class RegistrationService : IRegistrationService
                     roleResult.Errors.Select(e =>
                         ValidationFailureFactory.Create("identity", ApiErrorCodes.Auth.IdentityError, e.Description)));
             }
-
-            await AdminPermissionClaimHelper.AddAdminPermissionClaimsAsync(_userManager, user);
 
             _registrationRequestRepository.Remove(request);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
@@ -190,12 +181,12 @@ public sealed class RegistrationService : IRegistrationService
         }
     }
 
-    private async Task ValidatePasswordAsync(string email, string password)
+    private async Task ValidatePasswordAsync(string phoneNumber, string password)
     {
         var user = new ApplicationUser
         {
-            UserName = email,
-            Email = email
+            UserName = phoneNumber,
+            PhoneNumber = phoneNumber
         };
 
         var errors = new List<IdentityError>();

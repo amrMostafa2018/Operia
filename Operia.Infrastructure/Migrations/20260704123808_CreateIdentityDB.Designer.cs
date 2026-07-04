@@ -12,7 +12,7 @@ using Operia.Infrastructure.Persistence;
 namespace Operia.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260613142723_CreateIdentityDB")]
+    [Migration("20260704123808_CreateIdentityDB")]
     partial class CreateIdentityDB
     {
         /// <inheritdoc />
@@ -277,6 +277,12 @@ namespace Operia.Infrastructure.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ResetPasswordOtpExpiry")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ResetPasswordOtpHash")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");

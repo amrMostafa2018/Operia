@@ -20,6 +20,7 @@ public sealed class TokenService : ITokenService
 {
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<IdentityRole> _roleManager;
     private readonly JwtSettings _jwtSettings;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IUnitOfWork _unitOfWork;
@@ -27,12 +28,14 @@ public sealed class TokenService : ITokenService
     public TokenService(
         IRefreshTokenRepository refreshTokenRepository,
         UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole> roleManager,
         IOptions<JwtSettings> jwtSettings,
         IDateTimeProvider dateTimeProvider,
         IUnitOfWork unitOfWork)
     {
         _refreshTokenRepository = refreshTokenRepository;
         _userManager = userManager;
+        _roleManager = roleManager;
         _jwtSettings = jwtSettings.Value;
         _dateTimeProvider = dateTimeProvider;
         _unitOfWork = unitOfWork;
@@ -98,6 +101,7 @@ public sealed class TokenService : ITokenService
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id),
+            new(ClaimTypes.MobilePhone, user.PhoneNumber ?? string.Empty),
             new(ClaimTypes.Email, user.Email ?? string.Empty),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new("security_stamp", user.SecurityStamp ?? string.Empty)
@@ -106,13 +110,7 @@ public sealed class TokenService : ITokenService
         var roles = await _userManager.GetRolesAsync(user);
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-        var userClaims = await _userManager.GetClaimsAsync(user);
-        var permissionClaims = userClaims
-            .Where(c => c.Type == Permissions.ClaimType)
-            .ToList();
-
-
-        claims.AddRange(permissionClaims);
+        claims.AddRange(await GetPermissionClaimsAsync(roles));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -127,20 +125,26 @@ public sealed class TokenService : ITokenService
         return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
     }
 
-    //private static IEnumerable<Claim> DerivePermissionClaimsFromRoles(IList<string> roles)
-    //{
-    //    if (roles.Contains(Roles.Admin))
-    //    {
-    //        yield return new Claim(Permissions.ClaimType, Permissions.Admin.Read);
-    //        yield return new Claim(Permissions.ClaimType, Permissions.Admin.Write);
-    //    }
+    private async Task<IReadOnlyList<Claim>> GetPermissionClaimsAsync(IList<string> roles)
+    {
+        var claims = new List<Claim>();
 
-    //    if (roles.Contains(Roles.Staff))
-    //    {
-    //        yield return new Claim(Permissions.ClaimType, Permissions.Staff.Read);
-    //        yield return new Claim(Permissions.ClaimType, Permissions.Staff.Write);
-    //    }
-    //}
+        foreach (var roleName in roles)
+        {
+            var role = await _roleManager.FindByNameAsync(roleName);
+            if (role is null)
+                continue;
+
+            claims.AddRange(
+                (await _roleManager.GetClaimsAsync(role))
+                    .Where(c => c.Type == Permissions.ClaimType));
+        }
+
+        return claims
+            .GroupBy(c => c.Value, StringComparer.Ordinal)
+            .Select(g => g.First())
+            .ToList();
+    }
 
     private async Task<RefreshToken> CreateRefreshTokenAsync(
         ApplicationUser user,

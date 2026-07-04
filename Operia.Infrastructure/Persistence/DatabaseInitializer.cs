@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +32,8 @@ public static class DatabaseInitializer
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole(role));
         }
+
+        await AdminPermissionClaimHelper.AddAdminPermissionClaimsAsync(roleManager);
     }
 
     private static async Task SeedAdminUserAsync(
@@ -45,16 +46,11 @@ public static class DatabaseInitializer
         var admin = await userManager.FindByEmailAsync(adminEmail);
 
         if (admin is not null)
-        {
-            if (await userManager.IsInRoleAsync(admin, Roles.Admin))
-                await EnsurePermissionClaimsAsync(userManager, admin, Roles.Admin);
-
             return;
-        }
 
         admin = new ApplicationUser
         {
-            UserName = adminEmail,
+            UserName = "+10000000000",
             Email = adminEmail,
             PhoneNumber = "+10000000000",
             EmailConfirmed = true
@@ -70,30 +66,7 @@ public static class DatabaseInitializer
         }
 
         await userManager.AddToRoleAsync(admin, Roles.Admin);
-        await AdminPermissionClaimHelper.AddAdminPermissionClaimsAsync(userManager, admin);
 
         logger.LogInformation("Seeded admin user {Email}", adminEmail);
-    }
-
-    private static async Task EnsurePermissionClaimsAsync(
-        UserManager<ApplicationUser> userManager,
-        ApplicationUser user,
-        string role)
-    {
-        var existing = await userManager.GetClaimsAsync(user);
-        if (existing.Any(c => c.Type == Permissions.ClaimType))
-            return;
-
-        if (role == Roles.Admin)
-        {
-            await AdminPermissionClaimHelper.AddAdminPermissionClaimsAsync(userManager, user);
-            return;
-        }
-
-        if (role == Roles.Staff)
-        {
-            await userManager.AddClaimAsync(user, new Claim(Permissions.ClaimType, Permissions.Staff.Read));
-            await userManager.AddClaimAsync(user, new Claim(Permissions.ClaimType, Permissions.Staff.Write));
-        }
     }
 }

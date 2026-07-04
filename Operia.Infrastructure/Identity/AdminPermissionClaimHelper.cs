@@ -19,10 +19,19 @@ internal static class AdminPermissionClaimHelper
     ];
 
     public static async Task AddAdminPermissionClaimsAsync(
-        UserManager<ApplicationUser> userManager,
-        ApplicationUser user)
+        RoleManager<IdentityRole> roleManager)
     {
+        var role = await roleManager.FindByNameAsync(Roles.Admin)
+            ?? throw new InvalidOperationException($"Role '{Roles.Admin}' was not found.");
+
+        var existingClaims = await roleManager.GetClaimsAsync(role);
+
         foreach (var claim in GetAdminPermissionClaims())
-            await userManager.AddClaimAsync(user, claim);
+        {
+            if (existingClaims.Any(c => c.Type == claim.Type && c.Value == claim.Value))
+                continue;
+
+            await roleManager.AddClaimAsync(role, claim);
+        }
     }
 }
