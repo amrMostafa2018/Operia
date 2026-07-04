@@ -12,4 +12,18 @@ public interface IIdentityService
         CancellationToken cancellationToken = default);
 
     Task LogoutAsync(string userId, CancellationToken cancellationToken = default);
+
+    Task<string?> GetUserIdByPhoneAsync(
+        string phoneNumber,
+        CancellationToken cancellationToken = default);
+
+    Task<string> GeneratePasswordResetTokenAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
+
+    Task ResetPasswordAsync(
+        string userId,
+        string resetToken,
+        string newPassword,
+        CancellationToken cancellationToken = default);
 }

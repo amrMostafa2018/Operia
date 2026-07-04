@@ -5,4 +5,8 @@ public interface IOtpService
     Task GenerateAndSendOtpAsync(string userId, CancellationToken cancellationToken = default);
 
     Task VerifyOtpAsync(string userId, string code, CancellationToken cancellationToken = default);
+
+    Task GenerateAndSendResetOtpAsync(string userId, CancellationToken cancellationToken = default);
+
+    Task VerifyResetOtpAsync(string userId, string code, CancellationToken cancellationToken = default);
 }

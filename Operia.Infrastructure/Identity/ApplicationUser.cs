@@ -7,5 +7,7 @@ public sealed class ApplicationUser : IdentityUser
 {
     public string? OtpHash { get; set; }
     public DateTime? OtpExpiry { get; set; }
+    public string? ResetPasswordOtpHash { get; set; }
+    public DateTime? ResetPasswordOtpExpiry { get; set; }
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
 }

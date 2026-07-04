@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Domain.Exceptions;
+using Operia.SharedKernel.Errors;
 namespace Operia.Infrastructure.Identity;
 
 public sealed class IdentityService : IIdentityService
@@ -48,6 +50,49 @@ public sealed class IdentityService : IIdentityService
     {
         var user = await _userManager.FindByIdAsync(userId)
             ?? throw new NotFoundException(nameof(ApplicationUser), userId);
+
+        await _userManager.UpdateSecurityStampAsync(user);
+        await _tokenService.RevokeAllRefreshTokensAsync(userId, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<string?> GetUserIdByPhoneAsync(
+        string phoneNumber,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber, cancellationToken);
+
+        return user?.Id;
+    }
+
+    public async Task<string> GeneratePasswordResetTokenAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId)
+            ?? throw new NotFoundException(nameof(ApplicationUser), userId);
+
+        return await _userManager.GeneratePasswordResetTokenAsync(user);
+    }
+
+    public async Task ResetPasswordAsync(
+        string userId,
+        string resetToken,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId)
+            ?? throw new NotFoundException(nameof(ApplicationUser), userId);
+
+        var result = await _userManager.ResetPasswordAsync(user, resetToken, newPassword);
+
+        if (!result.Succeeded)
+        {
+            throw new ValidationException(
+                result.Errors.Select(e =>
+                    ValidationFailureFactory.Create("password", ApiErrorCodes.Auth.IdentityError, e.Description)));
+        }
 
         await _userManager.UpdateSecurityStampAsync(user);
         await _tokenService.RevokeAllRefreshTokensAsync(userId, cancellationToken);
