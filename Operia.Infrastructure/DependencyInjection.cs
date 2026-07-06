@@ -57,11 +57,19 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IRegistrationRequestRepository, RegistrationRequestRepository>();
+        services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<IBusinessRepository, BusinessRepository>();
+        services.AddScoped<IBusinessGalleryRepository, BusinessGalleryRepository>();
+        services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
+        services.AddScoped<ITenantSubscriptionRepository, TenantSubscriptionRepository>();
+        services.AddScoped<IPlatformRevenueRepository, PlatformRevenueRepository>();
 
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IRegistrationService, RegistrationService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IOtpService, OtpService>();
+        services.AddScoped<IOnboardingService, OnboardingService>();
+        services.AddScoped<IAdminTenantService, AdminTenantService>();
         services.AddHttpClient<IOtpSender, WhatsAppOtpSender>();
 
         return services;

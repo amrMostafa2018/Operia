@@ -26,4 +26,9 @@ public interface IIdentityService
         string resetToken,
         string newPassword,
         CancellationToken cancellationToken = default);
+
+    Task SetUserTenantIdAsync(
+        string userId,
+        string tenantId,
+        CancellationToken cancellationToken = default);
 }

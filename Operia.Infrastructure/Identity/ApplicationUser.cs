@@ -5,6 +5,7 @@ namespace Operia.Infrastructure.Identity;
 
 public sealed class ApplicationUser : IdentityUser
 {
+    public string? TenantId { get; set; }
     public string? OtpHash { get; set; }
     public DateTime? OtpExpiry { get; set; }
     public string? ResetPasswordOtpHash { get; set; }

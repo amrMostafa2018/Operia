@@ -98,4 +98,23 @@ public sealed class IdentityService : IIdentityService
         await _tokenService.RevokeAllRefreshTokensAsync(userId, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task SetUserTenantIdAsync(
+        string userId,
+        string tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId)
+            ?? throw new NotFoundException(nameof(ApplicationUser), userId);
+
+        user.TenantId = tenantId;
+        var result = await _userManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+        {
+            throw new ValidationException(
+                result.Errors.Select(e =>
+                    ValidationFailureFactory.Create("tenantId", ApiErrorCodes.Auth.IdentityError, e.Description)));
+        }
+    }
 }

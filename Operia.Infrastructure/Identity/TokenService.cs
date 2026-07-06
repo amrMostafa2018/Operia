@@ -110,6 +110,11 @@ public sealed class TokenService : ITokenService
         var roles = await _userManager.GetRolesAsync(user);
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
+        if (user.TenantId is not null)
+        {
+            claims.Add(new Claim("tenant_id", user.TenantId));
+        }
+
         claims.AddRange(await GetPermissionClaimsAsync(roles));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
