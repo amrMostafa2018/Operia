@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Operia.Application;
 using Operia.Extensions;
 using Operia.Infrastructure;
@@ -21,7 +22,11 @@ try
         .ReadFrom.Services(services)
         .Enrich.FromLogContext());
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        });
     builder.Services.AddSwaggerDocumentation();
 
     builder.Services.AddApplicationServices();

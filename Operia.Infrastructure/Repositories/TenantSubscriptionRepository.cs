@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Operia.Domain.Entities;
+using Operia.Domain.Enums;
 using Operia.Domain.Interfaces;
 using Operia.Infrastructure.Persistence;
 
@@ -24,4 +25,15 @@ public sealed class TenantSubscriptionRepository : ITenantSubscriptionRepository
 
     public Task AddAsync(TenantSubscription subscription, CancellationToken cancellationToken = default)
         => _context.TenantSubscriptions.AddAsync(subscription, cancellationToken).AsTask();
+
+    public async Task<decimal> GetActiveSubscriptionSpendTotalAsync(
+        string tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        var sum = await _context.TenantSubscriptions
+            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+            .SumAsync(s => (decimal?)s.Amount, cancellationToken);
+
+        return sum ?? 0;
+    }
 }

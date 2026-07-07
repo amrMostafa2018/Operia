@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Operia.Domain.Entities;
+using Operia.Domain.Enums;
 using Operia.Domain.Interfaces;
 using Operia.Infrastructure.Persistence;
 
@@ -14,13 +15,34 @@ public sealed class PlatformRevenueRepository : IPlatformRevenueRepository
         _context = context;
     }
 
-    public Task<PlatformRevenue?> GetLatestUnconfirmedByTenantIdAsync(
+    public Task<PlatformRevenue?> GetLatestPendingAddBalancePlatformByTenantIdAsync(
         string tenantId,
         CancellationToken cancellationToken = default)
         => _context.PlatformRevenues
-            .Where(r => r.TenantId == tenantId && r.ConfirmedAt == null)
+            .Where(r => r.TenantId == tenantId && r.Status == PlatformRevenueStatus.Pending)
             .OrderByDescending(r => r.RecordedAt)
             .FirstOrDefaultAsync(cancellationToken);
+
+    public Task<PlatformRevenue?> GetByIdAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+        => _context.PlatformRevenues.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+
+    public Task<decimal> GetConfirmedTopUpTotalAsync(
+        string tenantId,
+        CancellationToken cancellationToken = default)
+        => _context.PlatformRevenues
+            .Where(r => r.TenantId == tenantId && r.Status == PlatformRevenueStatus.Confirmed)
+            .SumAsync(r => (decimal?)r.Amount, cancellationToken)
+            .ContinueWith(t => t.Result ?? 0, cancellationToken);
+
+    public Task<decimal> GetPendingTopUpTotalAsync(
+        string tenantId,
+        CancellationToken cancellationToken = default)
+        => _context.PlatformRevenues
+            .Where(r => r.TenantId == tenantId && r.Status == PlatformRevenueStatus.Pending)
+            .SumAsync(r => (decimal?)r.Amount, cancellationToken)
+            .ContinueWith(t => t.Result ?? 0, cancellationToken);
 
     public Task AddAsync(PlatformRevenue revenue, CancellationToken cancellationToken = default)
         => _context.PlatformRevenues.AddAsync(revenue, cancellationToken).AsTask();

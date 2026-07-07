@@ -17,5 +17,4 @@ public sealed class TenantSubscription : Entity
     public SubscriptionStatus Status { get; set; } = SubscriptionStatus.Pending;
     public Tenant? Tenant { get; set; }
     public SubscriptionPlan? Plan { get; set; }
-    public ICollection<PlatformRevenue> PlatformRevenues { get; set; } = [];
 }

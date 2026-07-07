@@ -2,7 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Operia.Application.Admin.Commands.ActivateSubscription;
-using Operia.Application.Admin.Commands.AddTenantBalance;
+using Operia.Application.Admin.Commands.ApproveAddBalancePlatform;
 using Operia.Application.Common.Authorization;
 
 namespace Operia.Controllers;
@@ -19,14 +19,13 @@ public sealed class AdminController : ControllerBase
         _mediator = mediator;
     }
 
-    [HttpPost("tenants/{tenantId}/add-balance")]
+    [HttpPost("add-balance-platform/{revenueId}/approve")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> AddTenantBalance(
-        string tenantId,
-        [FromBody] AddTenantBalanceRequest request,
+    public async Task<IActionResult> ApproveAddBalancePlatform(
+        string revenueId,
         CancellationToken cancellationToken)
     {
-        await _mediator.Send(new AddTenantBalanceCommand(tenantId, request.Amount), cancellationToken);
+        await _mediator.Send(new ApproveAddBalancePlatformCommand(revenueId), cancellationToken);
         return NoContent();
     }
 
@@ -40,5 +39,3 @@ public sealed class AdminController : ControllerBase
         return NoContent();
     }
 }
-
-public sealed record AddTenantBalanceRequest(decimal Amount);

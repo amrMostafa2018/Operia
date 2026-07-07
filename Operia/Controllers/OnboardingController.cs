@@ -2,6 +2,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Operia.Application.Onboarding.Commands.CompleteOnboarding;
+using Operia.Application.Onboarding.Commands.ActivateSubscription;
+using Operia.Application.Onboarding.Commands.AddBalancePlatform;
 using Operia.Application.Onboarding.Commands.SetupBusiness;
 using Operia.Application.Onboarding.DTOs;
 using Operia.Application.Onboarding.Queries.GetOnboardingStatus;
@@ -55,5 +57,26 @@ public sealed class OnboardingController : ControllerBase
         CancellationToken cancellationToken)
     {
         return Ok(await _mediator.Send(command, cancellationToken));
+    }
+
+    [Authorize]
+    [HttpPost("add-balance-platform")]
+    [ProducesResponseType(typeof(AddBalancePlatformResultDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AddBalancePlatformResultDto>> AddBalancePlatform(
+        [FromBody] AddBalancePlatformCommand command,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.Send(command, cancellationToken));
+    }
+
+    [Authorize]
+    [HttpPost("activate")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Activate(
+        [FromBody] ActivateSubscriptionCommand command,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(command, cancellationToken);
+        return NoContent();
     }
 }

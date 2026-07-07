@@ -1,4 +1,6 @@
 using System.Text.Json;
+using FluentValidation.Results;
+using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Onboarding.DTOs;
 using Operia.Domain.Entities;
@@ -17,6 +19,8 @@ public sealed class OnboardingService : IOnboardingService
     private readonly ISubscriptionPlanRepository _subscriptionPlanRepository;
     private readonly ITenantSubscriptionRepository _tenantSubscriptionRepository;
     private readonly IIdentityService _identityService;
+    private readonly IAdminTenantService _adminTenantService;
+    private readonly IPlatformRevenueRepository _platformRevenueRepository;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -27,6 +31,8 @@ public sealed class OnboardingService : IOnboardingService
         ISubscriptionPlanRepository subscriptionPlanRepository,
         ITenantSubscriptionRepository tenantSubscriptionRepository,
         IIdentityService identityService,
+        IAdminTenantService adminTenantService,
+        IPlatformRevenueRepository platformRevenueRepository,
         IDateTimeProvider dateTimeProvider,
         IUnitOfWork unitOfWork)
     {
@@ -36,6 +42,8 @@ public sealed class OnboardingService : IOnboardingService
         _subscriptionPlanRepository = subscriptionPlanRepository;
         _tenantSubscriptionRepository = tenantSubscriptionRepository;
         _identityService = identityService;
+        _adminTenantService = adminTenantService;
+        _platformRevenueRepository = platformRevenueRepository;
         _dateTimeProvider = dateTimeProvider;
         _unitOfWork = unitOfWork;
     }
@@ -163,7 +171,8 @@ public sealed class OnboardingService : IOnboardingService
 
         if (tenant is null)
         {
-            return new OnboardingStatusDto(OnboardingStep.Setup, null, null, null, null);
+            return BuildStatusDto(
+                OnboardingStep.Setup, null, null, null, null, 0, 0, null, null);
         }
 
         var business = tenant.Businesses.FirstOrDefault();
@@ -176,46 +185,131 @@ public sealed class OnboardingService : IOnboardingService
                 tenant.City,
                 tenant.CurrencyCode);
 
+        var pendingAddBalancePlatform = await MapPendingAddBalancePlatformAsync(tenant.Id, cancellationToken);
+        var (usableBalance, totalBalance) = MapBalances(tenant.Balance);
+
         var subscription = tenant.Subscriptions
             .OrderByDescending(s => s.CreatedAt)
             .FirstOrDefault();
 
         if (subscription is null)
         {
-            return new OnboardingStatusDto(
+            return BuildStatusDto(
                 OnboardingStep.Plan,
                 tenant.Id,
                 business?.Id,
                 null,
-                businessSummary);
+                businessSummary,
+                usableBalance,
+                totalBalance,
+                null,
+                pendingAddBalancePlatform);
         }
 
         if (subscription.Status == SubscriptionStatus.Active)
         {
-            return new OnboardingStatusDto(
+            return BuildStatusDto(
                 OnboardingStep.Active,
                 tenant.Id,
                 business?.Id,
                 subscription.Id,
-                businessSummary);
+                businessSummary,
+                usableBalance,
+                totalBalance,
+                subscription.Amount,
+                pendingAddBalancePlatform);
         }
 
         if (subscription.Status == SubscriptionStatus.Pending)
         {
-            return new OnboardingStatusDto(
-                OnboardingStep.Pending,
+            return BuildStatusDto(
+                OnboardingStep.Plan,
                 tenant.Id,
                 business?.Id,
                 subscription.Id,
-                businessSummary);
+                businessSummary,
+                usableBalance,
+                totalBalance,
+                subscription.Amount,
+                pendingAddBalancePlatform);
         }
 
-        return new OnboardingStatusDto(
+        return BuildStatusDto(
             OnboardingStep.Plan,
             tenant.Id,
             business?.Id,
             subscription.Id,
-            businessSummary);
+            businessSummary,
+            usableBalance,
+            totalBalance,
+            subscription.Amount,
+            pendingAddBalancePlatform);
+    }
+
+    public async Task<AddBalancePlatformResultDto> AddBalancePlatformAsync(
+        string userId,
+        decimal amount,
+        string screenShotUrl,
+        CancellationToken cancellationToken = default)
+    {
+        var tenant = await _tenantRepository.GetByOwnerUserIdForStatusAsync(userId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Tenant), userId);
+
+        var existingPending = await _platformRevenueRepository.GetLatestPendingAddBalancePlatformByTenantIdAsync(
+            tenant.Id,
+            cancellationToken);
+
+        if (existingPending is not null)
+        {
+            throw new ValidationException(
+            [
+                new ValidationFailure(
+                    "addBalancePlatform",
+                    "A balance add request is already pending review.")
+            ]);
+        }
+
+        if (string.IsNullOrWhiteSpace(screenShotUrl))
+        {
+            throw new ValidationException(
+            [
+                new ValidationFailure(
+                    "screenShotUrl",
+                    "Balance add request must include an Instapay screenshot.")
+            ]);
+        }
+
+        var revenue = new PlatformRevenue
+        {
+            TenantId = tenant.Id,
+            Amount = amount,
+            Currency = tenant.CurrencyCode,
+            ScreenShotUrl = screenShotUrl,
+            Status = PlatformRevenueStatus.Pending,
+            RecordedAt = _dateTimeProvider.UtcNow
+        };
+
+        await _platformRevenueRepository.AddAsync(revenue, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new AddBalancePlatformResultDto(revenue.Id, revenue.Amount);
+    }
+
+    public async Task ActivateSubscriptionAsync(
+        string userId,
+        string subscriptionId,
+        CancellationToken cancellationToken = default)
+    {
+        var tenant = await _tenantRepository.GetByOwnerUserIdForStatusAsync(userId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Tenant), userId);
+
+        var ownsSubscription = tenant.Subscriptions.Any(s => s.Id == subscriptionId);
+        if (!ownsSubscription)
+        {
+            throw new NotFoundException(nameof(TenantSubscription), subscriptionId);
+        }
+
+        await _adminTenantService.ActivateSubscriptionAsync(subscriptionId, cancellationToken);
     }
 
     public async Task<IReadOnlyList<SubscriptionPlanDto>> GetSubscriptionPlansAsync(
@@ -270,6 +364,49 @@ public sealed class OnboardingService : IOnboardingService
             existingLogo.UploadedAt = _dateTimeProvider.UtcNow;
         }
     }
+
+    private async Task<PendingAddBalancePlatformDto?> MapPendingAddBalancePlatformAsync(
+        string tenantId,
+        CancellationToken cancellationToken)
+    {
+        var pending = await _platformRevenueRepository.GetLatestPendingAddBalancePlatformByTenantIdAsync(
+            tenantId,
+            cancellationToken);
+
+        if (pending is null)
+        {
+            return null;
+        }
+
+        return new PendingAddBalancePlatformDto(
+            pending.Id,
+            pending.Amount,
+            pending.ScreenShotUrl);
+    }
+
+    private static (decimal UsableBalance, decimal TotalBalance) MapBalances(decimal tenantBalance) =>
+        (tenantBalance, tenantBalance);
+
+    private static OnboardingStatusDto BuildStatusDto(
+        OnboardingStep step,
+        string? tenantId,
+        string? businessId,
+        string? subscriptionId,
+        BusinessSummaryDto? business,
+        decimal usableBalance,
+        decimal totalBalance,
+        decimal? subscriptionAmount,
+        PendingAddBalancePlatformDto? pendingAddBalancePlatform) =>
+        new(
+            step,
+            tenantId,
+            businessId,
+            subscriptionId,
+            business,
+            usableBalance,
+            totalBalance,
+            subscriptionAmount,
+            pendingAddBalancePlatform);
 
     private static IReadOnlyList<string> ParseFeatures(string featuresJson)
     {

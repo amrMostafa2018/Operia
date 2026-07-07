@@ -28,4 +28,15 @@ public interface IOnboardingService
 
     Task<IReadOnlyList<SubscriptionPlanDto>> GetSubscriptionPlansAsync(
         CancellationToken cancellationToken = default);
+
+    Task ActivateSubscriptionAsync(
+        string userId,
+        string subscriptionId,
+        CancellationToken cancellationToken = default);
+
+    Task<AddBalancePlatformResultDto> AddBalancePlatformAsync(
+        string userId,
+        decimal amount,
+        string screenShotUrl,
+        CancellationToken cancellationToken = default);
 }

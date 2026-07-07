@@ -19,9 +19,6 @@ public sealed class PlatformRevenueConfiguration : IEntityTypeConfiguration<Plat
             .IsRequired()
             .HasMaxLength(36);
 
-        builder.Property(x => x.SubscriptionId)
-            .HasMaxLength(36);
-
         builder.Property(x => x.Amount)
             .HasPrecision(18, 2);
 
@@ -29,14 +26,16 @@ public sealed class PlatformRevenueConfiguration : IEntityTypeConfiguration<Plat
             .IsRequired()
             .HasMaxLength(3);
 
+        builder.Property(x => x.ScreenShotUrl)
+            .IsRequired();
+
+        builder.Property(x => x.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
         builder.HasOne(x => x.Tenant)
             .WithMany(x => x.PlatformRevenues)
             .HasForeignKey(x => x.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(x => x.Subscription)
-            .WithMany(x => x.PlatformRevenues)
-            .HasForeignKey(x => x.SubscriptionId)
-            .OnDelete(DeleteBehavior.SetNull);
     }
 }

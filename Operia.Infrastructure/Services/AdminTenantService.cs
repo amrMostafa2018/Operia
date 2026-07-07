@@ -70,48 +70,35 @@ public sealed class AdminTenantService : IAdminTenantService
             subscription.EndDate = today.AddDays(subscription.Plan.TrialDays);
         }
 
-        var revenue = await _platformRevenueRepository.GetLatestUnconfirmedByTenantIdAsync(
-            tenant.Id,
-            cancellationToken);
-
-        if (revenue is not null)
-        {
-            revenue.SubscriptionId = subscription.Id;
-            revenue.ConfirmedAt = _dateTimeProvider.UtcNow;
-        }
-        else
-        {
-            await _platformRevenueRepository.AddAsync(new PlatformRevenue
-            {
-                TenantId = tenant.Id,
-                SubscriptionId = subscription.Id,
-                Amount = subscription.Amount,
-                Currency = subscription.Currency,
-                RecordedAt = _dateTimeProvider.UtcNow,
-                ConfirmedAt = _dateTimeProvider.UtcNow
-            }, cancellationToken);
-        }
-
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task AddTenantBalanceAsync(
-        string tenantId,
-        decimal amount,
+    public async Task ApproveAddBalancePlatformAsync(
+        string revenueId,
         CancellationToken cancellationToken = default)
     {
-        var tenant = await _tenantRepository.GetByIdAsync(tenantId, cancellationToken)
-            ?? throw new NotFoundException(nameof(Tenant), tenantId);
+        var revenue = await _platformRevenueRepository.GetByIdAsync(revenueId, cancellationToken)
+            ?? throw new NotFoundException(nameof(PlatformRevenue), revenueId);
 
-        tenant.Balance += amount;
+        if (revenue.Status == PlatformRevenueStatus.Confirmed)
+            return;
 
-        await _platformRevenueRepository.AddAsync(new PlatformRevenue
+        if (string.IsNullOrWhiteSpace(revenue.ScreenShotUrl))
         {
-            TenantId = tenant.Id,
-            Amount = amount,
-            Currency = tenant.CurrencyCode,
-            RecordedAt = _dateTimeProvider.UtcNow
-        }, cancellationToken);
+            throw new ValidationException(
+            [
+                new ValidationFailure(
+                    "screenShotUrl",
+                    "Balance top-up request must include an Instapay screenshot.")
+            ]);
+        }
+
+        var tenant = await _tenantRepository.GetByIdAsync(revenue.TenantId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Tenant), revenue.TenantId);
+
+        tenant.Balance += revenue.Amount;
+        revenue.Status = PlatformRevenueStatus.Confirmed;
+        revenue.ConfirmedAt = _dateTimeProvider.UtcNow;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }

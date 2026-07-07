@@ -6,8 +6,7 @@ public interface IAdminTenantService
         string subscriptionId,
         CancellationToken cancellationToken = default);
 
-    Task AddTenantBalanceAsync(
-        string tenantId,
-        decimal amount,
+    Task ApproveAddBalancePlatformAsync(
+        string revenueId,
         CancellationToken cancellationToken = default);
 }

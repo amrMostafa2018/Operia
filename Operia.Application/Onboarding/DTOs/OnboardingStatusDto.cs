@@ -7,7 +7,11 @@ public sealed record OnboardingStatusDto(
     string? TenantId,
     string? BusinessId,
     string? SubscriptionId,
-    BusinessSummaryDto? Business);
+    BusinessSummaryDto? Business,
+    decimal UsableBalance,
+    decimal TotalBalance,
+    decimal? SubscriptionAmount,
+    PendingAddBalancePlatformDto? PendingAddBalancePlatform);
 
 public sealed record BusinessSummaryDto(
     string BusinessName,
