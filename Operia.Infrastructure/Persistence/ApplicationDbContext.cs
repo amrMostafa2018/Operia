@@ -23,7 +23,6 @@ public sealed class ApplicationDbContext : IdentityDbContext<ApplicationUser>, I
         _currentUserService = currentUserService;
     }
 
-    //    public DbSet<WeatherForecast> WeatherForecasts => Set<WeatherForecast>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<RegistrationRequest> RegistrationRequests => Set<RegistrationRequest>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
@@ -36,7 +35,6 @@ public sealed class ApplicationDbContext : IdentityDbContext<ApplicationUser>, I
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.Ignore<BaseEvent>();
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
     }
 
@@ -44,21 +42,6 @@ public sealed class ApplicationDbContext : IdentityDbContext<ApplicationUser>, I
     {
         var now = _dateTimeProvider.UtcNow;
         var userId = _currentUserService.UserId;
-
-        foreach (var entry in ChangeTracker.Entries<AuditableEntity>())
-        {
-            switch (entry.State)
-            {
-                case EntityState.Added:
-                    entry.Entity.CreatedAt = now;
-                    entry.Entity.CreatedBy ??= userId;
-                    break;
-                case EntityState.Modified:
-                    entry.Entity.LastModifiedAt = now;
-                    entry.Entity.LastModifiedBy = userId;
-                    break;
-            }
-        }
 
         foreach (var entry in ChangeTracker.Entries<Entity>())
         {

@@ -83,15 +83,9 @@ public sealed class AdminTenantService : IAdminTenantService
         if (revenue.Status == PlatformRevenueStatus.Confirmed)
             return;
 
-        if (string.IsNullOrWhiteSpace(revenue.ScreenShotUrl))
-        {
-            throw new ValidationException(
-            [
-                new ValidationFailure(
-                    "screenShotUrl",
-                    "Balance top-up request must include an Instapay screenshot.")
-            ]);
-        }
+        BalancePlatformValidation.EnsureScreenshotProvided(
+            revenue.ScreenShotUrl,
+            "Balance top-up request must include an Instapay screenshot.");
 
         var tenant = await _tenantRepository.GetByIdAsync(revenue.TenantId, cancellationToken)
             ?? throw new NotFoundException(nameof(Tenant), revenue.TenantId);

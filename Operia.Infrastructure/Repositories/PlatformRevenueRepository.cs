@@ -28,22 +28,6 @@ public sealed class PlatformRevenueRepository : IPlatformRevenueRepository
         CancellationToken cancellationToken = default)
         => _context.PlatformRevenues.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
-    public Task<decimal> GetConfirmedTopUpTotalAsync(
-        string tenantId,
-        CancellationToken cancellationToken = default)
-        => _context.PlatformRevenues
-            .Where(r => r.TenantId == tenantId && r.Status == PlatformRevenueStatus.Confirmed)
-            .SumAsync(r => (decimal?)r.Amount, cancellationToken)
-            .ContinueWith(t => t.Result ?? 0, cancellationToken);
-
-    public Task<decimal> GetPendingTopUpTotalAsync(
-        string tenantId,
-        CancellationToken cancellationToken = default)
-        => _context.PlatformRevenues
-            .Where(r => r.TenantId == tenantId && r.Status == PlatformRevenueStatus.Pending)
-            .SumAsync(r => (decimal?)r.Amount, cancellationToken)
-            .ContinueWith(t => t.Result ?? 0, cancellationToken);
-
     public Task AddAsync(PlatformRevenue revenue, CancellationToken cancellationToken = default)
         => _context.PlatformRevenues.AddAsync(revenue, cancellationToken).AsTask();
 }

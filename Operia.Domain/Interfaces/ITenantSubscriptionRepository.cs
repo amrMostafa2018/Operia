@@ -9,8 +9,4 @@ public interface ITenantSubscriptionRepository
         CancellationToken cancellationToken = default);
 
     Task AddAsync(TenantSubscription subscription, CancellationToken cancellationToken = default);
-
-    Task<decimal> GetActiveSubscriptionSpendTotalAsync(
-        string tenantId,
-        CancellationToken cancellationToken = default);
 }

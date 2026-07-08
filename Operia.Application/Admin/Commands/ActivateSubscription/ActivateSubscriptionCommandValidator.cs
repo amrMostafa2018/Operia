@@ -1,4 +1,5 @@
 using FluentValidation;
+using Operia.Application.Common.Validators;
 
 namespace Operia.Application.Admin.Commands.ActivateSubscription;
 
@@ -7,6 +8,6 @@ public sealed class ActivateSubscriptionCommandValidator : AbstractValidator<Act
     public ActivateSubscriptionCommandValidator()
     {
         RuleFor(x => x.SubscriptionId)
-            .NotEmpty();
+            .MustNotBeEmptySubscriptionId();
     }
 }
