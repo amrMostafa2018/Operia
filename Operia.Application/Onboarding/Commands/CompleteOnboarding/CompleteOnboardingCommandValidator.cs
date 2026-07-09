@@ -12,8 +12,5 @@ public sealed class CompleteOnboardingCommandValidator : AbstractValidator<Compl
 
         RuleFor(x => x.BillingType)
             .IsInEnum();
-
-        RuleFor(x => x.ScreenShotUrl)
-            .NotEmpty();
     }
 }

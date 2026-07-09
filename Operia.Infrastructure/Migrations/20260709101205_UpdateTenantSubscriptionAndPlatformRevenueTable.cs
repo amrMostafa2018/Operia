@@ -5,7 +5,7 @@
 namespace Operia.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class UpadatePlatformRevenueTable : Migration
+    public partial class UpdateTenantSubscriptionAndPlatformRevenueTable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -17,6 +17,10 @@ namespace Operia.Infrastructure.Migrations
             migrationBuilder.DropIndex(
                 name: "IX_PlatformRevenues_SubscriptionId",
                 table: "PlatformRevenues");
+
+            migrationBuilder.DropColumn(
+                name: "ScreenShotUrl",
+                table: "TenantSubscriptions");
 
             migrationBuilder.DropColumn(
                 name: "SubscriptionId",
@@ -48,6 +52,12 @@ namespace Operia.Infrastructure.Migrations
             migrationBuilder.DropColumn(
                 name: "Status",
                 table: "PlatformRevenues");
+
+            migrationBuilder.AddColumn<string>(
+                name: "ScreenShotUrl",
+                table: "TenantSubscriptions",
+                type: "nvarchar(max)",
+                nullable: true);
 
             migrationBuilder.AddColumn<string>(
                 name: "SubscriptionId",

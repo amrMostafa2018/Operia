@@ -502,9 +502,6 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
 
-                    b.Property<string>("ScreenShotUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateOnly?>("StartDate")
                         .HasColumnType("date");
 

@@ -11,7 +11,6 @@ public sealed class TenantSubscription : Entity
     public decimal Amount { get; set; }
     public string Currency { get; set; } = string.Empty;
     public BillingType BillingType { get; set; }
-    public string? ScreenShotUrl { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public SubscriptionStatus Status { get; set; } = SubscriptionStatus.Pending;

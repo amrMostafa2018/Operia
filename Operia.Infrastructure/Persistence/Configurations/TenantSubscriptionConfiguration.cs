@@ -38,8 +38,6 @@ public sealed class TenantSubscriptionConfiguration : IEntityTypeConfiguration<T
             .HasConversion<string>()
             .HasMaxLength(20);
 
-        builder.Property(x => x.ScreenShotUrl);
-
         builder.Property(x => x.CreatedBy)
             .HasMaxLength(450);
 

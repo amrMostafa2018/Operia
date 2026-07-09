@@ -12,8 +12,8 @@ using Operia.Infrastructure.Persistence;
 namespace Operia.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260707192405_UpadatePlatformRevenueTable")]
-    partial class UpadatePlatformRevenueTable
+    [Migration("20260709101205_UpdateTenantSubscriptionAndPlatformRevenueTable")]
+    partial class UpdateTenantSubscriptionAndPlatformRevenueTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -504,9 +504,6 @@ namespace Operia.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
-
-                    b.Property<string>("ScreenShotUrl")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateOnly?>("StartDate")
                         .HasColumnType("date");

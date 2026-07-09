@@ -55,13 +55,11 @@ public sealed class OnboardingService : IOnboardingService
         string userId,
         string planId,
         Domain.Enums.BillingType billingType,
-        string screenShotUrl,
         CancellationToken cancellationToken = default)
         => _onboardingSetupService.CompleteOnboardingAsync(
             userId,
             planId,
             billingType,
-            screenShotUrl,
             cancellationToken);
 
     public Task<OnboardingStatusDto> GetOnboardingStatusAsync(

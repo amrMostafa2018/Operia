@@ -105,7 +105,6 @@ public sealed class OnboardingSetupService
         string userId,
         string planId,
         BillingType billingType,
-        string screenShotUrl,
         CancellationToken cancellationToken = default)
     {
         var tenant = await _tenantRepository.GetByOwnerUserIdWithDetailsAsync(userId, cancellationToken)
@@ -140,7 +139,6 @@ public sealed class OnboardingSetupService
             Amount = amount,
             Currency = tenant.CurrencyCode,
             BillingType = billingType,
-            ScreenShotUrl = screenShotUrl,
             Status = SubscriptionStatus.Pending
         };
 

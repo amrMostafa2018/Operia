@@ -19,7 +19,6 @@ public interface IOnboardingService
         string userId,
         string planId,
         BillingType billingType,
-        string screenShotUrl,
         CancellationToken cancellationToken = default);
 
     Task<OnboardingStatusDto> GetOnboardingStatusAsync(
