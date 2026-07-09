@@ -40,6 +40,7 @@ public sealed class OnboardingService : IOnboardingService
         string city,
         string currencyCode,
         string? logoUrl,
+        string? predeterminedTenantId = null,
         CancellationToken cancellationToken = default)
         => _onboardingSetupService.SetupBusinessAsync(
             userId,
@@ -49,6 +50,7 @@ public sealed class OnboardingService : IOnboardingService
             city,
             currencyCode,
             logoUrl,
+            predeterminedTenantId,
             cancellationToken);
 
     public Task<OnboardingResultDto> CompleteOnboardingAsync(

@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.Configure<WhatsAppSettings>(configuration.GetSection(WhatsAppSettings.SectionName));
         services.Configure<OtpSettings>(configuration.GetSection(OtpSettings.SectionName));
+        services.Configure<FileStorageSettings>(configuration.GetSection(FileStorageSettings.SectionName));
 
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddDataProtection();
@@ -73,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<BalancePlatformService>();
         services.AddScoped<IOnboardingService, OnboardingService>();
         services.AddScoped<IAdminTenantService, AdminTenantService>();
+        services.AddScoped<IFileStorageService, LocalFileStorageService>();
         services.AddHttpClient<IOtpSender, WhatsAppOtpSender>();
 
         return services;

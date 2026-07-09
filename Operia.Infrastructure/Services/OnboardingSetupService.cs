@@ -16,6 +16,7 @@ public sealed class OnboardingSetupService
     private readonly ISubscriptionPlanRepository _subscriptionPlanRepository;
     private readonly ITenantSubscriptionRepository _tenantSubscriptionRepository;
     private readonly IIdentityService _identityService;
+    private readonly IFileStorageService _fileStorageService;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -26,6 +27,7 @@ public sealed class OnboardingSetupService
         ISubscriptionPlanRepository subscriptionPlanRepository,
         ITenantSubscriptionRepository tenantSubscriptionRepository,
         IIdentityService identityService,
+        IFileStorageService fileStorageService,
         IDateTimeProvider dateTimeProvider,
         IUnitOfWork unitOfWork)
     {
@@ -35,6 +37,7 @@ public sealed class OnboardingSetupService
         _subscriptionPlanRepository = subscriptionPlanRepository;
         _tenantSubscriptionRepository = tenantSubscriptionRepository;
         _identityService = identityService;
+        _fileStorageService = fileStorageService;
         _dateTimeProvider = dateTimeProvider;
         _unitOfWork = unitOfWork;
     }
@@ -47,6 +50,7 @@ public sealed class OnboardingSetupService
         string city,
         string currencyCode,
         string? logoUrl,
+        string? predeterminedTenantId = null,
         CancellationToken cancellationToken = default)
     {
         var existingTenant = await _tenantRepository.GetByOwnerUserIdWithDetailsAsync(userId, cancellationToken);
@@ -79,6 +83,7 @@ public sealed class OnboardingSetupService
 
         var tenant = new Tenant
         {
+            Id = predeterminedTenantId ?? Guid.NewGuid().ToString(),
             OwnerUserId = userId,
             BusinessName = businessName.Trim(),
             BusinessType = businessType,
@@ -184,6 +189,9 @@ public sealed class OnboardingSetupService
         }
         else
         {
+            if (existingLogo.ImageUrl.StartsWith("/uploads/", StringComparison.Ordinal))
+                await _fileStorageService.DeleteAsync(existingLogo.ImageUrl, cancellationToken);
+
             existingLogo.ImageUrl = logoUrl;
             existingLogo.UploadedAt = _dateTimeProvider.UtcNow;
         }

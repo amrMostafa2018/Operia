@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Http.Features;
 using Operia.Application;
 using Operia.Extensions;
 using Operia.Infrastructure;
@@ -34,6 +35,11 @@ try
     builder.Services.AddJwtAuthentication(builder.Configuration);
     builder.Services.AddCorsPolicy(builder.Configuration, builder.Environment);
 
+    builder.Services.Configure<FormOptions>(options =>
+        options.MultipartBodyLengthLimit = 5 * 1024 * 1024);
+    builder.WebHost.ConfigureKestrel(options =>
+        options.Limits.MaxRequestBodySize = 6 * 1024 * 1024);
+
     var app = builder.Build();
 
     await DatabaseInitializer.InitializeAsync(app.Services);
@@ -48,6 +54,8 @@ try
 
     if (!app.Environment.IsDevelopment())
         app.UseHttpsRedirection();
+
+    app.UseStaticFiles();
 
     app.UseAuthentication();
     app.UseMiddleware<SecurityStampValidationMiddleware>();

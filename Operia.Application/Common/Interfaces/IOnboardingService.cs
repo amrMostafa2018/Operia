@@ -13,6 +13,7 @@ public interface IOnboardingService
         string city,
         string currencyCode,
         string? logoUrl,
+        string? predeterminedTenantId = null,
         CancellationToken cancellationToken = default);
 
     Task<OnboardingResultDto> CompleteOnboardingAsync(

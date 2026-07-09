@@ -10,4 +10,5 @@ public sealed record SetupBusinessCommand(
     string CountryCode,
     string City,
     string CurrencyCode,
-    string? LogoUrl) : IRequest<SetupBusinessResultDto>;
+    string? LogoUrl,
+    string? PredeterminedTenantId = null) : IRequest<SetupBusinessResultDto>;

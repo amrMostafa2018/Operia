@@ -91,3 +91,4 @@ ehthumbs.db
 *.bak
 *.tmp
 *.temp
+/Operia/wwwroot/uploads/
