@@ -9,6 +9,10 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
 {
     public RegisterCommandValidator(IIdentityService identityService)
     {
+        RuleFor(x => x.FullName)
+            .NotEmpty().WithErrorCode(ApiErrorCodes.Auth.FullNameRequired)
+            .MinimumLength(3).WithErrorCode(ApiErrorCodes.Auth.FullNameMinLength);
+
         RuleFor(x => x.Email)
             .NotEmpty().WithErrorCode(ApiErrorCodes.Auth.EmailRequired)
             .EmailAddress().WithErrorCode(ApiErrorCodes.Auth.EmailInvalid);

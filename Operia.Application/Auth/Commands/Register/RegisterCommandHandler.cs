@@ -19,6 +19,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
         var phoneNumber = PhoneNumberHelper.ToE164(request.PhoneNumber);
 
         return _registrationService.InitiateRegistrationAsync(
+            request.FullName,
             request.Email,
             request.Password,
             phoneNumber,

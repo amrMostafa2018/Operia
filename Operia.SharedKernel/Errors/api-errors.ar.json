@@ -40,6 +40,14 @@
     "Value": "تأكيد كلمة المرور مطلوب"
   },
   {
+    "Name": "FullNameRequired",
+    "Value": "الاسم الكامل مطلوب"
+  },
+  {
+    "Name": "FullNameMinLength",
+    "Value": "يجب أن يكون الاسم 3 أحرف على الأقل"
+  },
+  {
     "Name": "OtpPhoneRequired",
     "Value": "رقم الموبايل مطلوب لإرسال رمز التحقق"
   },

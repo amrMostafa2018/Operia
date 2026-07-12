@@ -12,6 +12,10 @@ public sealed class RegistrationRequestConfiguration : IEntityTypeConfiguration<
 
         builder.HasKey(x => x.Id);
 
+        builder.Property(x => x.FullName)
+            .IsRequired()
+            .HasMaxLength(200);
+
         builder.Property(x => x.Email)
             .IsRequired()
             .HasMaxLength(256);

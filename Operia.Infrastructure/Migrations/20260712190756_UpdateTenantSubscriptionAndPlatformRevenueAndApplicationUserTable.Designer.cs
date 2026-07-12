@@ -12,8 +12,8 @@ using Operia.Infrastructure.Persistence;
 namespace Operia.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260709101205_UpdateTenantSubscriptionAndPlatformRevenueTable")]
-    partial class UpdateTenantSubscriptionAndPlatformRevenueTable
+    [Migration("20260712190756_UpdateTenantSubscriptionAndPlatformRevenueAndApplicationUserTable")]
+    partial class UpdateTenantSubscriptionAndPlatformRevenueAndApplicationUserTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -334,6 +334,11 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<DateTime>("OtpExpiry")
                         .HasColumnType("datetime2");
 
@@ -545,6 +550,11 @@ namespace Operia.Infrastructure.Migrations
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");

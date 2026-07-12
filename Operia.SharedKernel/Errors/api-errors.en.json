@@ -40,6 +40,14 @@
     "Value": "Confirm Password is required."
   },
   {
+    "Name": "FullNameRequired",
+    "Value": "Full name is required."
+  },
+  {
+    "Name": "FullNameMinLength",
+    "Value": "Full name must be at least 3 characters."
+  },
+  {
     "Name": "OtpPhoneRequired",
     "Value": "User phone number is required for OTP delivery."
   },

@@ -18,6 +18,8 @@ public static class ApiErrorCodes
         public const string PhoneInvalid = "PhoneInvalid";
         public const string PhoneAlreadyRegistered = "PhoneAlreadyRegistered";
         public const string ConfirmPasswordRequired = "ConfirmPasswordRequired";
+        public const string FullNameRequired = "FullNameRequired";
+        public const string FullNameMinLength = "FullNameMinLength";
         public const string OtpPhoneRequired = "OtpPhoneRequired";
         public const string OtpInvalid = "OtpInvalid";
         public const string OtpExpired = "OtpExpired";

@@ -3,6 +3,7 @@ namespace Operia.Application.Common.Interfaces;
 public interface IRegistrationService
 {
     Task<Auth.DTOs.RegisterResultDto> InitiateRegistrationAsync(
+        string fullName,
         string email,
         string password,
         string phoneNumber,

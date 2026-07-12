@@ -115,6 +115,11 @@ public sealed class TokenService : ITokenService
             claims.Add(new Claim("tenant_id", user.TenantId));
         }
 
+        if (!string.IsNullOrWhiteSpace(user.FullName))
+        {
+            claims.Add(new Claim(ClaimTypes.Name, user.FullName.Trim()));
+        }
+
         claims.AddRange(await GetPermissionClaimsAsync(roles));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));

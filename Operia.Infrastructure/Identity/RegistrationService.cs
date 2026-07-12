@@ -48,6 +48,7 @@ public sealed class RegistrationService : IRegistrationService
     }
 
     public async Task<RegisterResultDto> InitiateRegistrationAsync(
+        string fullName,
         string email,
         string password,
         string phoneNumber,
@@ -60,6 +61,7 @@ public sealed class RegistrationService : IRegistrationService
 
         var request = new RegistrationRequest
         {
+            FullName = fullName.Trim(),
             Email = email,
             ProtectedPassword = _passwordProtector.Protect(password),
             PhoneNumber = phoneNumber,
@@ -114,6 +116,7 @@ public sealed class RegistrationService : IRegistrationService
 
         var user = new ApplicationUser
         {
+            FullName = request.FullName,
             UserName = request.PhoneNumber,
             Email = request.Email,
             PhoneNumber = request.PhoneNumber,

@@ -5,7 +5,7 @@
 namespace Operia.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class UpdateTenantSubscriptionAndPlatformRevenueTable : Migration
+    public partial class UpdateTenantSubscriptionAndPlatformRevenueAndApplicationUserTable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -27,6 +27,14 @@ namespace Operia.Infrastructure.Migrations
                 table: "PlatformRevenues");
 
             migrationBuilder.AddColumn<string>(
+                name: "FullName",
+                table: "RegistrationRequests",
+                type: "nvarchar(200)",
+                maxLength: 200,
+                nullable: false,
+                defaultValue: "");
+
+            migrationBuilder.AddColumn<string>(
                 name: "ScreenShotUrl",
                 table: "PlatformRevenues",
                 type: "nvarchar(max)",
@@ -40,11 +48,23 @@ namespace Operia.Infrastructure.Migrations
                 maxLength: 20,
                 nullable: false,
                 defaultValue: "");
+
+            migrationBuilder.AddColumn<string>(
+                name: "FullName",
+                table: "AspNetUsers",
+                type: "nvarchar(200)",
+                maxLength: 200,
+                nullable: false,
+                defaultValue: "");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropColumn(
+                name: "FullName",
+                table: "RegistrationRequests");
+
             migrationBuilder.DropColumn(
                 name: "ScreenShotUrl",
                 table: "PlatformRevenues");
@@ -52,6 +72,10 @@ namespace Operia.Infrastructure.Migrations
             migrationBuilder.DropColumn(
                 name: "Status",
                 table: "PlatformRevenues");
+
+            migrationBuilder.DropColumn(
+                name: "FullName",
+                table: "AspNetUsers");
 
             migrationBuilder.AddColumn<string>(
                 name: "ScreenShotUrl",

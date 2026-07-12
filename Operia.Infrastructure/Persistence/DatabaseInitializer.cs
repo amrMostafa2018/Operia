@@ -55,6 +55,7 @@ public static class DatabaseInitializer
 
         admin = new ApplicationUser
         {
+            FullName = "Operia Admin",
             UserName = adminPhoneNumber,
             Email = adminEmail,
             PhoneNumber = adminPhoneNumber,
