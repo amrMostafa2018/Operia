@@ -39,4 +39,9 @@ public interface IOnboardingService
         decimal amount,
         string screenShotUrl,
         CancellationToken cancellationToken = default);
+
+    Task<TenantUploadContextDto> ResolveUploadTenantContextAsync(
+        string userId,
+        string? currentTenantId,
+        CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,4 @@
-namespace Operia.Controllers;
+namespace Operia.Application.Onboarding.DTOs;
 
 public sealed class SetupBusinessRequest
 {
@@ -11,9 +11,4 @@ public sealed class SetupBusinessRequest
     public string City { get; set; } = string.Empty;
 
     public string CurrencyCode { get; set; } = string.Empty;
-}
-
-public sealed class AddBalancePlatformRequest
-{
-    public decimal Amount { get; set; }
 }

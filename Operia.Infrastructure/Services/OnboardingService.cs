@@ -113,6 +113,24 @@ public sealed class OnboardingService : IOnboardingService
             plan.IsActive)).ToList();
     }
 
+    public async Task<TenantUploadContextDto> ResolveUploadTenantContextAsync(
+        string userId,
+        string? currentTenantId,
+        CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrWhiteSpace(currentTenantId))
+            return new TenantUploadContextDto(currentTenantId, false);
+
+        var existingTenant = await _tenantRepository.GetByOwnerUserIdWithDetailsAsync(
+            userId,
+            cancellationToken);
+
+        if (existingTenant is not null)
+            return new TenantUploadContextDto(existingTenant.Id, false);
+
+        return new TenantUploadContextDto(Guid.NewGuid().ToString(), true);
+    }
+
     private static IReadOnlyList<string> ParseFeatures(string featuresJson)
     {
         try

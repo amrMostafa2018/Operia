@@ -8,6 +8,8 @@ public sealed class AddBalancePlatformCommandValidator
     public AddBalancePlatformCommandValidator()
     {
         RuleFor(x => x.Amount).GreaterThan(0);
-        RuleFor(x => x.ScreenShotUrl).NotEmpty();
+        RuleFor(x => x.Screenshot)
+            .NotNull()
+            .WithMessage("Balance add request must include an Instapay screenshot.");
     }
 }

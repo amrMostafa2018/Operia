@@ -1,4 +1,5 @@
 using MediatR;
+using Operia.Application.Common.Models;
 using Operia.Application.Onboarding.DTOs;
 using Operia.Domain.Enums;
 
@@ -10,5 +11,4 @@ public sealed record SetupBusinessCommand(
     string CountryCode,
     string City,
     string CurrencyCode,
-    string? LogoUrl,
-    string? PredeterminedTenantId = null) : IRequest<SetupBusinessResultDto>;
+    FileUploadContent? Logo = null) : IRequest<SetupBusinessResultDto>;
