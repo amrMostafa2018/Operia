@@ -25,4 +25,11 @@ public sealed class PagedList<T>
         var items = list.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
         return new PagedList<T>(items, pageNumber, pageSize, totalCount);
     }
+
+    public static PagedList<T> FromItems(
+        IReadOnlyList<T> items,
+        int pageNumber,
+        int pageSize,
+        int totalCount) =>
+        new(items, pageNumber, pageSize, totalCount);
 }

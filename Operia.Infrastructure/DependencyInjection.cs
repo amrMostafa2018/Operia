@@ -73,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<OnboardingSetupService>();
         services.AddScoped<BalancePlatformService>();
         services.AddScoped<IOnboardingService, OnboardingService>();
+        services.AddScoped<IFinanceService, FinanceService>();
         services.AddScoped<IAdminTenantService, AdminTenantService>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
         services.AddHttpClient<IOtpSender, WhatsAppOtpSender>();
