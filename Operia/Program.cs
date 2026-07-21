@@ -4,6 +4,7 @@ using Operia.Application;
 using Operia.Extensions;
 using Operia.Infrastructure;
 using Operia.Infrastructure.Middleware;
+using Operia.Infrastructure.Options;
 using Operia.Infrastructure.Persistence;
 using Operia.Middleware;
 using Serilog;
@@ -35,10 +36,16 @@ try
     builder.Services.AddJwtAuthentication(builder.Configuration);
     builder.Services.AddCorsPolicy(builder.Configuration, builder.Environment);
 
+    const long multipartRequestBodyOverheadBytes = 1024 * 1024;
+
+    var fileStorageSettings = builder.Configuration
+        .GetSection(FileStorageSettings.SectionName)
+        .Get<FileStorageSettings>() ?? new FileStorageSettings();
+
     builder.Services.Configure<FormOptions>(options =>
-        options.MultipartBodyLengthLimit = 5 * 1024 * 1024);
+        options.MultipartBodyLengthLimit = fileStorageSettings.MaxFileSizeBytes);
     builder.WebHost.ConfigureKestrel(options =>
-        options.Limits.MaxRequestBodySize = 6 * 1024 * 1024);
+        options.Limits.MaxRequestBodySize = fileStorageSettings.MaxFileSizeBytes + multipartRequestBodyOverheadBytes);
 
     var app = builder.Build();
 
