@@ -10,5 +10,6 @@ public sealed class ApplicationUser : IdentityUser
     public DateTime? OtpExpiry { get; set; }
     public string? ResetPasswordOtpHash { get; set; }
     public DateTime? ResetPasswordOtpExpiry { get; set; }
+    public bool LoginAlertsEnabled { get; set; } = true;
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
 }
