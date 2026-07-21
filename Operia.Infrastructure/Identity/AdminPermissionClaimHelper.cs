@@ -13,6 +13,7 @@ internal static class AdminPermissionClaimHelper
         new(Permissions.ClaimType, Permissions.Admin.CustomersRead),
         new(Permissions.ClaimType, Permissions.Admin.ReportsRead),
         new(Permissions.ClaimType, Permissions.Admin.BranchesRead),
+        new(Permissions.ClaimType, Permissions.Admin.BranchesManage),
         new(Permissions.ClaimType, Permissions.Admin.EmployeesRead),
         new(Permissions.ClaimType, Permissions.Admin.PackagesRead),
         new(Permissions.ClaimType, Permissions.Admin.SettingsRead),

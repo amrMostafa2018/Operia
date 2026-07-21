@@ -31,6 +31,8 @@ public sealed class ApplicationDbContext : IdentityDbContext<ApplicationUser>, I
     public DbSet<Business> Businesses => Set<Business>();
     public DbSet<BusinessGallery> BusinessGalleries => Set<BusinessGallery>();
     public DbSet<PlatformRevenue> PlatformRevenues => Set<PlatformRevenue>();
+    public DbSet<Branch> Branches => Set<Branch>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

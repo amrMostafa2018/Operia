@@ -17,6 +17,7 @@ public static class Permissions
         public const string CustomersRead = "Admins:Customers:read";
         public const string ReportsRead = "Admins:Reports:read";
         public const string BranchesRead = "Admins:Branches:read";
+        public const string BranchesManage = "Admins:Branches:manage";
         public const string EmployeesRead = "Admins:Employees:read";
         public const string PackagesRead = "Admins:Packages:read";
         public const string SettingsRead = "Admins:Settings:read";

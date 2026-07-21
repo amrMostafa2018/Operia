@@ -49,6 +49,12 @@ public sealed class ExceptionHandlingMiddleware
                 LocalizeValidationErrors(validation, language),
                 validation.ErrorCodes.Count > 0 ? validation.ErrorCodes : null),
 
+            ConflictException conflict => (
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                new Dictionary<string, string[]> { ["detail"] = [conflict.Message] },
+                null),
+
             UnauthorizedException unauthorized => (
                 StatusCodes.Status401Unauthorized,
                 "Unauthorized",
@@ -89,13 +95,18 @@ public sealed class ExceptionHandlingMiddleware
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json";
 
+        IReadOnlyList<BranchDependencyInfo> dependencies = exception is ConflictException conflictException
+            ? conflictException.Dependencies
+            : [];
+
         var problemDetails = new
         {
             type = $"https://httpstatuses.com/{statusCode}",
             title,
             status = statusCode,
             errors,
-            errorCodes
+            errorCodes,
+            dependencies
         };
 
         var json = JsonSerializer.Serialize(problemDetails, new JsonSerializerOptions

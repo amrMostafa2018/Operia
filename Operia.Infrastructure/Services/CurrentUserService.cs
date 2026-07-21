@@ -19,6 +19,9 @@ public sealed class CurrentUserService : ICurrentUserService
     public string? TenantId =>
         _httpContextAccessor.HttpContext?.User.FindFirstValue("tenant_id");
 
+    public string? DisplayName =>
+        _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Name);
+
     public bool IsInRole(string role) =>
         _httpContextAccessor.HttpContext?.User.IsInRole(role) ?? false;
 }

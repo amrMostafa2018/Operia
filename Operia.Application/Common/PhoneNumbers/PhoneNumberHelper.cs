@@ -13,7 +13,10 @@ public static class PhoneNumberHelper
 
         try
         {
-            var parsed = PhoneUtil.Parse(phoneNumber.Trim(), null);
+            var value = phoneNumber.Trim();
+            // Branches are currently configured for Egypt.  Accept both the
+            // local form (e.g. 01050568043) shown in the admin UI and E.164.
+            var parsed = PhoneUtil.Parse(value, value.StartsWith('+') ? null : "EG");
             return PhoneUtil.IsValidNumber(parsed);
         }
         catch (NumberParseException)
@@ -24,7 +27,8 @@ public static class PhoneNumberHelper
 
     public static string ToE164(string phoneNumber)
     {
-        var parsed = PhoneUtil.Parse(phoneNumber.Trim(), null);
+        var value = phoneNumber.Trim();
+        var parsed = PhoneUtil.Parse(value, value.StartsWith('+') ? null : "EG");
         return PhoneUtil.Format(parsed, PhoneNumberFormat.E164);
     }
 }

@@ -11,6 +11,8 @@ public interface IApplicationDbContext
     DbSet<Business> Businesses { get; }
     DbSet<BusinessGallery> BusinessGalleries { get; }
     DbSet<PlatformRevenue> PlatformRevenues { get; }
+    DbSet<Branch> Branches { get; }
+    DbSet<AuditLog> AuditLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
