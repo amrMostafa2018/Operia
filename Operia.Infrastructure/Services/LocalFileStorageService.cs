@@ -25,10 +25,17 @@ public sealed class LocalFileStorageService : IFileStorageService
         string originalFileName,
         string contentType,
         string tenantId,
-        string folder,
+        FileUploadCategory category,
         CancellationToken cancellationToken = default)
     {
         ValidateUpload(contentType, content.Length);
+
+        var folder = category switch
+        {
+            FileUploadCategory.BusinessGallery => _settings.BusinessGalleriesFolder,
+            FileUploadCategory.PlatformRevenue => _settings.PlatformRevenuesFolder,
+            _ => throw new ArgumentOutOfRangeException(nameof(category), category, null)
+        };
 
         var extension = Path.GetExtension(originalFileName);
         if (string.IsNullOrWhiteSpace(extension))

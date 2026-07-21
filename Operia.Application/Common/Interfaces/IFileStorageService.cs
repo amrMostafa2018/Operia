@@ -1,5 +1,11 @@
 namespace Operia.Application.Common.Interfaces;
 
+public enum FileUploadCategory
+{
+    BusinessGallery,
+    PlatformRevenue
+}
+
 public interface IFileStorageService
 {
     Task<string> SaveAsync(
@@ -7,7 +13,7 @@ public interface IFileStorageService
         string originalFileName,
         string contentType,
         string tenantId,
-        string folder,
+        FileUploadCategory category,
         CancellationToken cancellationToken = default);
 
     Task DeleteAsync(string relativeUrl, CancellationToken cancellationToken = default);
