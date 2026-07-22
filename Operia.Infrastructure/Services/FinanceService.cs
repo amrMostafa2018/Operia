@@ -1,6 +1,7 @@
 using System.Globalization;
-using System.Text;
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
+using Operia.Application.Finance.Resources;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Finance.DTOs;
 using Operia.Domain.Entities;
@@ -44,6 +45,7 @@ public sealed class FinanceService : IFinanceService
         DateOnly? dateTo,
         string? planCode,
         SubscriptionStatus? status,
+        string language,
         CancellationToken cancellationToken = default)
     {
         var query = BuildFilteredQuery(
@@ -54,26 +56,40 @@ public sealed class FinanceService : IFinanceService
             status);
 
         var subscriptions = await query.ToListAsync(cancellationToken);
-        var builder = new StringBuilder();
-        builder.AppendLine("Plan,PlanCode,BillingType,Amount,Currency,StartDate,EndDate,Status");
+        var financeResources = FinanceResourceLocalizer.GetResources(language);
+        var exportLabels = financeResources.SubscriptionsExport;
 
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add(exportLabels.SheetName);
+        worksheet.RightToLeft = financeResources.IsArabic;
+
+        for (var column = 0; column < exportLabels.Headers.Length; column++)
+        {
+            var cell = worksheet.Cell(1, column + 1);
+            cell.Value = exportLabels.Headers[column];
+            cell.Style.Font.Bold = true;
+        }
+
+        var rowIndex = 2;
         foreach (var subscription in subscriptions)
         {
             var dto = MapToDto(subscription);
-            builder.AppendLine(string.Join(',',
-                EscapeCsv(dto.PlanName),
-                EscapeCsv(dto.PlanCode),
-                EscapeCsv(dto.BillingType),
-                dto.Amount.ToString(CultureInfo.InvariantCulture),
-                EscapeCsv(dto.Currency),
-                FormatDate(dto.StartDate),
-                FormatDate(dto.EndDate),
-                EscapeCsv(dto.Status)));
+            worksheet.Cell(rowIndex, 1).Value = dto.PlanName;
+            worksheet.Cell(rowIndex, 2).Value = dto.PlanCode;
+            worksheet.Cell(rowIndex, 3).Value = financeResources.GetBillingTypeLabel(dto.BillingType);
+            worksheet.Cell(rowIndex, 4).Value = dto.Amount;
+            worksheet.Cell(rowIndex, 5).Value = financeResources.GetCurrencyLabel(dto.Currency);
+            worksheet.Cell(rowIndex, 6).Value = FormatDate(dto.StartDate);
+            worksheet.Cell(rowIndex, 7).Value = FormatDate(dto.EndDate);
+            worksheet.Cell(rowIndex, 8).Value = financeResources.GetStatusLabel(dto.Status);
+            rowIndex++;
         }
 
-        return Encoding.UTF8.GetPreamble()
-            .Concat(Encoding.UTF8.GetBytes(builder.ToString()))
-            .ToArray();
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
     }
 
     private async Task<PagedList<TenantSubscriptionDto>> GetSubscriptionsPagedAsync(
@@ -171,14 +187,4 @@ public sealed class FinanceService : IFinanceService
 
     private static string FormatDate(DateOnly? date) =>
         date?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? string.Empty;
-
-    private static string EscapeCsv(string value)
-    {
-        if (value.Contains('"') || value.Contains(',') || value.Contains('\n'))
-        {
-            return $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
-        }
-
-        return value;
-    }
 }

@@ -1,0 +1,35 @@
+{
+  "FINANCE": {
+    "CURRENCIES": {
+      "EGP": "جنيه مصري",
+      "SAR": "ريال سعودي",
+      "AED": "درهم إماراتي",
+      "USD": "دولار أمريكي"
+    },
+    "BILLING": {
+      "YEARLY": "سنوياً",
+      "MONTHLY": "شهرياً"
+    },
+    "STATUS": {
+      "ACTIVE": "مفعل",
+      "EXPIRED": "منتهي",
+      "CANCELLED": "ملغى",
+      "PENDING": "قيد الانتظار"
+    },
+    "SUBSCRIPTIONS": {
+      "EXPORT": {
+        "SHEET_NAME": "الاشتراكات",
+        "HEADERS": {
+          "PLAN": "الباقة",
+          "PLAN_CODE": "رمز الباقة",
+          "BILLING_TYPE": "نوع الفوترة",
+          "AMOUNT": "القيمة",
+          "CURRENCY": "العملة",
+          "START_DATE": "تاريخ البداية",
+          "END_DATE": "تاريخ النهاية",
+          "STATUS": "الحالة"
+        }
+      }
+    }
+  }
+}

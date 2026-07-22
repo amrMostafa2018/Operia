@@ -32,6 +32,7 @@ public sealed class ExportTenantSubscriptionsQueryHandler
             request.DateTo,
             request.PlanCode,
             FinanceFilterMapper.ParseStatus(request.Status),
+            request.Language,
             cancellationToken);
     }
 }
