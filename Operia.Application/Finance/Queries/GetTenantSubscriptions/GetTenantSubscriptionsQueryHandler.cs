@@ -10,14 +10,14 @@ namespace Operia.Application.Finance.Queries.GetTenantSubscriptions;
 public sealed class GetTenantSubscriptionsQueryHandler
     : IRequestHandler<GetTenantSubscriptionsQuery, PagedList<TenantSubscriptionDto>>
 {
-    private readonly IFinanceService _financeService;
+    private readonly ITenantSubscriptionQueryService _tenantSubscriptionQueryService;
     private readonly ICurrentUserService _currentUserService;
 
     public GetTenantSubscriptionsQueryHandler(
-        IFinanceService financeService,
+        ITenantSubscriptionQueryService tenantSubscriptionQueryService,
         ICurrentUserService currentUserService)
     {
-        _financeService = financeService;
+        _tenantSubscriptionQueryService = tenantSubscriptionQueryService;
         _currentUserService = currentUserService;
     }
 
@@ -28,7 +28,7 @@ public sealed class GetTenantSubscriptionsQueryHandler
         var tenantId = _currentUserService.TenantId
             ?? throw new UnauthorizedException("Tenant context is required.");
 
-        return _financeService.GetTenantSubscriptionsAsync(
+        return _tenantSubscriptionQueryService.GetTenantSubscriptionsAsync(
             tenantId,
             request.DateFrom,
             request.DateTo,

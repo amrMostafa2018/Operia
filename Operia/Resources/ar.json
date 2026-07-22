@@ -19,6 +19,7 @@
     "SUBSCRIPTIONS": {
       "EXPORT": {
         "SHEET_NAME": "الاشتراكات",
+        "GENERATED_AT": "تاريخ التصدير",
         "HEADERS": {
           "PLAN": "الباقة",
           "PLAN_CODE": "رمز الباقة",

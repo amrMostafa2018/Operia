@@ -19,6 +19,7 @@
     "SUBSCRIPTIONS": {
       "EXPORT": {
         "SHEET_NAME": "Subscriptions",
+        "GENERATED_AT": "Generated at",
         "HEADERS": {
           "PLAN": "Plan",
           "PLAN_CODE": "Plan Code",

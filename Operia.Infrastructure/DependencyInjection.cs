@@ -8,6 +8,7 @@ using Operia.Domain.Interfaces;
 using Operia.Infrastructure.Authorization;
 using Operia.Infrastructure.Identity;
 using Operia.Infrastructure.Options;
+using Operia.Infrastructure.Export;
 using Operia.Infrastructure.Persistence;
 using Operia.Infrastructure.Repositories;
 using Operia.Infrastructure.Services;
@@ -30,6 +31,7 @@ public static class DependencyInjection
         services.AddDataProtection();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IRequestLanguageService, RequestLanguageService>();
 
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(
@@ -73,7 +75,10 @@ public static class DependencyInjection
         services.AddScoped<OnboardingSetupService>();
         services.AddScoped<BalancePlatformService>();
         services.AddScoped<IOnboardingService, OnboardingService>();
-        services.AddScoped<IFinanceService, FinanceService>();
+        services.AddScoped<ITenantSubscriptionQueryService, TenantSubscriptionQueryService>();
+        services.AddScoped<ITenantSubscriptionExportService, TenantSubscriptionExportService>();
+        services.AddScoped<ITenantSubscriptionsExcelExporter, TenantSubscriptionsExcelExporter>();
+        services.AddScoped<ITenantSubscriptionsPdfExporter, TenantSubscriptionsPdfExporter>();
         services.AddScoped<IAdminTenantService, AdminTenantService>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
         services.AddHttpClient<IOtpSender, WhatsAppOtpSender>();

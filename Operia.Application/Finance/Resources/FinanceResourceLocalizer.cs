@@ -54,6 +54,7 @@ public static class FinanceResourceLocalizer
             Pending: finance.Status.Pending,
             SubscriptionsExport: new FinanceSubscriptionsExportLabels(
                 SheetName: export.SheetName,
+                GeneratedAt: export.GeneratedAt,
                 Headers:
                 [
                     headers.Plan,
@@ -119,4 +120,5 @@ public sealed record FinanceResources(
 
 public sealed record FinanceSubscriptionsExportLabels(
     string SheetName,
+    string GeneratedAt,
     string[] Headers);

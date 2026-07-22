@@ -4,7 +4,7 @@ using Operia.SharedKernel.Pagination;
 
 namespace Operia.Application.Common.Interfaces;
 
-public interface IFinanceService
+public interface ITenantSubscriptionQueryService
 {
     Task<PagedList<TenantSubscriptionDto>> GetTenantSubscriptionsAsync(
         string tenantId,
@@ -14,14 +14,5 @@ public interface IFinanceService
         SubscriptionStatus? status,
         int pageNumber,
         int pageSize,
-        CancellationToken cancellationToken = default);
-
-    Task<byte[]> ExportTenantSubscriptionsAsync(
-        string tenantId,
-        DateOnly? dateFrom,
-        DateOnly? dateTo,
-        string? planCode,
-        SubscriptionStatus? status,
-        string language,
         CancellationToken cancellationToken = default);
 }

@@ -34,6 +34,9 @@ internal sealed class FinanceSubscriptionsExportResource
     [JsonPropertyName("SHEET_NAME")]
     public string SheetName { get; set; } = string.Empty;
 
+    [JsonPropertyName("GENERATED_AT")]
+    public string GeneratedAt { get; set; } = string.Empty;
+
     [JsonPropertyName("HEADERS")]
     public FinanceSubscriptionsExportHeadersResource Headers { get; set; } = new();
 }

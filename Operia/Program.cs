@@ -1,3 +1,4 @@
+using QuestPDF.Infrastructure;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.Features;
 using Operia.Application;
@@ -16,6 +17,8 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     Log.Information("Starting Operia API");
+
+    QuestPDF.Settings.License = LicenseType.Community;
 
     var builder = WebApplication.CreateBuilder(args);
 

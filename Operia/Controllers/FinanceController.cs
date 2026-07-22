@@ -49,20 +49,13 @@ public sealed class FinanceController : ControllerBase
         [FromQuery] DateOnly? dateTo,
         [FromQuery] string? planCode,
         [FromQuery] string? status,
+        [FromQuery] string format = "excel",
         CancellationToken cancellationToken = default)
     {
-        var language = Request.Headers.AcceptLanguage.FirstOrDefault() ?? "en";
-        var query = new ExportTenantSubscriptionsQuery(
-            dateFrom,
-            dateTo,
-            planCode,
-            status,
-            language);
+        var result = await _mediator.Send(
+            new ExportTenantSubscriptionsQuery(dateFrom, dateTo, planCode, status, format),
+            cancellationToken);
 
-        var fileBytes = await _mediator.Send(query, cancellationToken);
-        return File(
-            fileBytes,
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            $"operia-subscriptions-{DateTime.UtcNow:yyyyMMddHHmmss}.xlsx");
+        return File(result.Content, result.ContentType, result.FileName);
     }
 }
