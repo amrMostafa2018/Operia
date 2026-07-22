@@ -12,6 +12,7 @@ using Operia.Infrastructure.Persistence;
 using Operia.Infrastructure.Repositories;
 using Operia.Infrastructure.Services;
 using Operia.SharedKernel.Interfaces;
+using Operia.Application.Employees;
 
 namespace Operia.Infrastructure;
 
@@ -43,6 +44,7 @@ public static class DependencyInjection
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = true;
                 options.Password.RequiredLength = 8;
+                // Legacy tenants contain duplicate emails; new-account flows enforce uniqueness explicitly.
                 options.User.RequireUniqueEmail = false;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -75,6 +77,7 @@ public static class DependencyInjection
         services.AddScoped<IOnboardingService, OnboardingService>();
         services.AddScoped<IAdminTenantService, AdminTenantService>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
+        services.AddScoped<IEmployeeService, EmployeeService>();
         services.AddHttpClient<IOtpSender, WhatsAppOtpSender>();
 
         return services;

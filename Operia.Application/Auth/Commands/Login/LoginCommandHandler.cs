@@ -19,10 +19,8 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, LoginRes
 
     public async Task<LoginResultDto> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        var phoneNumber = PhoneNumberHelper.ToE164(request.PhoneNumber);
-
         var (succeeded, userId, errors) = await _identityService.ValidateCredentialsAsync(
-            phoneNumber,
+            PhoneNumberHelper.ToE164(request.PhoneNumber),
             request.Password,
             cancellationToken);
 

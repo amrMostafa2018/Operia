@@ -3,7 +3,8 @@ namespace Operia.Application.Common.Interfaces;
 public enum FileUploadCategory
 {
     BusinessGallery,
-    PlatformRevenue
+    PlatformRevenue,
+    EmployeePhoto
 }
 
 public interface IFileStorageService

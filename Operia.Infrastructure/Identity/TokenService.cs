@@ -72,6 +72,12 @@ public sealed class TokenService : ITokenService
         var user = await _userManager.FindByIdAsync(storedToken.UserId)
             ?? throw new NotFoundException(nameof(ApplicationUser), storedToken.UserId);
 
+        if (user.MustChangePassword || user.LockoutEnd > DateTimeOffset.UtcNow)
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return null;
+        }
+
         var accessToken = await GenerateAccessTokenAsync(user);
         var newRefreshToken = await CreateRefreshTokenAsync(user, cancellationToken);
 

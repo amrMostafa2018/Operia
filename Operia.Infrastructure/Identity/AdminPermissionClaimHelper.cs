@@ -15,6 +15,7 @@ internal static class AdminPermissionClaimHelper
         new(Permissions.ClaimType, Permissions.Admin.BranchesRead),
         new(Permissions.ClaimType, Permissions.Admin.BranchesManage),
         new(Permissions.ClaimType, Permissions.Admin.EmployeesRead),
+        new(Permissions.ClaimType, Permissions.Admin.EmployeesManage),
         new(Permissions.ClaimType, Permissions.Admin.PackagesRead),
         new(Permissions.ClaimType, Permissions.Admin.SettingsRead),
     ];
@@ -22,17 +23,17 @@ internal static class AdminPermissionClaimHelper
     public static async Task AddAdminPermissionClaimsAsync(
         RoleManager<IdentityRole> roleManager)
     {
-        var role = await roleManager.FindByNameAsync(Roles.Admin)
-            ?? throw new InvalidOperationException($"Role '{Roles.Admin}' was not found.");
-
-        var existingClaims = await roleManager.GetClaimsAsync(role);
-
-        foreach (var claim in GetAdminPermissionClaims())
+        foreach (var roleName in new[] { Roles.SuperAdmin, Roles.Admin })
         {
-            if (existingClaims.Any(c => c.Type == claim.Type && c.Value == claim.Value))
-                continue;
+            var role = await roleManager.FindByNameAsync(roleName)
+                ?? throw new InvalidOperationException($"Role '{roleName}' was not found.");
+            var existingClaims = await roleManager.GetClaimsAsync(role);
 
-            await roleManager.AddClaimAsync(role, claim);
+            foreach (var claim in GetAdminPermissionClaims())
+            {
+                if (!existingClaims.Any(c => c.Type == claim.Type && c.Value == claim.Value))
+                    await roleManager.AddClaimAsync(role, claim);
+            }
         }
     }
 }

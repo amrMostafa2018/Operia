@@ -24,13 +24,44 @@ public static class DatabaseInitializer
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
         await SeedRolesAsync(roleManager);
+        await PromoteTenantOwnersAsync(dbContext, userManager);
         await SeedAdminUserAsync(userManager, logger);
         await SeedSubscriptionPlansAsync(dbContext, logger);
     }
 
+    private static async Task PromoteTenantOwnersAsync(
+        ApplicationDbContext dbContext,
+        UserManager<ApplicationUser> userManager)
+    {
+        var tenantIds = await userManager.Users.Where(x => x.TenantId != null).Select(x => x.TenantId!).Distinct().ToListAsync();
+        foreach (var tenantId in tenantIds)
+        {
+            var users = await userManager.Users.Where(x => x.TenantId == tenantId).OrderBy(x => x.Id).ToListAsync();
+            var hasSuperAdmin = false;
+            ApplicationUser? firstAdmin = null;
+            foreach (var user in users)
+            {
+                if (await userManager.IsInRoleAsync(user, Roles.SuperAdmin)) hasSuperAdmin = true;
+                if (firstAdmin is null && await userManager.IsInRoleAsync(user, Roles.Admin)) firstAdmin = user;
+            }
+            if (hasSuperAdmin) continue;
+            var ownerUserId = await dbContext.Tenants
+                .Where(x => x.Id == tenantId)
+                .Select(x => x.OwnerUserId)
+                .SingleOrDefaultAsync();
+            var owner = users.FirstOrDefault(x => x.Id == ownerUserId);
+            if (owner is not null && !await userManager.IsInRoleAsync(owner, Roles.Admin))
+                owner = null;
+            owner ??= firstAdmin;
+            if (owner is null) continue;
+            await userManager.RemoveFromRoleAsync(owner, Roles.Admin);
+            await userManager.AddToRoleAsync(owner, Roles.SuperAdmin);
+        }
+    }
+
     private static async Task SeedRolesAsync(RoleManager<IdentityRole> roleManager)
     {
-        foreach (var role in new[] { Roles.Admin, Roles.Staff })
+        foreach (var role in new[] { Roles.SuperAdmin, Roles.Admin, Roles.Reception, Roles.Staff })
         {
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole(role));

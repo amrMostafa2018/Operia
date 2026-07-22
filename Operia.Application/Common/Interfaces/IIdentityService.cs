@@ -31,4 +31,11 @@ public interface IIdentityService
         string userId,
         string tenantId,
         CancellationToken cancellationToken = default);
+
+    Task<bool> IsEmailRegisteredAsync(
+        string email,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> MustChangePasswordAsync(string userId, CancellationToken cancellationToken = default);
+    Task CompleteFirstLoginAsync(string userId, string resetToken, string newPassword, CancellationToken cancellationToken = default);
 }

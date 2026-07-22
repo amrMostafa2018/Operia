@@ -17,4 +17,5 @@ public sealed class FileStorageSettings
     public string BusinessGalleriesFolder { get; set; } = "BusinessGalleries";
 
     public string PlatformRevenuesFolder { get; set; } = "PlatformRevenues";
+    public string EmployeePhotosFolder { get; set; } = "EmployeePhotos";
 }

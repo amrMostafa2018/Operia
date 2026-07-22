@@ -11,5 +11,6 @@ public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Appl
         builder.Property(x => x.FullName)
             .IsRequired()
             .HasMaxLength(200);
+        builder.HasIndex(x => x.PhoneNumber).IsUnique().HasFilter("[PhoneNumber] IS NOT NULL");
     }
 }

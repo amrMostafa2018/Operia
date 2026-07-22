@@ -22,7 +22,9 @@ public sealed class LoggingBehavior<TRequest, TResponse>
     {
         var requestName = typeof(TRequest).Name;
 
-        _logger.LogInformation("Handling {RequestName}: {@Request}", requestName, request);
+        // Request payloads can contain passwords, OTPs, reset tokens, or uploaded-file metadata.
+        // Log only the operation name; audit records capture approved business details separately.
+        _logger.LogInformation("Handling {RequestName}", requestName);
 
         var stopwatch = Stopwatch.StartNew();
 

@@ -4,6 +4,7 @@ using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Domain.Exceptions;
 using Operia.SharedKernel.Errors;
+using Operia.Application.Common.PhoneNumbers;
 namespace Operia.Infrastructure.Identity;
 
 public sealed class IdentityService : IIdentityService
@@ -27,10 +28,11 @@ public sealed class IdentityService : IIdentityService
         string password,
         CancellationToken cancellationToken = default)
     {
-        var user = await _userManager.Users
-            .FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber, cancellationToken);
+        var user = await _userManager.Users.FirstOrDefaultAsync(
+            u => u.PhoneNumber == phoneNumber,
+            cancellationToken);
 
-        if (user is null || !await _userManager.CheckPasswordAsync(user, password))
+        if (user is null || user.LockoutEnd > DateTimeOffset.UtcNow || !await _userManager.CheckPasswordAsync(user, password))
         {
             return (false, string.Empty, ["Invalid phone number or password."]);
         }
@@ -116,5 +118,32 @@ public sealed class IdentityService : IIdentityService
                 result.Errors.Select(e =>
                     ValidationFailureFactory.Create("tenantId", ApiErrorCodes.Auth.IdentityError, e.Description)));
         }
+    }
+
+    public async Task<bool> IsEmailRegisteredAsync(
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = _userManager.NormalizeEmail(email.Trim());
+        return await _userManager.Users.AnyAsync(
+            user => user.NormalizedEmail == normalizedEmail,
+            cancellationToken);
+    }
+
+    public async Task<bool> MustChangePasswordAsync(string userId, CancellationToken cancellationToken = default)
+        => await _userManager.Users.Where(x => x.Id == userId).Select(x => x.MustChangePassword).SingleAsync(cancellationToken);
+
+    public async Task CompleteFirstLoginAsync(string userId, string resetToken, string newPassword, CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId) ?? throw new NotFoundException(nameof(ApplicationUser), userId);
+        if (!user.MustChangePassword) throw new ConflictException("First-login password replacement is already complete.");
+        var result = await _userManager.ResetPasswordAsync(user, resetToken, newPassword);
+        if (!result.Succeeded) throw new ValidationException(result.Errors.Select(x => ValidationFailureFactory.Create("newPassword", ApiErrorCodes.Auth.IdentityError, x.Description)));
+        user.MustChangePassword = false;
+        await _userManager.UpdateSecurityStampAsync(user);
+        var update = await _userManager.UpdateAsync(user);
+        if (!update.Succeeded) throw new ValidationException(update.Errors.Select(x => ValidationFailureFactory.Create("newPassword", ApiErrorCodes.Auth.IdentityError, x.Description)));
+        await _tokenService.RevokeAllRefreshTokensAsync(userId, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

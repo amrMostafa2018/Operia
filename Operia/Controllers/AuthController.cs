@@ -13,6 +13,7 @@ using Operia.Application.Auth.Commands.ResetPassword;
 using Operia.Application.Auth.Commands.VerifyForgotPasswordOtp;
 using Operia.Application.Auth.Commands.VerifyOtp;
 using Operia.Application.Auth.Commands.VerifyRegisterOtp;
+using Operia.Application.Auth.Commands.CompleteFirstLogin;
 using Operia.Application.Auth.DTOs;
 
 namespace Operia.Controllers;
@@ -64,11 +65,16 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("verify-otp")]
-    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<AuthResponseDto>> VerifyOtp([FromBody] VerifyOtpCommand command, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(VerifyLoginOtpResultDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<VerifyLoginOtpResultDto>> VerifyOtp([FromBody] VerifyOtpCommand command, CancellationToken cancellationToken)
     {
         return Ok(await _mediator.Send(command, cancellationToken));
     }
+
+    [HttpPost("complete-first-login")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AuthResponseDto>> CompleteFirstLogin([FromBody] CompleteFirstLoginCommand command, CancellationToken cancellationToken)
+        => Ok(await _mediator.Send(command, cancellationToken));
 
     [HttpPost("resend-login-otp")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

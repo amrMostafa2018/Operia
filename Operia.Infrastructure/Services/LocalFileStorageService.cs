@@ -28,12 +28,13 @@ public sealed class LocalFileStorageService : IFileStorageService
         FileUploadCategory category,
         CancellationToken cancellationToken = default)
     {
-        ValidateUpload(contentType, content.Length);
+        ValidateUpload(contentType, content.Length, category);
 
         var folder = category switch
         {
             FileUploadCategory.BusinessGallery => _settings.BusinessGalleriesFolder,
             FileUploadCategory.PlatformRevenue => _settings.PlatformRevenuesFolder,
+            FileUploadCategory.EmployeePhoto => _settings.EmployeePhotosFolder,
             _ => throw new ArgumentOutOfRangeException(nameof(category), category, null)
         };
 
@@ -98,7 +99,7 @@ public sealed class LocalFileStorageService : IFileStorageService
         return webRootPath;
     }
 
-    private void ValidateUpload(string contentType, long contentLength)
+    private void ValidateUpload(string contentType, long contentLength, FileUploadCategory category)
     {
         if (contentLength <= 0)
         {
@@ -108,17 +109,21 @@ public sealed class LocalFileStorageService : IFileStorageService
             ]);
         }
 
-        if (contentLength > _settings.MaxFileSizeBytes)
+        var maxSize = category == FileUploadCategory.EmployeePhoto ? 2 * 1024 * 1024 : _settings.MaxFileSizeBytes;
+        if (contentLength > maxSize)
         {
             throw new ValidationException(
             [
                 new ValidationFailure(
                     "file",
-                    $"Uploaded file exceeds the maximum size of {_settings.MaxFileSizeBytes} bytes.")
+                    $"Uploaded file exceeds the maximum size of {maxSize} bytes.")
             ]);
         }
 
-        if (!_settings.AllowedMimeTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase))
+        var allowedTypes = category == FileUploadCategory.EmployeePhoto
+            ? new[] { "image/jpeg", "image/png", "image/webp" }
+            : _settings.AllowedMimeTypes;
+        if (!allowedTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase))
         {
             throw new ValidationException(
             [

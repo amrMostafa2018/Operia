@@ -111,6 +111,7 @@ public sealed class RegistrationService : IRegistrationService
             throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.OtpInvalid, "code");
 
         await EnsurePhoneAvailableAsync(request.PhoneNumber, cancellationToken);
+        await EnsureEmailAvailableAsync(request.Email, cancellationToken);
 
         var password = _passwordProtector.Unprotect(request.ProtectedPassword);
 
@@ -137,7 +138,7 @@ public sealed class RegistrationService : IRegistrationService
                         ValidationFailureFactory.Create("identity", ApiErrorCodes.Auth.IdentityError, e.Description)));
             }
 
-            var roleResult = await _userManager.AddToRoleAsync(user, Roles.Admin);
+            var roleResult = await _userManager.AddToRoleAsync(user, Roles.SuperAdmin);
 
             if (!roleResult.Succeeded)
             {
@@ -180,6 +181,16 @@ public sealed class RegistrationService : IRegistrationService
         {
             throw new ValidationException([
                 ValidationFailureFactory.Create("phoneNumber", ApiErrorCodes.Auth.PhoneAlreadyRegistered)
+            ]);
+        }
+    }
+
+    private async Task EnsureEmailAvailableAsync(string email, CancellationToken cancellationToken)
+    {
+        if (await _identityService.IsEmailRegisteredAsync(email, cancellationToken))
+        {
+            throw new ValidationException([
+                ValidationFailureFactory.Create("email", ApiErrorCodes.Auth.EmailAlreadyRegistered)
             ]);
         }
     }

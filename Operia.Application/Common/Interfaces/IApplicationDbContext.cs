@@ -13,6 +13,9 @@ public interface IApplicationDbContext
     DbSet<PlatformRevenue> PlatformRevenues { get; }
     DbSet<Branch> Branches { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<Employee> Employees { get; }
+    DbSet<UserBranch> UserBranches { get; }
+    DbSet<TenantNumberCounter> TenantNumberCounters { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
