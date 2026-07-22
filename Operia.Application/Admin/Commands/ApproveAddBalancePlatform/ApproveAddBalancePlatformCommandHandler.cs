@@ -5,13 +5,13 @@ namespace Operia.Application.Admin.Commands.ApproveAddBalancePlatform;
 
 public sealed class ApproveAddBalancePlatformCommandHandler : IRequestHandler<ApproveAddBalancePlatformCommand>
 {
-    private readonly IAdminTenantService _adminTenantService;
+    private readonly IPlatformService _platformService;
 
-    public ApproveAddBalancePlatformCommandHandler(IAdminTenantService adminTenantService)
+    public ApproveAddBalancePlatformCommandHandler(IPlatformService platformService)
     {
-        _adminTenantService = adminTenantService;
+        _platformService = platformService;
     }
 
     public Task Handle(ApproveAddBalancePlatformCommand request, CancellationToken cancellationToken)
-        => _adminTenantService.ApproveAddBalancePlatformAsync(request.RevenueId, cancellationToken);
+        => _platformService.ApproveAddBalancePlatformAsync(request.RevenueId, cancellationToken);
 }

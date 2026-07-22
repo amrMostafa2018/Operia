@@ -16,28 +16,8 @@ public interface IOnboardingService
         string? predeterminedTenantId = null,
         CancellationToken cancellationToken = default);
 
-    Task<OnboardingResultDto> CompleteOnboardingAsync(
-        string userId,
-        string planId,
-        BillingType billingType,
-        CancellationToken cancellationToken = default);
-
     Task<OnboardingStatusDto> GetOnboardingStatusAsync(
         string userId,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<SubscriptionPlanDto>> GetSubscriptionPlansAsync(
-        CancellationToken cancellationToken = default);
-
-    Task ActivateSubscriptionAsync(
-        string userId,
-        string subscriptionId,
-        CancellationToken cancellationToken = default);
-
-    Task<AddBalancePlatformResultDto> AddBalancePlatformAsync(
-        string userId,
-        decimal amount,
-        string screenShotUrl,
         CancellationToken cancellationToken = default);
 
     Task<TenantUploadContextDto> ResolveUploadTenantContextAsync(

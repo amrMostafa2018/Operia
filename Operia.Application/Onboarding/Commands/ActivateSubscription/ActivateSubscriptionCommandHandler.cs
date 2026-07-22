@@ -5,14 +5,14 @@ namespace Operia.Application.Onboarding.Commands.ActivateSubscription;
 
 public sealed class ActivateSubscriptionCommandHandler : IRequestHandler<ActivateSubscriptionCommand>
 {
-    private readonly IOnboardingService _onboardingService;
+    private readonly ISubscriptionService _subscriptionService;
     private readonly ICurrentUserService _currentUserService;
 
     public ActivateSubscriptionCommandHandler(
-        IOnboardingService onboardingService,
+        ISubscriptionService subscriptionService,
         ICurrentUserService currentUserService)
     {
-        _onboardingService = onboardingService;
+        _subscriptionService = subscriptionService;
         _currentUserService = currentUserService;
     }
 
@@ -21,7 +21,7 @@ public sealed class ActivateSubscriptionCommandHandler : IRequestHandler<Activat
         var userId = _currentUserService.UserId
             ?? throw new UnauthorizedAccessException();
 
-        return _onboardingService.ActivateSubscriptionAsync(
+        return _subscriptionService.ActivateSubscriptionAsync(
             userId,
             request.SubscriptionId,
             cancellationToken);
