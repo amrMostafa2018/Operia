@@ -7,15 +7,18 @@ namespace Operia.Application.Onboarding.Commands.AddBalancePlatform;
 public sealed class AddBalancePlatformCommandHandler
     : IRequestHandler<AddBalancePlatformCommand, AddBalancePlatformResultDto>
 {
+    private readonly IPlatformService _platformService;
     private readonly IOnboardingService _onboardingService;
     private readonly ICurrentUserService _currentUserService;
     private readonly IFileStorageService _fileStorageService;
 
     public AddBalancePlatformCommandHandler(
+        IPlatformService platformService,
         IOnboardingService onboardingService,
         ICurrentUserService currentUserService,
         IFileStorageService fileStorageService)
     {
+        _platformService = platformService;
         _onboardingService = onboardingService;
         _currentUserService = currentUserService;
         _fileStorageService = fileStorageService;
@@ -43,7 +46,7 @@ public sealed class AddBalancePlatformCommandHandler
             FileUploadCategory.PlatformRevenue,
             cancellationToken);
 
-        return await _onboardingService.AddBalancePlatformAsync(
+        return await _platformService.AddBalancePlatformAsync(
             userId,
             request.Amount,
             screenShotUrl,

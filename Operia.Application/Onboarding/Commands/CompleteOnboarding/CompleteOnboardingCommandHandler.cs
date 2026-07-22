@@ -5,13 +5,13 @@ namespace Operia.Application.Onboarding.Commands.CompleteOnboarding;
 public sealed class CompleteOnboardingCommandHandler
     : IRequestHandler<CompleteOnboardingCommand, OnboardingResultDto>
 {
-    private readonly IOnboardingService _onboardingService;
+    private readonly ISubscriptionService _subscriptionService;
     private readonly ICurrentUserService _currentUserService;
     public CompleteOnboardingCommandHandler(
-        IOnboardingService onboardingService,
+        ISubscriptionService subscriptionService,
         ICurrentUserService currentUserService)
     {
-        _onboardingService = onboardingService;
+        _subscriptionService = subscriptionService;
         _currentUserService = currentUserService;
     }
     public Task<OnboardingResultDto> Handle(
@@ -20,7 +20,7 @@ public sealed class CompleteOnboardingCommandHandler
     {
         var userId = _currentUserService.UserId
             ?? throw new UnauthorizedAccessException();
-        return _onboardingService.CompleteOnboardingAsync(
+        return _subscriptionService.SelectPlanAsync(
             userId,
             request.PlanId,
             request.BillingType,

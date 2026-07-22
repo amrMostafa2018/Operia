@@ -1,6 +1,7 @@
 using FluentValidation.Results;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Onboarding.DTOs;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
 using Operia.Domain.Exceptions;
@@ -9,68 +10,66 @@ using Operia.SharedKernel.Interfaces;
 
 namespace Operia.Infrastructure.Services;
 
-public sealed class AdminTenantService : IAdminTenantService
+public sealed class PlatformService : IPlatformService
 {
-    private readonly ITenantSubscriptionRepository _tenantSubscriptionRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly IPlatformRevenueRepository _platformRevenueRepository;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IUnitOfWork _unitOfWork;
 
-    public AdminTenantService(
-        ITenantSubscriptionRepository tenantSubscriptionRepository,
+    public PlatformService(
         ITenantRepository tenantRepository,
         IPlatformRevenueRepository platformRevenueRepository,
         IDateTimeProvider dateTimeProvider,
         IUnitOfWork unitOfWork)
     {
-        _tenantSubscriptionRepository = tenantSubscriptionRepository;
         _tenantRepository = tenantRepository;
         _platformRevenueRepository = platformRevenueRepository;
         _dateTimeProvider = dateTimeProvider;
         _unitOfWork = unitOfWork;
     }
 
-    public async Task ActivateSubscriptionAsync(
-        string subscriptionId,
+    public async Task<AddBalancePlatformResultDto> AddBalancePlatformAsync(
+        string userId,
+        decimal amount,
+        string screenShotUrl,
         CancellationToken cancellationToken = default)
     {
-        var subscription = await _tenantSubscriptionRepository.GetByIdWithDetailsAsync(
-            subscriptionId,
-            cancellationToken)
-            ?? throw new NotFoundException(nameof(TenantSubscription), subscriptionId);
+        var tenant = await _tenantRepository.GetByOwnerUserIdForStatusAsync(userId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Tenant), userId);
 
-        if (subscription.Status == SubscriptionStatus.Active)
-            return;
+        var existingPending = await _platformRevenueRepository.GetLatestPendingAddBalancePlatformByTenantIdAsync(
+            tenant.Id,
+            cancellationToken);
 
-        var tenant = subscription.Tenant
-            ?? throw new NotFoundException(nameof(Tenant), subscription.TenantId);
-
-        if (tenant.Balance < subscription.Amount)
+        if (existingPending is not null)
         {
             throw new ValidationException(
             [
                 new ValidationFailure(
-                    "balance",
-                    "Insufficient tenant balance to activate subscription.")
+                    "addBalancePlatform",
+                    "A balance add request is already pending review.")
             ]);
         }
 
-        tenant.Balance -= subscription.Amount;
+        BalancePlatformValidation.EnsureScreenshotProvided(
+            screenShotUrl,
+            "Balance add request must include an Instapay screenshot.");
 
-        var today = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
-        subscription.Status = SubscriptionStatus.Active;
-        subscription.StartDate = today;
-        subscription.EndDate = subscription.BillingType == BillingType.Monthly
-            ? today.AddMonths(1)
-            : today.AddYears(1);
-
-        if (subscription.Plan?.TrialDays > 0 && subscription.Amount == 0)
+        var revenue = new PlatformRevenue
         {
-            subscription.EndDate = today.AddDays(subscription.Plan.TrialDays);
-        }
+            TenantId = tenant.Id,
+            Amount = amount,
+            Currency = tenant.CurrencyCode,
+            ScreenShotUrl = screenShotUrl,
+            Status = PlatformRevenueStatus.Pending,
+            RecordedAt = _dateTimeProvider.UtcNow
+        };
 
+        await _platformRevenueRepository.AddAsync(revenue, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new AddBalancePlatformResultDto(revenue.Id, revenue.Amount);
     }
 
     public async Task ApproveAddBalancePlatformAsync(
@@ -95,5 +94,24 @@ public sealed class AdminTenantService : IAdminTenantService
         revenue.ConfirmedAt = _dateTimeProvider.UtcNow;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<PendingAddBalancePlatformDto?> GetPendingAddBalancePlatformAsync(
+        string tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        var pending = await _platformRevenueRepository.GetLatestPendingAddBalancePlatformByTenantIdAsync(
+            tenantId,
+            cancellationToken);
+
+        if (pending is null)
+        {
+            return null;
+        }
+
+        return new PendingAddBalancePlatformDto(
+            pending.Id,
+            pending.Amount,
+            pending.ScreenShotUrl);
     }
 }
