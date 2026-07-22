@@ -1,4 +1,5 @@
 using MediatR;
+using Operia.Application.Common.Models;
 
 namespace Operia.Application.Finance.Queries.ExportTenantSubscriptions;
 
@@ -7,4 +8,4 @@ public sealed record ExportTenantSubscriptionsQuery(
     DateOnly? DateTo,
     string? PlanCode,
     string? Status,
-    string Language) : IRequest<byte[]>;
+    string Format = "excel") : IRequest<FileExportResult>;

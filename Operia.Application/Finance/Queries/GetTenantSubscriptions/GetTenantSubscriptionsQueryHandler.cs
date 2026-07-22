@@ -3,6 +3,8 @@ using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Finance.DTOs;
 using Operia.Application.Finance.Helpers;
+using Operia.Application.Finance.Mapping;
+using Operia.Domain.Interfaces;
 using Operia.SharedKernel.Pagination;
 
 namespace Operia.Application.Finance.Queries.GetTenantSubscriptions;
@@ -10,25 +12,25 @@ namespace Operia.Application.Finance.Queries.GetTenantSubscriptions;
 public sealed class GetTenantSubscriptionsQueryHandler
     : IRequestHandler<GetTenantSubscriptionsQuery, PagedList<TenantSubscriptionDto>>
 {
-    private readonly IFinanceService _financeService;
+    private readonly ITenantSubscriptionRepository _tenantSubscriptionRepository;
     private readonly ICurrentUserService _currentUserService;
 
     public GetTenantSubscriptionsQueryHandler(
-        IFinanceService financeService,
+        ITenantSubscriptionRepository tenantSubscriptionRepository,
         ICurrentUserService currentUserService)
     {
-        _financeService = financeService;
+        _tenantSubscriptionRepository = tenantSubscriptionRepository;
         _currentUserService = currentUserService;
     }
 
-    public Task<PagedList<TenantSubscriptionDto>> Handle(
+    public async Task<PagedList<TenantSubscriptionDto>> Handle(
         GetTenantSubscriptionsQuery request,
         CancellationToken cancellationToken)
     {
         var tenantId = _currentUserService.TenantId
             ?? throw new UnauthorizedException("Tenant context is required.");
 
-        return _financeService.GetTenantSubscriptionsAsync(
+        var (items, totalCount) = await _tenantSubscriptionRepository.GetFilteredByTenantPagedAsync(
             tenantId,
             request.DateFrom,
             request.DateTo,
@@ -37,5 +39,8 @@ public sealed class GetTenantSubscriptionsQueryHandler
             request.PageNumber,
             request.PageSize,
             cancellationToken);
+
+        var dtos = TenantSubscriptionMapper.ToDtos(items);
+        return PagedList<TenantSubscriptionDto>.FromItems(dtos, request.PageNumber, request.PageSize, totalCount);
     }
 }
