@@ -17,4 +17,5 @@ public sealed class Business : Entity
 
     public Tenant? Tenant { get; set; }
     public ICollection<BusinessGallery> Gallery { get; set; } = [];
+    public BusinessSettings? Settings { get; set; }
 }

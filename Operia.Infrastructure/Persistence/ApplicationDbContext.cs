@@ -30,6 +30,7 @@ public sealed class ApplicationDbContext : IdentityDbContext<ApplicationUser>, I
     public DbSet<TenantSubscription> TenantSubscriptions => Set<TenantSubscription>();
     public DbSet<Business> Businesses => Set<Business>();
     public DbSet<BusinessGallery> BusinessGalleries => Set<BusinessGallery>();
+    public DbSet<BusinessSettings> BusinessSettings => Set<BusinessSettings>();
     public DbSet<PlatformRevenue> PlatformRevenues => Set<PlatformRevenue>();
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();

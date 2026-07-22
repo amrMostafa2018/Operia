@@ -78,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminTenantService, AdminTenantService>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
+        services.AddScoped<ISettingsService, SettingsService>();
         services.AddHttpClient<IOtpSender, WhatsAppOtpSender>();
 
         return services;
