@@ -1,0 +1,35 @@
+{
+  "FINANCE": {
+    "CURRENCIES": {
+      "EGP": "EGP",
+      "SAR": "SAR",
+      "AED": "AED",
+      "USD": "USD"
+    },
+    "BILLING": {
+      "YEARLY": "Yearly",
+      "MONTHLY": "Monthly"
+    },
+    "STATUS": {
+      "ACTIVE": "Active",
+      "EXPIRED": "Expired",
+      "CANCELLED": "Cancelled",
+      "PENDING": "Pending"
+    },
+    "SUBSCRIPTIONS": {
+      "EXPORT": {
+        "SHEET_NAME": "Subscriptions",
+        "HEADERS": {
+          "PLAN": "Plan",
+          "PLAN_CODE": "Plan Code",
+          "BILLING_TYPE": "Billing Type",
+          "AMOUNT": "Amount",
+          "CURRENCY": "Currency",
+          "START_DATE": "Start Date",
+          "END_DATE": "End Date",
+          "STATUS": "Status"
+        }
+      }
+    }
+  }
+}

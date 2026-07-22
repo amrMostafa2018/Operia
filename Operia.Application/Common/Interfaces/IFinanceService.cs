@@ -22,5 +22,6 @@ public interface IFinanceService
         DateOnly? dateTo,
         string? planCode,
         SubscriptionStatus? status,
+        string language,
         CancellationToken cancellationToken = default);
 }
