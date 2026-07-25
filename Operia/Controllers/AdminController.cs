@@ -18,7 +18,7 @@ public sealed class AdminController : ControllerBase
     {
         _mediator = mediator;
     }
-
+    [AllowAnonymous]
     [HttpPost("add-balance-platform/{revenueId}/approve")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ApproveAddBalancePlatform(

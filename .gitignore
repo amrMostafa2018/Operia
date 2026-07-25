@@ -92,3 +92,4 @@ ehthumbs.db
 *.tmp
 *.temp
 /Operia/wwwroot/uploads/
+/Operia/appsettings.Development.json
