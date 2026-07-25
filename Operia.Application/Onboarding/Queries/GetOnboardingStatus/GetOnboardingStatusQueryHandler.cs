@@ -30,7 +30,18 @@ public sealed class GetOnboardingStatusQueryHandler
         var userId = _currentUserService.UserId
             ?? throw new UnauthorizedAccessException();
 
-        var tenant = await _tenantRepository.GetByOwnerUserIdForStatusAsync(userId, cancellationToken);
+        var tenantId = _currentUserService.TenantId;
+
+        Operia.Domain.Entities.Tenant? tenant = null;
+        if (!string.IsNullOrEmpty(tenantId))
+        {
+            tenant = await _tenantRepository.GetByIdForStatusAsync(tenantId, cancellationToken);
+        }
+
+        if (tenant is null)
+        {
+            tenant = await _tenantRepository.GetByOwnerUserIdForStatusAsync(userId, cancellationToken);
+        }
 
         if (tenant is null)
         {

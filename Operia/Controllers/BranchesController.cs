@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using Operia.Application.Auth;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Operia.Application.Branches;
@@ -6,7 +8,6 @@ using Operia.Application.Branches.Commands.DeleteBranch;
 using Operia.Application.Branches.Commands.UpdateBranch;
 using Operia.Application.Branches.Queries.GetBranch;
 using Operia.Application.Branches.Queries.ListBranches;
-using Operia.Application.Common.Authorization;
 
 namespace Operia.Controllers;
 
@@ -15,7 +16,7 @@ namespace Operia.Controllers;
 public sealed class BranchesController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    [HasPermission(Permissions.Admin.BranchesRead)]
+    [Authorize(Policy = Policies.BranchesRead)]
     public Task<BranchListResult> List(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
@@ -26,12 +27,12 @@ public sealed class BranchesController(IMediator mediator) : ControllerBase
         mediator.Send(new ListBranchesQuery(pageNumber, pageSize, search, sortBy, sortDirection), cancellationToken);
 
     [HttpGet("{id}")]
-    [HasPermission(Permissions.Admin.BranchesRead)]
+    [Authorize(Policy = Policies.BranchesRead)]
     public Task<BranchDto> Get(string id, CancellationToken cancellationToken) =>
         mediator.Send(new GetBranchQuery(id), cancellationToken);
 
     [HttpPost]
-    [HasPermission(Permissions.Admin.BranchesManage)]
+    [Authorize(Policy = Policies.BranchesManage)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(CreateBranchCommand command, CancellationToken cancellationToken)
     {
@@ -40,12 +41,12 @@ public sealed class BranchesController(IMediator mediator) : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [HasPermission(Permissions.Admin.BranchesManage)]
+    [Authorize(Policy = Policies.BranchesManage)]
     public Task<BranchDto> Update(string id, UpdateBranchRequest request, CancellationToken cancellationToken) =>
         mediator.Send(new UpdateBranchCommand(id, request.Name, request.Address, request.PhoneNumber, request.Latitude, request.Longitude), cancellationToken);
 
     [HttpDelete("{id}")]
-    [HasPermission(Permissions.Admin.BranchesManage)]
+    [Authorize(Policy = Policies.BranchesManage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {

@@ -1,6 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
+using Operia.Application.Auth;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Operia.Application.Common.Authorization;
 using Operia.Application.Common.Models;
 using Operia.Application.Employees;
 using Operia.Application.Employees.Commands.ChangeEmployeeRole;
@@ -20,32 +21,32 @@ namespace Operia.Controllers;
 public sealed class EmployeesController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    [HasPermission(Permissions.Admin.EmployeesRead)]
+    [Authorize(Policy = Policies.EmployeesRead)]
     public Task<EmployeeListResult> List([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null, [FromQuery] string? role = null, [FromQuery] bool? isActive = null,
         [FromQuery] string? branchId = null, [FromQuery] DateOnly? createdFrom = null, [FromQuery] DateOnly? createdTo = null,
         CancellationToken ct = default) => mediator.Send(new ListEmployeesQuery(pageNumber, pageSize, search, role, isActive, branchId, createdFrom, createdTo), ct);
 
     [HttpGet("{id}")]
-    [HasPermission(Permissions.Admin.EmployeesRead)]
+    [Authorize(Policy = Policies.EmployeesRead)]
     public Task<EmployeeDto> Get(string id, CancellationToken ct) => mediator.Send(new GetEmployeeQuery(id), ct);
 
     [HttpGet("{id}/schedule")]
-    [HasPermission(Permissions.Admin.EmployeesRead)]
+    [Authorize(Policy = Policies.EmployeesRead)]
     public Task<EmployeeScheduleDto> GetSchedule(string id, CancellationToken ct)
         => mediator.Send(new GetEmployeeScheduleQuery(id), ct);
 
     [HttpPut("{id}/schedule")]
-    [HasPermission(Permissions.Admin.EmployeesManage)]
+    [Authorize(Policy = Policies.EmployeesManage)]
     public Task<EmployeeScheduleDto> UpdateSchedule(string id, [FromBody] UpdateEmployeeScheduleRequest request, CancellationToken ct)
         => mediator.Send(new UpdateEmployeeScheduleCommand(id, request.Days), ct);
 
     [HttpGet("bookable")]
-    [HasPermission(Permissions.Admin.BookingRead)]
+    [Authorize(Policy = Policies.BookingsManage)]
     public Task<IReadOnlyList<BookableEmployeeDto>> Bookable([FromQuery] string branchId, CancellationToken ct) => mediator.Send(new GetBookableEmployeesQuery(branchId), ct);
 
     [HttpPost]
-    [HasPermission(Permissions.Admin.EmployeesManage)]
+    [Authorize(Policy = Policies.EmployeesManage)]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<EmployeeDto>> Create([FromForm] EmployeeCreateForm form, CancellationToken ct)
     {
@@ -57,7 +58,7 @@ public sealed class EmployeesController(IMediator mediator) : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [HasPermission(Permissions.Admin.EmployeesManage)]
+    [Authorize(Policy = Policies.EmployeesManage)]
     [Consumes("multipart/form-data")]
     public async Task<EmployeeDto> Update(string id, [FromForm] EmployeeUpdateForm form, CancellationToken ct)
     {
@@ -67,12 +68,12 @@ public sealed class EmployeesController(IMediator mediator) : ControllerBase
     }
 
     [HttpPatch("{id}/role")]
-    [HasPermission(Permissions.Admin.EmployeesManage)]
+    [Authorize(Policy = Policies.EmployeesManage)]
     public async Task<IActionResult> Role(string id, ChangeRoleRequest request, CancellationToken ct)
     { await mediator.Send(new ChangeEmployeeRoleCommand(id, request.Role), ct); return NoContent(); }
 
     [HttpPatch("{id}/status")]
-    [HasPermission(Permissions.Admin.EmployeesManage)]
+    [Authorize(Policy = Policies.EmployeesManage)]
     public async Task<IActionResult> Status(string id, ChangeStatusRequest request, CancellationToken ct)
     { await mediator.Send(new ChangeEmployeeStatusCommand(id, request.IsActive), ct); return NoContent(); }
 

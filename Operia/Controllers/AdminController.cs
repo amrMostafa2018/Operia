@@ -3,13 +3,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Operia.Application.Admin.Commands.ActivateSubscription;
 using Operia.Application.Admin.Commands.ApproveAddBalancePlatform;
-using Operia.Application.Common.Authorization;
+using Operia.Application.Auth;
 
 namespace Operia.Controllers;
 
 [ApiController]
 [Route("api/admin")]
-[Authorize(Roles = Roles.Admin)]
+[Authorize(Policy = Policies.Platform.Manage)]
 public sealed class AdminController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -18,7 +18,7 @@ public sealed class AdminController : ControllerBase
     {
         _mediator = mediator;
     }
-    [AllowAnonymous]
+
     [HttpPost("add-balance-platform/{revenueId}/approve")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ApproveAddBalancePlatform(

@@ -10,7 +10,7 @@ using Operia.SharedKernel.Interfaces;
 
 namespace Operia.Infrastructure.Persistence;
 
-public sealed class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplicationDbContext
+public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplicationDbContext
 {
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ICurrentUserService _currentUserService;
@@ -25,7 +25,7 @@ public sealed class ApplicationDbContext : IdentityDbContext<ApplicationUser>, I
         _currentUserService = currentUserService;
     }
 
-    public async Task<string> GetNextEmployeeCodeAsync(string tenantId, CancellationToken cancellationToken = default)
+    public virtual async Task<string> GetNextEmployeeCodeAsync(string tenantId, CancellationToken cancellationToken = default)
     {
         var connection = Database.GetDbConnection();
         if (connection.State != ConnectionState.Open)

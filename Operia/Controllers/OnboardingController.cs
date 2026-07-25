@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Operia.Application.Auth;
 using Operia.Application.Common.Models;
 using Operia.Application.Onboarding.Commands.CompleteOnboarding;
 using Operia.Application.Onboarding.Commands.ActivateSubscription;
@@ -41,7 +42,7 @@ public sealed class OnboardingController : ControllerBase
         return Ok(await _mediator.Send(new GetSubscriptionPlansQuery(), cancellationToken));
     }
 
-    [Authorize]
+    [Authorize(Policy = Policies.OnboardingManage)]
     [Consumes("multipart/form-data")]
     [HttpPost("setup-business")]
     [ProducesResponseType(typeof(SetupBusinessResultDto), StatusCodes.Status200OK)]
@@ -63,7 +64,7 @@ public sealed class OnboardingController : ControllerBase
         return Ok(await _mediator.Send(command, cancellationToken));
     }
 
-    [Authorize]
+    [Authorize(Policy = Policies.OnboardingManage)]
     [HttpPost("complete")]
     [ProducesResponseType(typeof(OnboardingResultDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<OnboardingResultDto>> Complete(
@@ -73,7 +74,7 @@ public sealed class OnboardingController : ControllerBase
         return Ok(await _mediator.Send(command, cancellationToken));
     }
 
-    [Authorize]
+    [Authorize(Policy = Policies.OnboardingManage)]
     [Consumes("multipart/form-data")]
     [HttpPost("add-balance-platform")]
     [ProducesResponseType(typeof(AddBalancePlatformResultDto), StatusCodes.Status200OK)]
@@ -91,7 +92,7 @@ public sealed class OnboardingController : ControllerBase
         return Ok(await _mediator.Send(command, cancellationToken));
     }
 
-    [Authorize]
+    [Authorize(Policy = Policies.OnboardingManage)]
     [HttpPost("activate")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Activate(

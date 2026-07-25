@@ -1,7 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Operia.Application.Common.Authorization;
+using Operia.Application.Auth;
 using Operia.Application.Settings;
 using Operia.Application.Settings.Commands.UpdateIdentitySettings;
 using Operia.Application.Settings.Queries.GetIdentitySettings;
@@ -9,7 +9,7 @@ using Operia.Application.Settings.Queries.GetIdentitySettings;
 namespace Operia.Controllers;
 
 [ApiController]
-[Authorize(Policy = Permissions.Admin.SettingsRead)]
+[Authorize(Policy = Policies.SettingsManage)]
 [Route("api/settings/identity")]
 public sealed class SettingsController(IMediator mediator) : ControllerBase
 {

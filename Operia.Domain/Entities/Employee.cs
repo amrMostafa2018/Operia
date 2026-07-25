@@ -20,15 +20,6 @@ public sealed class Employee : Entity
     public ICollection<UserBranch> UserBranches { get; set; } = [];
 }
 
-public sealed class UserBranch : Entity
-{
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string TenantId { get; set; } = string.Empty;
-    public string EmployeeId { get; set; } = string.Empty;
-    public string BranchId { get; set; } = string.Empty;
-    public Employee? Employee { get; set; }
-    public Branch? Branch { get; set; }
-}
 
 public sealed class TenantNumberCounter : Entity
 {

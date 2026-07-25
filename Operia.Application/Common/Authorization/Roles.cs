@@ -6,4 +6,5 @@ public static class Roles
     public const string Admin = "Admin";
     public const string Reception = "Reception";
     public const string Staff = "Staff";
+    public const string PlatformAdmin = "PlatformAdmin";
 }

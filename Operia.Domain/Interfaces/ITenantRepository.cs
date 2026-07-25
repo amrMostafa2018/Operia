@@ -12,6 +12,10 @@ public interface ITenantRepository
         string ownerUserId,
         CancellationToken cancellationToken = default);
 
+    Task<Tenant?> GetByIdForStatusAsync(
+        string id,
+        CancellationToken cancellationToken = default);
+
     Task<Tenant?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
 
     Task AddAsync(Tenant tenant, CancellationToken cancellationToken = default);

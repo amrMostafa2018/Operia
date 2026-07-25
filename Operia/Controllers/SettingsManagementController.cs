@@ -1,7 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Operia.Application.Common.Authorization;
+using Operia.Application.Auth;
 using Operia.Application.Settings;
 using Operia.Application.Settings.Commands.BanSettingsUser;
 using Operia.Application.Settings.Commands.ChangePassword;
@@ -18,7 +18,7 @@ using Operia.Application.Settings.Queries.GetWorkingDays;
 namespace Operia.Controllers;
 
 [ApiController]
-[Authorize(Policy = Permissions.Admin.SettingsRead)]
+[Authorize(Policy = Policies.SettingsManage)]
 [Route("api/settings")]
 public sealed class SettingsManagementController(IMediator mediator) : ControllerBase
 {

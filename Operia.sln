@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Operia.Application", "Operi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Operia.Infrastructure", "Operia.Infrastructure\Operia.Infrastructure.csproj", "{28E62472-1639-477E-873D-9B426A0DB654}"
 EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "Operia_FE", "..\Operia_FE\Operia_FE.esproj", "{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Operia.Application.Tests", "Operia.Application.Tests\Operia.Application.Tests.csproj", "{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +87,30 @@ Global
 		{28E62472-1639-477E-873D-9B426A0DB654}.Release|x64.Build.0 = Release|Any CPU
 		{28E62472-1639-477E-873D-9B426A0DB654}.Release|x86.ActiveCfg = Release|Any CPU
 		{28E62472-1639-477E-873D-9B426A0DB654}.Release|x86.Build.0 = Release|Any CPU
+		{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}.Debug|x64.Build.0 = Debug|Any CPU
+		{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}.Debug|x86.Build.0 = Debug|Any CPU
+		{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}.Release|x64.ActiveCfg = Release|Any CPU
+		{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}.Release|x64.Build.0 = Release|Any CPU
+		{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}.Release|x86.ActiveCfg = Release|Any CPU
+		{3E48153F-A298-4DD3-BCED-3B21E0FECE3D}.Release|x86.Build.0 = Release|Any CPU
+		{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}.Debug|x64.Build.0 = Debug|Any CPU
+		{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}.Debug|x86.Build.0 = Debug|Any CPU
+		{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}.Release|x64.ActiveCfg = Release|Any CPU
+		{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}.Release|x64.Build.0 = Release|Any CPU
+		{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}.Release|x86.ActiveCfg = Release|Any CPU
+		{DD156B08-0AA6-43E0-8FA5-630AD1EE4EAB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

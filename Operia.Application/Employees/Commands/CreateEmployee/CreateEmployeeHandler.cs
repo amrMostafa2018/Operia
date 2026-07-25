@@ -82,7 +82,7 @@ public sealed class CreateEmployeeHandler : IRequestHandler<CreateEmployeeComman
                 tenantId,
                 "EmployeeCreated",
                 employee,
-                new { employee.Code, role = request.Role, branchIds = request.BranchIds });
+                new { employee.Code, role = request.Role, branchIds = request.BranchIds.Distinct().ToList() });
 
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
 

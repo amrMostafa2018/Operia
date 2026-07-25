@@ -31,6 +31,15 @@ public sealed class TenantRepository : ITenantRepository
             .Include(t => t.Subscriptions)
             .FirstOrDefaultAsync(t => t.OwnerUserId == ownerUserId, cancellationToken);
 
+    public Task<Tenant?> GetByIdForStatusAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+        => _context.Tenants
+            .AsNoTracking()
+            .Include(t => t.Businesses)
+            .Include(t => t.Subscriptions)
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
     public Task<Tenant?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
         => _context.Tenants.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 

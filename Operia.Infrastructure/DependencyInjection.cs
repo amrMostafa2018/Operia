@@ -50,9 +50,7 @@ public static class DependencyInjection
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
 
-        services.AddAuthorization();
-        services.AddSingleton<IAuthorizationPolicyProvider, PermissionAuthorizationPolicyProvider>();
-        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddAuthorization(options => PolicyDefinitions.RegisterPolicies(options));
 
         services.AddScoped<IApplicationDbContext>(sp =>
             sp.GetRequiredService<ApplicationDbContext>());
@@ -72,6 +70,7 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IOtpService, OtpService>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
+        services.AddScoped<IBranchScope, BranchScopeService>();
         services.AddHttpClient<IOtpSender, WhatsAppOtpSender>();
 
         return services;

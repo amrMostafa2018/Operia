@@ -71,8 +71,10 @@ public sealed class UpdateEmployeeHandler : IRequestHandler<UpdateEmployeeComman
             else if (request.RemovePhoto)
                 employee.PhotoUrl = null;
 
+            var oldBranchIds = employee.UserBranches.Select(x => x.BranchId).Distinct().ToList();
+            var newBranchIds = request.BranchIds.Distinct().ToList();
             _db.UserBranches.RemoveRange(employee.UserBranches);
-            EmployeeHandlerHelpers.AddBranches(employee, request.BranchIds);
+            EmployeeHandlerHelpers.AddBranches(employee, newBranchIds);
 
             var rolesMap = await _identityService.GetRolesAsync([employee.IdentityUserId], cancellationToken);
             var oldRole = rolesMap.GetValueOrDefault(employee.IdentityUserId) ?? string.Empty;
@@ -96,7 +98,7 @@ public sealed class UpdateEmployeeHandler : IRequestHandler<UpdateEmployeeComman
                 EmployeeHandlerHelpers.AddAudit(_db, _currentUserService, tenantId, "StatusChanged", employee, new { oldStatus, newStatus = request.IsActive });
             }
 
-            EmployeeHandlerHelpers.AddAudit(_db, _currentUserService, tenantId, "EmployeeUpdated", employee, new { branchIds = request.BranchIds, photoChanged = newPhoto is not null || request.RemovePhoto });
+            EmployeeHandlerHelpers.AddAudit(_db, _currentUserService, tenantId, "EmployeeUpdated", employee, new { oldBranchIds, newBranchIds, branchIds = newBranchIds, photoChanged = newPhoto is not null || request.RemovePhoto });
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
             if (oldPhoto is not null && oldPhoto != employee.PhotoUrl)

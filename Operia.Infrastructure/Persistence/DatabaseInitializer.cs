@@ -61,7 +61,7 @@ public static class DatabaseInitializer
 
     private static async Task SeedRolesAsync(RoleManager<IdentityRole> roleManager)
     {
-        foreach (var role in new[] { Roles.SuperAdmin, Roles.Admin, Roles.Reception, Roles.Staff })
+        foreach (var role in new[] { Roles.SuperAdmin, Roles.Admin, Roles.Reception, Roles.Staff, Roles.PlatformAdmin })
         {
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole(role));
@@ -74,37 +74,56 @@ public static class DatabaseInitializer
         UserManager<ApplicationUser> userManager,
         ILogger logger)
     {
-        const string adminPhoneNumber = "+10000000000";
-        const string adminEmail = "admin@operia.com";
-        const string adminPassword = "Admin@12345";
+        await SeedSingleUserAsync(userManager, logger, "+10000000000", "admin@operia.com", "Operia Platform Admin", Roles.PlatformAdmin);
+        await SeedSingleUserAsync(userManager, logger, "+10000000001", "superadmin@operia.com", "Operia Tenant Owner", Roles.SuperAdmin);
+        await SeedSingleUserAsync(userManager, logger, "+201000000000", "owner@operia.com", "Operia Clinic Owner", Roles.SuperAdmin);
+    }
 
-        var admin = await userManager.Users
-            .FirstOrDefaultAsync(u => u.PhoneNumber == adminPhoneNumber);
+    private static async Task SeedSingleUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ILogger logger,
+        string phoneNumber,
+        string email,
+        string fullName,
+        string targetRole)
+    {
+        const string defaultPassword = "Admin@12345";
+        var user = await userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber);
 
-        if (admin is not null)
-            return;
-
-        admin = new ApplicationUser
+        if (user is not null)
         {
-            FullName = "Operia Admin",
-            UserName = adminPhoneNumber,
-            Email = adminEmail,
-            PhoneNumber = adminPhoneNumber,
-            EmailConfirmed = true
-        };
-
-        var result = await userManager.CreateAsync(admin, adminPassword);
-
-        if (!result.Succeeded)
-        {
-            logger.LogWarning("Failed to seed admin user: {Errors}",
-                string.Join(", ", result.Errors.Select(e => e.Description)));
+            if (targetRole == Roles.PlatformAdmin && await userManager.IsInRoleAsync(user, Roles.Admin))
+            {
+                await userManager.RemoveFromRoleAsync(user, Roles.Admin);
+                await userManager.AddToRoleAsync(user, Roles.PlatformAdmin);
+                logger.LogInformation("Migrated seeded user {PhoneNumber} from Admin to PlatformAdmin role", phoneNumber);
+            }
+            if (!await userManager.IsInRoleAsync(user, targetRole))
+            {
+                await userManager.AddToRoleAsync(user, targetRole);
+            }
             return;
         }
 
-        await userManager.AddToRoleAsync(admin, Roles.Admin);
+        user = new ApplicationUser
+        {
+            FullName = fullName,
+            UserName = phoneNumber,
+            Email = email,
+            PhoneNumber = phoneNumber,
+            EmailConfirmed = true
+        };
 
-        logger.LogInformation("Seeded admin user {PhoneNumber}", adminPhoneNumber);
+        var result = await userManager.CreateAsync(user, defaultPassword);
+        if (!result.Succeeded)
+        {
+            logger.LogWarning("Failed to seed user {PhoneNumber}: {Errors}",
+                phoneNumber, string.Join(", ", result.Errors.Select(e => e.Description)));
+            return;
+        }
+
+        await userManager.AddToRoleAsync(user, targetRole);
+        logger.LogInformation("Seeded user {PhoneNumber} with {Role} role", phoneNumber, targetRole);
     }
 
     private static async Task SeedSubscriptionPlansAsync(

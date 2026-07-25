@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Operia.Application.Auth;
 using Operia.Application.Common.Authorization;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Auth.DTOs;
@@ -153,7 +154,7 @@ public sealed class TokenService : ITokenService
 
             claims.AddRange(
                 (await _roleManager.GetClaimsAsync(role))
-                    .Where(c => c.Type == Permissions.ClaimType));
+                    .Where(c => c.Type == Policies.PermissionClaimType));
         }
 
         return claims
