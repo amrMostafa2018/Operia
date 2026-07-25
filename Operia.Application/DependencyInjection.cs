@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Operia.Application.Common.Behaviors;
+using Operia.Application.Employees;
 
 namespace Operia.Application;
 
@@ -15,6 +16,7 @@ public static class DependencyInjection
         });
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
+        services.AddScoped<IEmployeeScheduleService, EmployeeScheduleService>();
 
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

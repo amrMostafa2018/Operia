@@ -15,6 +15,9 @@ public sealed record EmployeeListResult(
     int TotalPages, IReadOnlyList<EmployeeRoleCountDto> RoleCounts);
 public sealed record BookableEmployeeDto(string Id, string Code, string FullName, string? PhotoUrl, string? Specialty, string? JobTitle);
 
+public sealed record EmployeeWorkingDayDto(string Day, bool Enabled, TimeOnly? FromTime, TimeOnly? ToTime);
+public sealed record EmployeeScheduleDto(IReadOnlyList<EmployeeWorkingDayDto> Days);
+
 public sealed record EmployeeWriteModel(
     string FullName, string Email, string MobileNumber, string UserName,
     string? Specialty, string? JobTitle, DateOnly JoiningDate, bool IsActive,
@@ -34,4 +37,11 @@ public interface IEmployeeService
     Task<EmployeeDto> UpdateAsync(string id, EmployeeWriteModel model, CancellationToken cancellationToken);
     Task ChangeRoleAsync(string id, string role, CancellationToken cancellationToken);
     Task ChangeStatusAsync(string id, bool isActive, CancellationToken cancellationToken);
+}
+
+public interface IEmployeeScheduleService
+{
+    Task<EmployeeScheduleDto> GetAsync(string employeeId, CancellationToken cancellationToken);
+    Task<EmployeeScheduleDto> UpdateAsync(string employeeId, IReadOnlyList<EmployeeWorkingDayDto> days, CancellationToken cancellationToken);
+    Task<EmployeeWorkingDayDto?> GetWorkingDayAsync(string employeeId, string day, CancellationToken cancellationToken);
 }

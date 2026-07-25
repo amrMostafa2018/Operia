@@ -25,4 +25,9 @@ public static class ApiErrorCodes
         public const string OtpExpired = "OtpExpired";
         public const string IdentityError = "IdentityError";
     }
+
+    public static class EmployeeSchedule
+    {
+        public const string OutsideBusinessHours = "EmployeeScheduleOutsideBusinessHours";
+    }
 }

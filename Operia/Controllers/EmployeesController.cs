@@ -7,8 +7,10 @@ using Operia.Application.Employees.Commands.ChangeEmployeeRole;
 using Operia.Application.Employees.Commands.ChangeEmployeeStatus;
 using Operia.Application.Employees.Commands.CreateEmployee;
 using Operia.Application.Employees.Commands.UpdateEmployee;
+using Operia.Application.Employees.Commands.UpdateEmployeeSchedule;
 using Operia.Application.Employees.Queries.GetBookableEmployees;
 using Operia.Application.Employees.Queries.GetEmployee;
+using Operia.Application.Employees.Queries.GetEmployeeSchedule;
 using Operia.Application.Employees.Queries.ListEmployees;
 
 namespace Operia.Controllers;
@@ -27,6 +29,16 @@ public sealed class EmployeesController(IMediator mediator) : ControllerBase
     [HttpGet("{id}")]
     [HasPermission(Permissions.Admin.EmployeesRead)]
     public Task<EmployeeDto> Get(string id, CancellationToken ct) => mediator.Send(new GetEmployeeQuery(id), ct);
+
+    [HttpGet("{id}/schedule")]
+    [HasPermission(Permissions.Admin.EmployeesRead)]
+    public Task<EmployeeScheduleDto> GetSchedule(string id, CancellationToken ct)
+        => mediator.Send(new GetEmployeeScheduleQuery(id), ct);
+
+    [HttpPut("{id}/schedule")]
+    [HasPermission(Permissions.Admin.EmployeesManage)]
+    public Task<EmployeeScheduleDto> UpdateSchedule(string id, [FromBody] UpdateEmployeeScheduleRequest request, CancellationToken ct)
+        => mediator.Send(new UpdateEmployeeScheduleCommand(id, request.Days), ct);
 
     [HttpGet("bookable")]
     [HasPermission(Permissions.Admin.BookingRead)]
@@ -85,3 +97,4 @@ public class EmployeeUpdateForm
 public sealed class EmployeeCreateForm : EmployeeUpdateForm { public string TemporaryPassword { get; set; } = string.Empty; }
 public sealed record ChangeRoleRequest(string Role);
 public sealed record ChangeStatusRequest(bool IsActive);
+public sealed record UpdateEmployeeScheduleRequest(IReadOnlyList<EmployeeWorkingDayDto> Days);

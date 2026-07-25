@@ -62,5 +62,9 @@
   {
     "Name": "IdentityError",
     "Value": "حدث خطأ في إنشاء الحساب. يرجى المحاولة مرة أخرى"
+  },
+  {
+    "Name": "EmployeeScheduleOutsideBusinessHours",
+    "Value": "يجب أن تكون ساعات عمل الموظف ضمن ساعات عمل النشاط المفعلة لذلك اليوم."
   }
 ]

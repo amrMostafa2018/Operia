@@ -70,5 +70,9 @@
   {
     "Name": "UpdateInventoryItemFailed",
     "Value": "Update Inventory Item Failed"
+  },
+  {
+    "Name": "EmployeeScheduleOutsideBusinessHours",
+    "Value": "Employee working hours must be within the enabled business working hours for that day."
   }
 ]

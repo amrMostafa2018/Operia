@@ -35,6 +35,7 @@ public sealed class ApplicationDbContext : IdentityDbContext<ApplicationUser>, I
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<EmployeeWorkingDay> EmployeeWorkingDays => Set<EmployeeWorkingDay>();
     public DbSet<UserBranch> UserBranches => Set<UserBranch>();
     public DbSet<TenantNumberCounter> TenantNumberCounters => Set<TenantNumberCounter>();
 

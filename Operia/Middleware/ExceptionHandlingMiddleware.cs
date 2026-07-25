@@ -37,6 +37,12 @@ public sealed class ExceptionHandlingMiddleware
 
         var (statusCode, title, errors, errorCodes) = exception switch
         {
+            UnprocessableEntityException validation => (
+                StatusCodes.Status422UnprocessableEntity,
+                "Unprocessable Entity",
+                LocalizeValidationErrors(validation, language),
+                validation.ErrorCodes.Count > 0 ? validation.ErrorCodes : null),
+
             NotFoundException notFound => (
                 StatusCodes.Status404NotFound,
                 "Resource Not Found",
