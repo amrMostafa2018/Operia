@@ -17,31 +17,3 @@ public sealed record BookableEmployeeDto(string Id, string Code, string FullName
 
 public sealed record EmployeeWorkingDayDto(string Day, bool Enabled, TimeOnly? FromTime, TimeOnly? ToTime);
 public sealed record EmployeeScheduleDto(IReadOnlyList<EmployeeWorkingDayDto> Days);
-
-public sealed record EmployeeWriteModel(
-    string FullName, string Email, string MobileNumber, string UserName,
-    string? Specialty, string? JobTitle, DateOnly JoiningDate, bool IsActive,
-    string Role, IReadOnlyList<string> BranchIds, string? TemporaryPassword,
-    FileUploadContent? Photo, bool RemovePhoto);
-
-public sealed record EmployeeListFilter(
-    int PageNumber, int PageSize, string? Search, string? Role, bool? IsActive,
-    string? BranchId, DateOnly? CreatedFrom, DateOnly? CreatedTo);
-
-public interface IEmployeeService
-{
-    Task<EmployeeListResult> ListAsync(EmployeeListFilter filter, CancellationToken cancellationToken);
-    Task<EmployeeDto> GetAsync(string id, CancellationToken cancellationToken);
-    Task<IReadOnlyList<BookableEmployeeDto>> BookableAsync(string branchId, CancellationToken cancellationToken);
-    Task<EmployeeDto> CreateAsync(EmployeeWriteModel model, CancellationToken cancellationToken);
-    Task<EmployeeDto> UpdateAsync(string id, EmployeeWriteModel model, CancellationToken cancellationToken);
-    Task ChangeRoleAsync(string id, string role, CancellationToken cancellationToken);
-    Task ChangeStatusAsync(string id, bool isActive, CancellationToken cancellationToken);
-}
-
-public interface IEmployeeScheduleService
-{
-    Task<EmployeeScheduleDto> GetAsync(string employeeId, CancellationToken cancellationToken);
-    Task<EmployeeScheduleDto> UpdateAsync(string employeeId, IReadOnlyList<EmployeeWorkingDayDto> days, CancellationToken cancellationToken);
-    Task<EmployeeWorkingDayDto?> GetWorkingDayAsync(string employeeId, string day, CancellationToken cancellationToken);
-}

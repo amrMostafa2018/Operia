@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Operia.Application.Common.Authorization;
 using Operia.Application.Settings;
+using Operia.Application.Settings.Commands.UpdateIdentitySettings;
+using Operia.Application.Settings.Queries.GetIdentitySettings;
 
 namespace Operia.Controllers;
 

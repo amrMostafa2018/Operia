@@ -3,6 +3,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Operia.Application.Common.Authorization;
 using Operia.Application.Settings;
+using Operia.Application.Settings.Commands.BanSettingsUser;
+using Operia.Application.Settings.Commands.ChangePassword;
+using Operia.Application.Settings.Commands.DeactivateAccount;
+using Operia.Application.Settings.Commands.DeleteSettingsUser;
+using Operia.Application.Settings.Commands.SendPasswordOtp;
+using Operia.Application.Settings.Commands.UpdatePaymentMethods;
+using Operia.Application.Settings.Commands.UpdateSecuritySettings;
+using Operia.Application.Settings.Commands.UpdateWorkingDays;
+using Operia.Application.Settings.Queries.GetPaymentMethods;
+using Operia.Application.Settings.Queries.GetSecuritySettings;
+using Operia.Application.Settings.Queries.GetWorkingDays;
 
 namespace Operia.Controllers;
 

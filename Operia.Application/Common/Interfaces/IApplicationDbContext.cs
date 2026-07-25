@@ -5,6 +5,7 @@ namespace Operia.Application.Common.Interfaces;
 
 public interface IApplicationDbContext
 {
+    Task<string> GetNextEmployeeCodeAsync(string tenantId, CancellationToken cancellationToken = default);
     DbSet<Tenant> Tenants { get; }
     DbSet<SubscriptionPlan> SubscriptionPlans { get; }
     DbSet<TenantSubscription> TenantSubscriptions { get; }
