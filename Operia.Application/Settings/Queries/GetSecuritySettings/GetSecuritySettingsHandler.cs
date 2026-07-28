@@ -32,7 +32,7 @@ public sealed class GetSecuritySettingsHandler : IRequestHandler<GetSecuritySett
         return new SecuritySettingsDto(
             userSettings.TwoFactorEnabled,
             userSettings.LoginAlertsEnabled,
-            SettingsHandlerHelpers.Mask(userSettings.PhoneNumber),
+            userSettings.PhoneNumber ?? string.Empty,
             list);
     }
 }

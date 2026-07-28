@@ -20,6 +20,6 @@ public sealed record WorkingDayDto(string Day, bool Enabled, TimeOnly FromTime, 
 }
 public sealed record WorkingDaysSettingsDto(IReadOnlyList<WorkingDayDto> Days, bool AllowBookingOutsideWorkingHours);
 public sealed record AuthorizedUserDto(string Id, string Name, string Email, bool IsBanned);
-public sealed record SecuritySettingsDto(bool EnableTwoFactorAuthentication, bool LoginAlertsEnabled, string MaskedPhone, IReadOnlyList<AuthorizedUserDto> Users);
+public sealed record SecuritySettingsDto(bool EnableTwoFactorAuthentication, bool LoginAlertsEnabled, string PhoneNumber, IReadOnlyList<AuthorizedUserDto> Users);
 public sealed record UpdateSecurityRequest(bool EnableTwoFactorAuthentication, bool LoginAlertsEnabled, bool LogoutOtherDevices);
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword, string OtpCode);
