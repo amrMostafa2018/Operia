@@ -76,6 +76,12 @@ public sealed class ExceptionHandlingMiddleware
                     ? new Dictionary<string, string[]> { [unauthorized.Field] = [unauthorized.ErrorCode] }
                     : null),
 
+            UnauthorizedAccessException unauthorizedAccess => (
+                StatusCodes.Status401Unauthorized,
+                "Unauthorized",
+                new Dictionary<string, string[]> { ["detail"] = [unauthorizedAccess.Message] },
+                null),
+
             ArgumentException argument => (
                 StatusCodes.Status400BadRequest,
                 "Bad Request",
