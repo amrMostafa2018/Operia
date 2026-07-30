@@ -15,7 +15,10 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
 
         RuleFor(x => x.Email)
             .NotEmpty().WithErrorCode(ApiErrorCodes.Auth.EmailRequired)
-            .EmailAddress().WithErrorCode(ApiErrorCodes.Auth.EmailInvalid);
+            .EmailAddress().WithErrorCode(ApiErrorCodes.Auth.EmailInvalid)
+            .MustAsync(async (email, cancellationToken) =>
+                !await identityService.IsEmailRegisteredAsync(email, cancellationToken))
+            .WithErrorCode(ApiErrorCodes.Auth.EmailAlreadyRegistered);
 
         RuleFor(x => x.Password)
             .NotEmpty().WithErrorCode(ApiErrorCodes.Auth.PasswordRequired)
