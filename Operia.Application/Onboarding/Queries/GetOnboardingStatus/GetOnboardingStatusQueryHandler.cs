@@ -3,6 +3,7 @@ using Operia.Application.Common.Interfaces;
 using Operia.Application.Onboarding.DTOs;
 using Operia.Domain.Enums;
 using Operia.Domain.Interfaces;
+using Operia.SharedKernel.Interfaces;
 
 namespace Operia.Application.Onboarding.Queries.GetOnboardingStatus;
 
@@ -10,17 +11,26 @@ public sealed class GetOnboardingStatusQueryHandler
     : IRequestHandler<GetOnboardingStatusQuery, OnboardingStatusDto>
 {
     private readonly ITenantRepository _tenantRepository;
+    private readonly ITenantSubscriptionRepository _tenantSubscriptionRepository;
     private readonly IPlatformRevenueRepository _platformRevenueRepository;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IUnitOfWork _unitOfWork;
 
     public GetOnboardingStatusQueryHandler(
         ITenantRepository tenantRepository,
+        ITenantSubscriptionRepository tenantSubscriptionRepository,
         IPlatformRevenueRepository platformRevenueRepository,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IDateTimeProvider dateTimeProvider,
+        IUnitOfWork unitOfWork)
     {
         _tenantRepository = tenantRepository;
+        _tenantSubscriptionRepository = tenantSubscriptionRepository;
         _platformRevenueRepository = platformRevenueRepository;
         _currentUserService = currentUserService;
+        _dateTimeProvider = dateTimeProvider;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<OnboardingStatusDto> Handle(
@@ -82,6 +92,31 @@ public sealed class GetOnboardingStatusQueryHandler
 
         if (subscription.Status == SubscriptionStatus.Active)
         {
+            var today = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
+            if (subscription.EndDate.HasValue && subscription.EndDate.Value < today)
+            {
+                var trackedSubscription = await _tenantSubscriptionRepository.GetByIdWithDetailsAsync(
+                    subscription.Id,
+                    cancellationToken);
+
+                if (trackedSubscription is not null)
+                {
+                    trackedSubscription.Status = SubscriptionStatus.Expired;
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                }
+
+                return BuildStatusDto(
+                    OnboardingStep.Plan,
+                    tenant.Id,
+                    business?.Id,
+                    subscription.Id,
+                    businessSummary,
+                    usableBalance,
+                    totalBalance,
+                    subscription.Amount,
+                    pendingAddBalancePlatform);
+            }
+
             return BuildStatusDto(
                 OnboardingStep.Active,
                 tenant.Id,
