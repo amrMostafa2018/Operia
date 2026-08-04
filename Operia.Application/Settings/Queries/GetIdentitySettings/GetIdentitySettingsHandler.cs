@@ -9,18 +9,22 @@ public sealed class GetIdentitySettingsHandler : IRequestHandler<GetIdentitySett
 {
     private readonly IApplicationDbContext _db;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IIdentityService _identityService;
 
     public GetIdentitySettingsHandler(
         IApplicationDbContext db,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IIdentityService identityService)
     {
         _db = db;
         _currentUserService = currentUserService;
+        _identityService = identityService;
     }
 
     public async Task<IdentitySettingsDto> Handle(GetIdentitySettingsQuery request, CancellationToken cancellationToken)
     {
         var tenantId = SettingsHandlerHelpers.RequireTenant(_currentUserService);
+        var userId = SettingsHandlerHelpers.RequireUser(_currentUserService);
         var business = await SettingsHandlerHelpers.GetBusinessAsync(_db, tenantId, cancellationToken);
         var photos = await _db.BusinessGalleries.AsNoTracking()
             .Where(x => x.BusinessId == business.Id)
@@ -28,6 +32,7 @@ public sealed class GetIdentitySettingsHandler : IRequestHandler<GetIdentitySett
             .ThenBy(x => x.UploadedAt)
             .ToListAsync(cancellationToken);
 
-        return SettingsHandlerHelpers.ToIdentity(business, photos);
+        var registrationUser = await _identityService.GetUserSummaryAsync(userId, cancellationToken);
+        return SettingsHandlerHelpers.ToIdentity(business, photos, registrationUser);
     }
 }

@@ -30,16 +30,22 @@ internal static class SettingsHandlerHelpers
         return settings;
     }
 
-    public static IdentitySettingsDto ToIdentity(Business business, IEnumerable<BusinessGallery> photos)
+    public static IdentitySettingsDto ToIdentity(
+        Business business,
+        IEnumerable<BusinessGallery> photos,
+        UserSummaryDto? registrationFallback = null)
         => new(
             business.ActivityName,
-            business.MobileNumber,
-            business.WhatsappNumber,
-            business.Email,
+            FirstNonEmpty(business.MobileNumber, registrationFallback?.PhoneNumber),
+            FirstNonEmpty(business.WhatsappNumber, registrationFallback?.PhoneNumber),
+            FirstNonEmpty(business.Email, registrationFallback?.Email),
             business.MainBranchAddress,
             business.Description,
             photos.FirstOrDefault(x => x.IsMainImage)?.ImageUrl,
             photos.Where(x => !x.IsMainImage).Select(x => x.ImageUrl).ToArray());
+
+    private static string? FirstNonEmpty(string? value, string? fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value;
 
     public static T Deserialize<T>(string? json, T fallback)
     {
