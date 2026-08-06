@@ -22,15 +22,94 @@ namespace Operia.Controllers;
 [Route("api/settings")]
 public sealed class SettingsManagementController(IMediator mediator) : ControllerBase
 {
-    [HttpGet("payment-methods")] public async Task<ActionResult<PaymentMethodsDto>> GetPaymentMethods(CancellationToken ct) => Ok(await mediator.Send(new GetPaymentMethodsQuery(), ct));
-    [HttpPut("payment-methods")] public async Task<ActionResult<PaymentMethodsDto>> UpdatePaymentMethods([FromBody] PaymentMethodsDto request, CancellationToken ct) => Ok(await mediator.Send(new UpdatePaymentMethodsCommand(request), ct));
-    [HttpGet("working-days")] public async Task<ActionResult<WorkingDaysSettingsDto>> GetWorkingDays(CancellationToken ct) => Ok(await mediator.Send(new GetWorkingDaysQuery(), ct));
-    [HttpPut("working-days")] public async Task<ActionResult<WorkingDaysSettingsDto>> UpdateWorkingDays([FromBody] WorkingDaysSettingsDto request, CancellationToken ct) => Ok(await mediator.Send(new UpdateWorkingDaysCommand(request), ct));
-    [HttpGet("security")] public async Task<ActionResult<SecuritySettingsDto>> GetSecurity(CancellationToken ct) => Ok(await mediator.Send(new GetSecuritySettingsQuery(), ct));
-    [HttpPut("security")] public async Task<IActionResult> UpdateSecurity([FromBody] UpdateSecurityRequest request, CancellationToken ct) { await mediator.Send(new UpdateSecuritySettingsCommand(request), ct); return NoContent(); }
-    [HttpPost("security/password-otp")] public async Task<IActionResult> SendPasswordOtp(CancellationToken ct) { await mediator.Send(new SendPasswordOtpCommand(), ct); return NoContent(); }
-    [HttpPost("security/change-password")] public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct) { await mediator.Send(new ChangePasswordCommand(request), ct); return NoContent(); }
-    [HttpPost("security/users/{userId}/ban")] public async Task<IActionResult> BanUser(string userId, CancellationToken ct) { await mediator.Send(new BanSettingsUserCommand(userId), ct); return NoContent(); }
-    [HttpDelete("security/users/{userId}")] public async Task<IActionResult> DeleteUser(string userId, CancellationToken ct) { await mediator.Send(new DeleteSettingsUserCommand(userId), ct); return NoContent(); }
-    [HttpPost("security/deactivate-account")] public async Task<IActionResult> Deactivate(CancellationToken ct) { await mediator.Send(new DeactivateAccountCommand(), ct); return NoContent(); }
+    [HttpGet("payment-methods")]
+    public async Task<ActionResult<PaymentMethodsDto>> GetPaymentMethods(CancellationToken cancellationToken)
+    {
+        var paymentMethods = await mediator.Send(new GetPaymentMethodsQuery(), cancellationToken);
+        return Ok(paymentMethods);
+    }
+
+    [HttpPut("payment-methods")]
+    public async Task<ActionResult<PaymentMethodsDto>> UpdatePaymentMethods(
+        [FromBody] PaymentMethodsDto request,
+        CancellationToken cancellationToken)
+    {
+        var paymentMethods = await mediator.Send(
+            new UpdatePaymentMethodsCommand(request),
+            cancellationToken);
+
+        return Ok(paymentMethods);
+    }
+
+    [HttpGet("working-days")]
+    public async Task<ActionResult<WorkingDaysSettingsDto>> GetWorkingDays(CancellationToken cancellationToken)
+    {
+        var workingDays = await mediator.Send(new GetWorkingDaysQuery(), cancellationToken);
+        return Ok(workingDays);
+    }
+
+    [HttpPut("working-days")]
+    public async Task<ActionResult<WorkingDaysSettingsDto>> UpdateWorkingDays(
+        [FromBody] WorkingDaysSettingsDto request,
+        CancellationToken cancellationToken)
+    {
+        var workingDays = await mediator.Send(
+            new UpdateWorkingDaysCommand(request),
+            cancellationToken);
+
+        return Ok(workingDays);
+    }
+
+    [HttpGet("security")]
+    public async Task<ActionResult<SecuritySettingsDto>> GetSecurity(CancellationToken cancellationToken)
+    {
+        var settings = await mediator.Send(new GetSecuritySettingsQuery(), cancellationToken);
+        return Ok(settings);
+    }
+
+    [HttpPut("security")]
+    public async Task<IActionResult> UpdateSecurity(
+        [FromBody] UpdateSecurityRequest request,
+        CancellationToken cancellationToken)
+    {
+        await mediator.Send(new UpdateSecuritySettingsCommand(request), cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("security/password-otp")]
+    public async Task<IActionResult> SendPasswordOtp(CancellationToken cancellationToken)
+    {
+        await mediator.Send(new SendPasswordOtpCommand(), cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("security/change-password")]
+    public async Task<IActionResult> ChangePassword(
+        [FromBody] ChangePasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        await mediator.Send(new ChangePasswordCommand(request), cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("security/users/{userId}/ban")]
+    public async Task<IActionResult> BanUser(string userId, CancellationToken cancellationToken)
+    {
+        await mediator.Send(new BanSettingsUserCommand(userId), cancellationToken);
+        return NoContent();
+    }
+
+    [HttpDelete("security/users/{userId}")]
+    public async Task<IActionResult> DeleteUser(string userId, CancellationToken cancellationToken)
+    {
+        await mediator.Send(new DeleteSettingsUserCommand(userId), cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("security/deactivate-account")]
+    public async Task<IActionResult> Deactivate(CancellationToken cancellationToken)
+    {
+        await mediator.Send(new DeactivateAccountCommand(), cancellationToken);
+        return NoContent();
+    }
 }

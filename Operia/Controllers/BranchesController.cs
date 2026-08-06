@@ -54,5 +54,3 @@ public sealed class BranchesController(IMediator mediator) : ControllerBase
         return NoContent();
     }
 }
-
-public sealed record UpdateBranchRequest(string Name, string Address, string PhoneNumber, decimal Latitude, decimal Longitude);
