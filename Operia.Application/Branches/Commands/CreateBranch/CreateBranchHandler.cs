@@ -1,13 +1,16 @@
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Branches;
+using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.Domain.Entities;
 
 namespace Operia.Application.Branches.Commands.CreateBranch;
 
 public sealed class CreateBranchHandler(
     IApplicationDbContext db,
-    ICurrentUserService currentUser) : MediatR.IRequestHandler<CreateBranchCommand, BranchDto>
+    ICurrentUserService currentUser,
+    IAuditWriter auditWriter) : MediatR.IRequestHandler<CreateBranchCommand, BranchDto>
 {
     public async Task<BranchDto> Handle(
         CreateBranchCommand request,
@@ -34,7 +37,12 @@ public sealed class CreateBranchHandler(
             request.Longitude);
 
         db.Branches.Add(branch);
-        BranchMapper.AddAudit(db, currentUser, tenantId, "BranchCreated", branch, null);
+        auditWriter.Write(
+            tenantId,
+            AuditActions.BranchCreated,
+            nameof(Branch),
+            branch.Id,
+            branch.Name);
         await db.SaveChangesAsync(cancellationToken);
 
         return BranchMapper.ToDto(branch);

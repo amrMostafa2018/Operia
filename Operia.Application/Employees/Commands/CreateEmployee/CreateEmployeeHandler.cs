@@ -1,4 +1,5 @@
 using MediatR;
+using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Common.PhoneNumbers;
 using Operia.Application.Employees.Common;
@@ -14,6 +15,7 @@ public sealed class CreateEmployeeHandler : IRequestHandler<CreateEmployeeComman
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly IFileStorageService _files;
+    private readonly IAuditWriter _auditWriter;
 
     public CreateEmployeeHandler(
         IApplicationDbContext db,
@@ -21,7 +23,8 @@ public sealed class CreateEmployeeHandler : IRequestHandler<CreateEmployeeComman
         IIdentityService identityService,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
-        IFileStorageService files)
+        IFileStorageService files,
+        IAuditWriter auditWriter)
     {
         _db = db;
         _employeeCodeGenerator = employeeCodeGenerator;
@@ -29,6 +32,7 @@ public sealed class CreateEmployeeHandler : IRequestHandler<CreateEmployeeComman
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _files = files;
+        _auditWriter = auditWriter;
     }
 
     public async Task<EmployeeDto> Handle(CreateEmployeeCommand request, CancellationToken cancellationToken)
@@ -80,10 +84,9 @@ public sealed class CreateEmployeeHandler : IRequestHandler<CreateEmployeeComman
             }
 
             EmployeeHandlerHelpers.AddAudit(
-                _db,
-                _currentUserService,
+                _auditWriter,
                 tenantId,
-                "EmployeeCreated",
+                AuditActions.EmployeeCreated,
                 employee,
                 new { employee.Code, role = request.Role, branchIds = request.BranchIds.Distinct().ToList() });
 

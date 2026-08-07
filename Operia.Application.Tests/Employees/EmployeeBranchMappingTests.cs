@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Operia.Application.Common.Authorization;
+using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.SharedKernel.Interfaces;
@@ -28,6 +29,7 @@ public class EmployeeBranchMappingTests
     private readonly Mock<IFileStorageService> _fileStorageServiceMock = new();
     private readonly Mock<IEmployeeCodeGenerator> _employeeCodeGeneratorMock = new();
     private readonly TestApplicationDbContext _db;
+    private readonly IAuditWriter _auditWriter;
     private string? _tenantId = "tenant-1";
 
     public EmployeeBranchMappingTests()
@@ -39,6 +41,7 @@ public class EmployeeBranchMappingTests
             .Options;
 
         _db = new TestApplicationDbContext(options, _dateTimeProviderMock.Object, _currentUserServiceMock.Object);
+        _auditWriter = new AuditWriter(_db, _currentUserServiceMock.Object);
 
         _unitOfWorkMock.Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         _unitOfWorkMock.Setup(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -69,7 +72,8 @@ public class EmployeeBranchMappingTests
             _identityServiceMock.Object,
             _unitOfWorkMock.Object,
             _currentUserServiceMock.Object,
-            _fileStorageServiceMock.Object);
+            _fileStorageServiceMock.Object,
+            _auditWriter);
 
         _identityServiceMock.Setup(x => x.EnsureIdentityUniqueAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         _identityServiceMock.Setup(x => x.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync("new-id-user");
@@ -127,7 +131,13 @@ public class EmployeeBranchMappingTests
         _identityServiceMock.Setup(x => x.GetUsersSummaryAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<string, UserSummaryDto> { ["user-upd"] = new UserSummaryDto("user-upd", "upduser", "upd@test.com", "+1111111111", false) });
 
-        var handler = new UpdateEmployeeHandler(_db, _identityServiceMock.Object, _unitOfWorkMock.Object, _currentUserServiceMock.Object, _fileStorageServiceMock.Object);
+        var handler = new UpdateEmployeeHandler(
+            _db,
+            _identityServiceMock.Object,
+            _unitOfWorkMock.Object,
+            _currentUserServiceMock.Object,
+            _fileStorageServiceMock.Object,
+            _auditWriter);
         var cmd = new UpdateEmployeeCommand("emp-upd", "Update User New", "upd@test.com", "+1111111111", "upduser", null, null, DateOnly.FromDateTime(DateTime.Today), true, Roles.Staff, new[] { "b-a", "b-c" }, null, false);
 
         // Act

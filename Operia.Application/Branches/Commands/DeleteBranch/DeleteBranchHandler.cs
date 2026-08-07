@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Branches;
+using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Domain.Entities;
@@ -10,6 +11,7 @@ namespace Operia.Application.Branches.Commands.DeleteBranch;
 public sealed class DeleteBranchHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
+    IAuditWriter auditWriter,
     IEnumerable<IBranchDependencyProbe> probes) : MediatR.IRequestHandler<DeleteBranchCommand>
 {
     public async Task Handle(
@@ -43,7 +45,12 @@ public sealed class DeleteBranchHandler(
         }
 
         db.Branches.Remove(branch);
-        BranchMapper.AddAudit(db, currentUser, tenantId, "BranchDeleted", branch, null);
+        auditWriter.Write(
+            tenantId,
+            AuditActions.BranchDeleted,
+            nameof(Branch),
+            branch.Id,
+            branch.Name);
         await db.SaveChangesAsync(cancellationToken);
     }
 }

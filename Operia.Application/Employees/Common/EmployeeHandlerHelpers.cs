@@ -1,7 +1,7 @@
-using System.Text.Json;
 using FluentValidation.Results;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Common.Authorization;
+using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Common.Models;
@@ -51,22 +51,17 @@ internal static class EmployeeHandlerHelpers
     }
 
     public static void AddAudit(
-        IApplicationDbContext db,
-        ICurrentUserService currentUser,
+        IAuditWriter auditWriter,
         string tenantId,
         string action,
         Employee employee,
-        object details) => db.AuditLogs.Add(new AuditLog
-        {
-            TenantId = tenantId,
-            UserId = currentUser.UserId,
-            UserDisplayName = currentUser.DisplayName,
-            Action = action,
-            EntityType = nameof(Employee),
-            EntityId = employee.Id,
-            EntityName = employee.FullName,
-            DetailsJson = JsonSerializer.Serialize(details)
-        });
+        object details) => auditWriter.Write(
+            tenantId,
+            action,
+            nameof(Employee),
+            employee.Id,
+            employee.FullName,
+            details);
 
     public static async Task<string> SavePhotoAsync(
         IFileStorageService files,

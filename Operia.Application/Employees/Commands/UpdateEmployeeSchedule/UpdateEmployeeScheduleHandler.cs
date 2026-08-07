@@ -1,6 +1,6 @@
-using System.Text.Json;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Employees.Common;
 using Operia.Domain.Entities;
@@ -9,16 +9,18 @@ namespace Operia.Application.Employees.Commands.UpdateEmployeeSchedule;
 
 public sealed class UpdateEmployeeScheduleHandler : IRequestHandler<UpdateEmployeeScheduleCommand, EmployeeScheduleDto>
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly IApplicationDbContext _db;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IAuditWriter _auditWriter;
 
     public UpdateEmployeeScheduleHandler(
         IApplicationDbContext db,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IAuditWriter auditWriter)
     {
         _db = db;
         _currentUserService = currentUserService;
+        _auditWriter = auditWriter;
     }
 
     public async Task<EmployeeScheduleDto> Handle(UpdateEmployeeScheduleCommand request, CancellationToken cancellationToken)
@@ -55,17 +57,13 @@ public sealed class UpdateEmployeeScheduleHandler : IRequestHandler<UpdateEmploy
         var current = EmployeeScheduleHelpers.ToWeek(request.Days);
         var emp = await _db.Employees.AsNoTracking().SingleAsync(x => x.Id == request.EmployeeId, cancellationToken);
 
-        _db.AuditLogs.Add(new AuditLog
-        {
-            TenantId = tenantId,
-            UserId = _currentUserService.UserId,
-            UserDisplayName = _currentUserService.DisplayName,
-            Action = "EmployeeScheduleUpdated",
-            EntityType = nameof(Employee),
-            EntityId = request.EmployeeId,
-            EntityName = emp.FullName,
-            DetailsJson = JsonSerializer.Serialize(new { previous, current }, JsonOptions)
-        });
+        _auditWriter.Write(
+            tenantId,
+            AuditActions.EmployeeScheduleUpdated,
+            nameof(Employee),
+            request.EmployeeId,
+            emp.FullName,
+            new { previous, current });
 
         await _db.SaveChangesAsync(cancellationToken);
         return new EmployeeScheduleDto(current);

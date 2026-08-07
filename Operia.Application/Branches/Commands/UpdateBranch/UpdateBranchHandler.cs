@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Branches;
+using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Common.PhoneNumbers;
@@ -10,7 +11,8 @@ namespace Operia.Application.Branches.Commands.UpdateBranch;
 
 public sealed class UpdateBranchHandler(
     IApplicationDbContext db,
-    ICurrentUserService currentUser) : MediatR.IRequestHandler<UpdateBranchCommand, BranchDto>
+    ICurrentUserService currentUser,
+    IAuditWriter auditWriter) : MediatR.IRequestHandler<UpdateBranchCommand, BranchDto>
 {
     public async Task<BranchDto> Handle(
         UpdateBranchCommand request,
@@ -38,12 +40,12 @@ public sealed class UpdateBranchHandler(
         branch.Longitude = request.Longitude;
         branch.GoogleMapsUrl = BranchMapper.MapsUrl(request.Latitude, request.Longitude);
 
-        BranchMapper.AddAudit(
-            db,
-            currentUser,
+        auditWriter.Write(
             tenantId,
-            "BranchUpdated",
-            branch,
+            AuditActions.BranchUpdated,
+            nameof(Branch),
+            branch.Id,
+            branch.Name,
             new { branch.Address, branch.PhoneNumber, branch.Latitude, branch.Longitude });
         await db.SaveChangesAsync(cancellationToken);
 
