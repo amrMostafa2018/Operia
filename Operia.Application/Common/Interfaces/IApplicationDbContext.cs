@@ -3,9 +3,13 @@ using Operia.Domain.Entities;
 
 namespace Operia.Application.Common.Interfaces;
 
+/// <summary>
+/// Application-owned persistence gateway for OPERIA's pragmatic Clean Architecture boundary.
+/// Query handlers may use its EF Core sets for simple, tenant-scoped projections, while complex
+/// aggregate writes should use focused repositories and a unit of work.
+/// </summary>
 public interface IApplicationDbContext
 {
-    Task<string> GetNextEmployeeCodeAsync(string tenantId, CancellationToken cancellationToken = default);
     DbSet<Tenant> Tenants { get; }
     DbSet<SubscriptionPlan> SubscriptionPlans { get; }
     DbSet<TenantSubscription> TenantSubscriptions { get; }

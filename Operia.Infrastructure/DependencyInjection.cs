@@ -14,6 +14,7 @@ using Operia.Infrastructure.Repositories;
 using Operia.Infrastructure.Services;
 using Operia.SharedKernel.Interfaces;
 using Operia.Application.Employees;
+using Operia.Application.Employees.Commands.CreateEmployee;
 
 namespace Operia.Infrastructure;
 
@@ -54,6 +55,7 @@ public static class DependencyInjection
 
         services.AddScoped<IApplicationDbContext>(sp =>
             sp.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<IEmployeeCodeGenerator, EmployeeCodeGenerator>();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();

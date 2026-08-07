@@ -44,11 +44,6 @@ internal static class EmployeeHandlerHelpers
             throw Invalid("branchIds", "One or more branches are invalid for this tenant.");
     }
 
-    public static Task<string> NextCodeAsync(
-        IApplicationDbContext db,
-        string tenantId,
-        CancellationToken cancellationToken) => db.GetNextEmployeeCodeAsync(tenantId, cancellationToken);
-
     public static void AddBranches(Employee employee, IEnumerable<string> ids)
     {
         foreach (var branchId in ids.Distinct())
@@ -62,16 +57,16 @@ internal static class EmployeeHandlerHelpers
         string action,
         Employee employee,
         object details) => db.AuditLogs.Add(new AuditLog
-    {
-        TenantId = tenantId,
-        UserId = currentUser.UserId,
-        UserDisplayName = currentUser.DisplayName,
-        Action = action,
-        EntityType = nameof(Employee),
-        EntityId = employee.Id,
-        EntityName = employee.FullName,
-        DetailsJson = JsonSerializer.Serialize(details)
-    });
+        {
+            TenantId = tenantId,
+            UserId = currentUser.UserId,
+            UserDisplayName = currentUser.DisplayName,
+            Action = action,
+            EntityType = nameof(Employee),
+            EntityId = employee.Id,
+            EntityName = employee.FullName,
+            DetailsJson = JsonSerializer.Serialize(details)
+        });
 
     public static async Task<string> SavePhotoAsync(
         IFileStorageService files,

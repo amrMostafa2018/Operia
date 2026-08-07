@@ -26,6 +26,7 @@ public class EmployeeBranchMappingTests
     private readonly Mock<IIdentityService> _identityServiceMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<IFileStorageService> _fileStorageServiceMock = new();
+    private readonly Mock<IEmployeeCodeGenerator> _employeeCodeGeneratorMock = new();
     private readonly TestApplicationDbContext _db;
 
     public EmployeeBranchMappingTests()
@@ -45,6 +46,8 @@ public class EmployeeBranchMappingTests
         _currentUserServiceMock.Setup(x => x.UserId).Returns("current-admin");
         _currentUserServiceMock.Setup(x => x.TenantId).Returns("tenant-1");
         _currentUserServiceMock.Setup(x => x.DisplayName).Returns("Admin Tester");
+        _employeeCodeGeneratorMock.Setup(x => x.ReserveNextAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("EMP-0001");
     }
 
     [Fact]
@@ -57,7 +60,13 @@ public class EmployeeBranchMappingTests
         _db.Branches.AddRange(branch1, branch2, crossBranch);
         await _db.SaveChangesAsync();
 
-        var handler = new CreateEmployeeHandler(_db, _identityServiceMock.Object, _unitOfWorkMock.Object, _currentUserServiceMock.Object, _fileStorageServiceMock.Object);
+        var handler = new CreateEmployeeHandler(
+            _db,
+            _employeeCodeGeneratorMock.Object,
+            _identityServiceMock.Object,
+            _unitOfWorkMock.Object,
+            _currentUserServiceMock.Object,
+            _fileStorageServiceMock.Object);
 
         _identityServiceMock.Setup(x => x.EnsureIdentityUniqueAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         _identityServiceMock.Setup(x => x.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync("new-id-user");
@@ -88,6 +97,9 @@ public class EmployeeBranchMappingTests
         var auditLog = await _db.AuditLogs.SingleOrDefaultAsync(x => x.EntityId == res.Id && x.Action == "EmployeeCreated");
         auditLog.Should().NotBeNull();
         auditLog!.DetailsJson.Should().Contain("\"branchIds\":[\"b-1\",\"b-2\"]");
+        _employeeCodeGeneratorMock.Verify(
+            x => x.ReserveNextAsync("tenant-1", It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

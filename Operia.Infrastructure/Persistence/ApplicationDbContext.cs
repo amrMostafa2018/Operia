@@ -1,7 +1,5 @@
-using System.Data;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Operia.Application.Common.Interfaces;
 using Operia.Domain.Common;
 using Operia.Domain.Entities;
@@ -23,31 +21,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     {
         _dateTimeProvider = dateTimeProvider;
         _currentUserService = currentUserService;
-    }
-
-    public virtual async Task<string> GetNextEmployeeCodeAsync(string tenantId, CancellationToken cancellationToken = default)
-    {
-        var connection = Database.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
-            await connection.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.Transaction = Database.CurrentTransaction?.GetDbTransaction();
-        command.CommandText = """
-            IF NOT EXISTS (SELECT 1 FROM TenantNumberCounters WITH (UPDLOCK, HOLDLOCK) WHERE TenantId = @tenantId)
-                INSERT INTO TenantNumberCounters (TenantId, LastEmployeeNumber, CreatedAt) VALUES (@tenantId, 0, SYSUTCDATETIME());
-            UPDATE TenantNumberCounters WITH (UPDLOCK, ROWLOCK)
-            SET LastEmployeeNumber = LastEmployeeNumber + 1, LastModifiedAt = SYSUTCDATETIME()
-            OUTPUT INSERTED.LastEmployeeNumber
-            WHERE TenantId = @tenantId AND LastEmployeeNumber < 9999;
-            """;
-        var parameter = command.CreateParameter();
-        parameter.ParameterName = "@tenantId";
-        parameter.Value = tenantId;
-        command.Parameters.Add(parameter);
-        var value = await command.ExecuteScalarAsync(cancellationToken);
-        if (value is null or DBNull)
-            throw new Operia.Application.Common.Exceptions.ConflictException("Employee code range EMP-0001 through EMP-9999 is exhausted.");
-        return $"EMP-{Convert.ToInt32(value):0000}";
     }
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();

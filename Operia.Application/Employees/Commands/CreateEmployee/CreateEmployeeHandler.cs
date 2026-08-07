@@ -9,6 +9,7 @@ namespace Operia.Application.Employees.Commands.CreateEmployee;
 public sealed class CreateEmployeeHandler : IRequestHandler<CreateEmployeeCommand, EmployeeDto>
 {
     private readonly IApplicationDbContext _db;
+    private readonly IEmployeeCodeGenerator _employeeCodeGenerator;
     private readonly IIdentityService _identityService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
@@ -16,12 +17,14 @@ public sealed class CreateEmployeeHandler : IRequestHandler<CreateEmployeeComman
 
     public CreateEmployeeHandler(
         IApplicationDbContext db,
+        IEmployeeCodeGenerator employeeCodeGenerator,
         IIdentityService identityService,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         IFileStorageService files)
     {
         _db = db;
+        _employeeCodeGenerator = employeeCodeGenerator;
         _identityService = identityService;
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
@@ -52,7 +55,7 @@ public sealed class CreateEmployeeHandler : IRequestHandler<CreateEmployeeComman
                 tenantId,
                 cancellationToken);
 
-            var code = await EmployeeHandlerHelpers.NextCodeAsync(_db, tenantId, cancellationToken);
+            var code = await _employeeCodeGenerator.ReserveNextAsync(tenantId, cancellationToken);
             var employee = new Employee
             {
                 TenantId = tenantId,
