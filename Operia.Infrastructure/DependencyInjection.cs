@@ -16,6 +16,7 @@ using Operia.Infrastructure.Services;
 using Operia.SharedKernel.Interfaces;
 using Operia.Application.Employees;
 using Operia.Application.Employees.Commands.CreateEmployee;
+using Operia.Application.Onboarding.Commands.SetupBusiness;
 
 namespace Operia.Infrastructure;
 
@@ -61,12 +62,8 @@ public static class DependencyInjection
         services.AddScoped<IEmployeeCodeGenerator, EmployeeCodeGenerator>();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-        services.AddScoped<IRegistrationRequestRepository, RegistrationRequestRepository>();
         services.AddScoped<ITenantRepository, TenantRepository>();
-        services.AddScoped<IBusinessRepository, BusinessRepository>();
-        services.AddScoped<IBusinessGalleryRepository, BusinessGalleryRepository>();
-        services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
+        services.AddScoped<IOnboardingBusinessGalleryStore, OnboardingBusinessGalleryStore>();
         services.AddScoped<ITenantSubscriptionRepository, TenantSubscriptionRepository>();
         services.AddScoped<IPlatformRevenueRepository, PlatformRevenueRepository>();
 

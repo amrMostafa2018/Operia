@@ -17,20 +17,20 @@ public sealed class ActivateSubscriptionHandler : IRequestHandler<ActivateSubscr
     private readonly ITenantSubscriptionRepository _tenantSubscriptionRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IApplicationDbContext _dbContext;
 
     public ActivateSubscriptionHandler(
         ITenantRepository tenantRepository,
         ITenantSubscriptionRepository tenantSubscriptionRepository,
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
-        IUnitOfWork unitOfWork)
+        IApplicationDbContext dbContext)
     {
         _tenantRepository = tenantRepository;
         _tenantSubscriptionRepository = tenantSubscriptionRepository;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
     }
 
     public async Task Handle(ActivateSubscriptionCommand request, CancellationToken cancellationToken)
@@ -82,6 +82,6 @@ public sealed class ActivateSubscriptionHandler : IRequestHandler<ActivateSubscr
             subscription.EndDate = today.AddDays(subscription.Plan.TrialDays);
         }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

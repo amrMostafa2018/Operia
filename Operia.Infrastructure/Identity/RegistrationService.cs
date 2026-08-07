@@ -1,6 +1,7 @@
 using Operia.SharedKernel.Errors;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Operia.Application.Auth.DTOs;
 using Operia.Application.Common.Authorization;
@@ -8,8 +9,8 @@ using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Domain.Entities;
 using Operia.Domain.Exceptions;
-using Operia.Domain.Interfaces;
 using Operia.Infrastructure.Options;
+using Operia.Infrastructure.Persistence;
 using Operia.SharedKernel.Interfaces;
 
 namespace Operia.Infrastructure.Identity;
@@ -18,7 +19,7 @@ public sealed class RegistrationService : IRegistrationService
 {
     private const string PasswordProtectorPurpose = "Registration.Password";
 
-    private readonly IRegistrationRequestRepository _registrationRequestRepository;
+    private readonly ApplicationDbContext _dbContext;
     private readonly IIdentityService _identityService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IOtpSender _otpSender;
@@ -28,7 +29,7 @@ public sealed class RegistrationService : IRegistrationService
     private readonly IUnitOfWork _unitOfWork;
 
     public RegistrationService(
-        IRegistrationRequestRepository registrationRequestRepository,
+        ApplicationDbContext dbContext,
         IIdentityService identityService,
         UserManager<ApplicationUser> userManager,
         IOtpSender otpSender,
@@ -37,7 +38,7 @@ public sealed class RegistrationService : IRegistrationService
         IDataProtectionProvider dataProtectionProvider,
         IUnitOfWork unitOfWork)
     {
-        _registrationRequestRepository = registrationRequestRepository;
+        _dbContext = dbContext;
         _identityService = identityService;
         _userManager = userManager;
         _otpSender = otpSender;
@@ -56,8 +57,10 @@ public sealed class RegistrationService : IRegistrationService
     {
         await ValidatePasswordAsync(phoneNumber, password);
 
-        var existingRequests = await _registrationRequestRepository.GetByPhoneAsync(phoneNumber, cancellationToken);
-        _registrationRequestRepository.RemoveRange(existingRequests);
+        var existingRequests = await _dbContext.RegistrationRequests
+            .Where(existingRequest => existingRequest.PhoneNumber == phoneNumber)
+            .ToListAsync(cancellationToken);
+        _dbContext.RegistrationRequests.RemoveRange(existingRequests);
 
         var request = new RegistrationRequest
         {
@@ -70,7 +73,7 @@ public sealed class RegistrationService : IRegistrationService
 
         var code = SetNewOtp(request);
 
-        await _registrationRequestRepository.AddAsync(request, cancellationToken);
+        await _dbContext.RegistrationRequests.AddAsync(request, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         await _otpSender.SendOtpAsync(phoneNumber, code, cancellationToken);
@@ -84,7 +87,8 @@ public sealed class RegistrationService : IRegistrationService
         string registrationId,
         CancellationToken cancellationToken = default)
     {
-        var request = await _registrationRequestRepository.GetByIdAsync(registrationId, cancellationToken)
+        var request = await _dbContext.RegistrationRequests
+            .FirstOrDefaultAsync(registrationRequest => registrationRequest.Id == registrationId, cancellationToken)
             ?? throw new NotFoundException(nameof(RegistrationRequest), registrationId);
 
         var code = SetNewOtp(request);
@@ -98,7 +102,8 @@ public sealed class RegistrationService : IRegistrationService
         string code,
         CancellationToken cancellationToken = default)
     {
-        var request = await _registrationRequestRepository.GetByIdAsync(registrationId, cancellationToken)
+        var request = await _dbContext.RegistrationRequests
+            .FirstOrDefaultAsync(registrationRequest => registrationRequest.Id == registrationId, cancellationToken)
             ?? throw new NotFoundException(nameof(RegistrationRequest), registrationId);
 
         if (request.OtpExpiry < _dateTimeProvider.UtcNow)
@@ -147,7 +152,7 @@ public sealed class RegistrationService : IRegistrationService
                         ValidationFailureFactory.Create("identity", ApiErrorCodes.Auth.IdentityError, e.Description)));
             }
 
-            _registrationRequestRepository.Remove(request);
+            _dbContext.RegistrationRequests.Remove(request);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
             return user.Id;

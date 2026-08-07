@@ -15,18 +15,18 @@ public sealed class ApproveAddBalancePlatformHandler : IRequestHandler<ApproveAd
     private readonly IPlatformRevenueRepository _platformRevenueRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly IDateTimeProvider _dateTimeProvider;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IApplicationDbContext _dbContext;
 
     public ApproveAddBalancePlatformHandler(
         IPlatformRevenueRepository platformRevenueRepository,
         ITenantRepository tenantRepository,
         IDateTimeProvider dateTimeProvider,
-        IUnitOfWork unitOfWork)
+        IApplicationDbContext dbContext)
     {
         _platformRevenueRepository = platformRevenueRepository;
         _tenantRepository = tenantRepository;
         _dateTimeProvider = dateTimeProvider;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
     }
 
     public async Task Handle(ApproveAddBalancePlatformCommand request, CancellationToken cancellationToken)
@@ -54,6 +54,6 @@ public sealed class ApproveAddBalancePlatformHandler : IRequestHandler<ApproveAd
         revenue.Status = PlatformRevenueStatus.Confirmed;
         revenue.ConfirmedAt = _dateTimeProvider.UtcNow;
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

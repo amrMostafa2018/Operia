@@ -17,7 +17,7 @@ public sealed class GetOnboardingStatusHandler
     private readonly IPlatformRevenueRepository _platformRevenueRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IApplicationDbContext _dbContext;
 
     public GetOnboardingStatusHandler(
         ITenantRepository tenantRepository,
@@ -25,14 +25,14 @@ public sealed class GetOnboardingStatusHandler
         IPlatformRevenueRepository platformRevenueRepository,
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
-        IUnitOfWork unitOfWork)
+        IApplicationDbContext dbContext)
     {
         _tenantRepository = tenantRepository;
         _tenantSubscriptionRepository = tenantSubscriptionRepository;
         _platformRevenueRepository = platformRevenueRepository;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
     }
 
 
@@ -105,7 +105,7 @@ public sealed class GetOnboardingStatusHandler
                 if (trackedSubscription is not null)
                 {
                     trackedSubscription.Status = SubscriptionStatus.Expired;
-                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    await _dbContext.SaveChangesAsync(cancellationToken);
                 }
 
                 return BuildStatusDto(

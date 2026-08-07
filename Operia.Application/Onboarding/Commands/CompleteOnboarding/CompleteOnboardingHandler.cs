@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Onboarding.DTOs;
@@ -15,23 +16,20 @@ public sealed class CompleteOnboardingHandler
     : IRequestHandler<CompleteOnboardingCommand, OnboardingResultDto>
 {
     private readonly ITenantRepository _tenantRepository;
-    private readonly ISubscriptionPlanRepository _subscriptionPlanRepository;
+    private readonly IApplicationDbContext _dbContext;
     private readonly ITenantSubscriptionRepository _tenantSubscriptionRepository;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IUnitOfWork _unitOfWork;
 
     public CompleteOnboardingHandler(
         ITenantRepository tenantRepository,
-        ISubscriptionPlanRepository subscriptionPlanRepository,
+        IApplicationDbContext dbContext,
         ITenantSubscriptionRepository tenantSubscriptionRepository,
-        ICurrentUserService currentUserService,
-        IUnitOfWork unitOfWork)
+        ICurrentUserService currentUserService)
     {
         _tenantRepository = tenantRepository;
-        _subscriptionPlanRepository = subscriptionPlanRepository;
+        _dbContext = dbContext;
         _tenantSubscriptionRepository = tenantSubscriptionRepository;
         _currentUserService = currentUserService;
-        _unitOfWork = unitOfWork;
     }
 
     public async Task<OnboardingResultDto> Handle(
@@ -59,7 +57,8 @@ public sealed class CompleteOnboardingHandler
                 pendingSubscription.Status.ToString());
         }
 
-        var plan = await _subscriptionPlanRepository.GetActiveByIdAsync(request.PlanId, cancellationToken)
+        var plan = await _dbContext.SubscriptionPlans
+            .FirstOrDefaultAsync(plan => plan.Id == request.PlanId && plan.IsActive, cancellationToken)
             ?? throw new NotFoundException(nameof(SubscriptionPlan), request.PlanId);
 
         var amount = request.BillingType == BillingType.Monthly
@@ -77,7 +76,7 @@ public sealed class CompleteOnboardingHandler
         };
 
         await _tenantSubscriptionRepository.AddAsync(subscription, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return new OnboardingResultDto(
             tenant.Id,

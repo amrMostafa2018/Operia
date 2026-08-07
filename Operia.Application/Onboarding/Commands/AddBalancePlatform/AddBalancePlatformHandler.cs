@@ -21,7 +21,7 @@ public sealed class AddBalancePlatformHandler
     private readonly ICurrentUserService _currentUserService;
     private readonly IFileStorageService _fileStorageService;
     private readonly IDateTimeProvider _dateTimeProvider;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IApplicationDbContext _dbContext;
 
     public AddBalancePlatformHandler(
         ITenantRepository tenantRepository,
@@ -29,14 +29,14 @@ public sealed class AddBalancePlatformHandler
         ICurrentUserService currentUserService,
         IFileStorageService fileStorageService,
         IDateTimeProvider dateTimeProvider,
-        IUnitOfWork unitOfWork)
+        IApplicationDbContext dbContext)
     {
         _tenantRepository = tenantRepository;
         _platformRevenueRepository = platformRevenueRepository;
         _currentUserService = currentUserService;
         _fileStorageService = fileStorageService;
         _dateTimeProvider = dateTimeProvider;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
     }
 
     public async Task<AddBalancePlatformResultDto> Handle(
@@ -100,7 +100,7 @@ public sealed class AddBalancePlatformHandler
         };
 
         await _platformRevenueRepository.AddAsync(revenue, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return new AddBalancePlatformResultDto(revenue.Id, revenue.Amount);
     }

@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Operia.Application.Auth;
@@ -11,15 +12,15 @@ using Operia.Application.Common.Interfaces;
 using Operia.Application.Auth.DTOs;
 using Operia.Domain.Exceptions;
 using Operia.Domain.Entities;
-using Operia.Domain.Interfaces;
 using Operia.Infrastructure.Options;
+using Operia.Infrastructure.Persistence;
 using Operia.SharedKernel.Interfaces;
 
 namespace Operia.Infrastructure.Identity;
 
 public sealed class TokenService : ITokenService
 {
-    private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly ApplicationDbContext _dbContext;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly JwtSettings _jwtSettings;
@@ -27,14 +28,14 @@ public sealed class TokenService : ITokenService
     private readonly IUnitOfWork _unitOfWork;
 
     public TokenService(
-        IRefreshTokenRepository refreshTokenRepository,
+        ApplicationDbContext dbContext,
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
         IOptions<JwtSettings> jwtSettings,
         IDateTimeProvider dateTimeProvider,
         IUnitOfWork unitOfWork)
     {
-        _refreshTokenRepository = refreshTokenRepository;
+        _dbContext = dbContext;
         _userManager = userManager;
         _roleManager = roleManager;
         _jwtSettings = jwtSettings.Value;
@@ -63,12 +64,13 @@ public sealed class TokenService : ITokenService
         string refreshToken,
         CancellationToken cancellationToken = default)
     {
-        var storedToken = await _refreshTokenRepository.GetActiveByTokenAsync(refreshToken, cancellationToken);
+        var storedToken = await _dbContext.RefreshTokens
+            .FirstOrDefaultAsync(token => token.Token == refreshToken, cancellationToken);
 
         if (storedToken is null || !storedToken.IsActive)
             return null;
 
-        _refreshTokenRepository.Revoke(storedToken, _dateTimeProvider.UtcNow);
+        storedToken.RevokedAt = _dateTimeProvider.UtcNow;
 
         var user = await _userManager.FindByIdAsync(storedToken.UserId)
             ?? throw new NotFoundException(nameof(ApplicationUser), storedToken.UserId);
@@ -94,11 +96,13 @@ public sealed class TokenService : ITokenService
         string userId,
         CancellationToken cancellationToken = default)
     {
-        var tokens = await _refreshTokenRepository.GetActiveByUserIdAsync(userId, cancellationToken);
+        var tokens = await _dbContext.RefreshTokens
+            .Where(token => token.UserId == userId && token.RevokedAt == null)
+            .ToListAsync(cancellationToken);
 
         foreach (var token in tokens)
         {
-            _refreshTokenRepository.Revoke(token, _dateTimeProvider.UtcNow);
+            token.RevokedAt = _dateTimeProvider.UtcNow;
         }
     }
 
@@ -175,7 +179,7 @@ public sealed class TokenService : ITokenService
             UserId = user.Id
         };
 
-        await _refreshTokenRepository.AddAsync(refreshToken, cancellationToken);
+        await _dbContext.RefreshTokens.AddAsync(refreshToken, cancellationToken);
         return refreshToken;
     }
 }

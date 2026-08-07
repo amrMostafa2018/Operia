@@ -1,25 +1,30 @@
 using System.Text.Json;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Operia.Application.Common.Interfaces;
 using Operia.Application.Onboarding.DTOs;
-using Operia.Domain.Interfaces;
 
 namespace Operia.Application.Onboarding.Queries.GetSubscriptionPlans;
 
 public sealed class GetSubscriptionPlansHandler
     : IRequestHandler<GetSubscriptionPlansQuery, IReadOnlyList<SubscriptionPlanDto>>
 {
-    private readonly ISubscriptionPlanRepository _subscriptionPlanRepository;
+    private readonly IApplicationDbContext _dbContext;
 
-    public GetSubscriptionPlansHandler(ISubscriptionPlanRepository subscriptionPlanRepository)
+    public GetSubscriptionPlansHandler(IApplicationDbContext dbContext)
     {
-        _subscriptionPlanRepository = subscriptionPlanRepository;
+        _dbContext = dbContext;
     }
 
     public async Task<IReadOnlyList<SubscriptionPlanDto>> Handle(
         GetSubscriptionPlansQuery request,
         CancellationToken cancellationToken)
     {
-        var plans = await _subscriptionPlanRepository.GetAllActiveAsync(cancellationToken);
+        var plans = await _dbContext.SubscriptionPlans
+            .AsNoTracking()
+            .Where(plan => plan.IsActive)
+            .OrderBy(plan => plan.MonthlyPrice)
+            .ToListAsync(cancellationToken);
 
         return plans.Select(plan => new SubscriptionPlanDto(
             plan.Id,

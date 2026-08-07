@@ -15,8 +15,8 @@ public sealed class SetupBusinessHandler
     : IRequestHandler<SetupBusinessCommand, SetupBusinessResultDto>
 {
     private readonly ITenantRepository _tenantRepository;
-    private readonly IBusinessRepository _businessRepository;
-    private readonly IBusinessGalleryRepository _businessGalleryRepository;
+    private readonly IApplicationDbContext _dbContext;
+    private readonly IOnboardingBusinessGalleryStore _businessGalleryStore;
     private readonly IIdentityService _identityService;
     private readonly ICurrentUserService _currentUserService;
     private readonly IFileStorageService _fileStorageService;
@@ -25,8 +25,8 @@ public sealed class SetupBusinessHandler
 
     public SetupBusinessHandler(
         ITenantRepository tenantRepository,
-        IBusinessRepository businessRepository,
-        IBusinessGalleryRepository businessGalleryRepository,
+        IApplicationDbContext dbContext,
+        IOnboardingBusinessGalleryStore businessGalleryStore,
         IIdentityService identityService,
         ICurrentUserService currentUserService,
         IFileStorageService fileStorageService,
@@ -34,8 +34,8 @@ public sealed class SetupBusinessHandler
         IUnitOfWork unitOfWork)
     {
         _tenantRepository = tenantRepository;
-        _businessRepository = businessRepository;
-        _businessGalleryRepository = businessGalleryRepository;
+        _dbContext = dbContext;
+        _businessGalleryStore = businessGalleryStore;
         _identityService = identityService;
         _currentUserService = currentUserService;
         _fileStorageService = fileStorageService;
@@ -90,7 +90,7 @@ public sealed class SetupBusinessHandler
             if (business is null)
             {
                 business = CreateBusiness(existingTenant.Id, request.BusinessName);
-                await _businessRepository.AddAsync(business, cancellationToken);
+                await _dbContext.Businesses.AddAsync(business, cancellationToken);
             }
             else
             {
@@ -98,8 +98,7 @@ public sealed class SetupBusinessHandler
             }
 
             await UpdateLogoAsync(business, logoUrl, cancellationToken);
-            await _identityService.SetUserTenantIdAsync(userId, existingTenant.Id, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await PersistSetupAsync(userId, existingTenant.Id, cancellationToken);
 
             return new SetupBusinessResultDto(existingTenant.Id, business.Id);
         }
@@ -121,10 +120,9 @@ public sealed class SetupBusinessHandler
         var newBusiness = CreateBusiness(tenant.Id, request.BusinessName);
 
         await _tenantRepository.AddAsync(tenant, cancellationToken);
-        await _businessRepository.AddAsync(newBusiness, cancellationToken);
+        await _dbContext.Businesses.AddAsync(newBusiness, cancellationToken);
         await UpdateLogoAsync(newBusiness, logoUrl, cancellationToken);
-        await _identityService.SetUserTenantIdAsync(userId, tenant.Id, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await PersistSetupAsync(userId, tenant.Id, cancellationToken);
 
         return new SetupBusinessResultDto(tenant.Id, newBusiness.Id);
     }
@@ -145,14 +143,14 @@ public sealed class SetupBusinessHandler
         if (string.IsNullOrWhiteSpace(logoUrl))
             return;
 
-        var existingLogo = await _businessGalleryRepository.GetMainImageByBusinessIdAsync(
+        var existingLogo = await _businessGalleryStore.GetMainImageForOwnerScopeAsync(
             business.Id,
             business.TenantId,
             cancellationToken);
 
         if (existingLogo is null)
         {
-            await _businessGalleryRepository.AddAsync(new BusinessGallery
+            await _dbContext.BusinessGalleries.AddAsync(new BusinessGallery
             {
                 BusinessId = business.Id,
                 ImageUrl = logoUrl,
@@ -167,6 +165,25 @@ public sealed class SetupBusinessHandler
 
             existingLogo.ImageUrl = logoUrl;
             existingLogo.UploadedAt = _dateTimeProvider.UtcNow;
+        }
+    }
+
+    private async Task PersistSetupAsync(
+        string userId,
+        string tenantId,
+        CancellationToken cancellationToken)
+    {
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            await _identityService.SetUserTenantIdAsync(userId, tenantId, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            throw;
         }
     }
 
