@@ -9,6 +9,7 @@ using Operia.Domain.Enums;
 using Operia.Domain.Exceptions;
 using Operia.Domain.Interfaces;
 using Operia.SharedKernel.Interfaces;
+using Operia.SharedKernel.Errors;
 
 namespace Operia.Application.Onboarding.Commands.AddBalancePlatform;
 
@@ -43,7 +44,7 @@ public sealed class AddBalancePlatformHandler
         CancellationToken cancellationToken)
     {
         var userId = _currentUserService.UserId
-            ?? throw new UnauthorizedAccessException();
+            ?? throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.AuthenticationRequired, "detail");
 
         await using var screenshot = request.Screenshot!;
 

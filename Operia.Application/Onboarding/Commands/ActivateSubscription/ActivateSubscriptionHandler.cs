@@ -7,6 +7,7 @@ using Operia.Domain.Enums;
 using Operia.Domain.Exceptions;
 using Operia.Domain.Interfaces;
 using Operia.SharedKernel.Interfaces;
+using Operia.SharedKernel.Errors;
 
 namespace Operia.Application.Onboarding.Commands.ActivateSubscription;
 
@@ -35,7 +36,7 @@ public sealed class ActivateSubscriptionHandler : IRequestHandler<ActivateSubscr
     public async Task Handle(ActivateSubscriptionCommand request, CancellationToken cancellationToken)
     {
         var userId = _currentUserService.UserId
-            ?? throw new UnauthorizedAccessException();
+            ?? throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.AuthenticationRequired, "detail");
 
         var tenantStatus = await _tenantRepository.GetByOwnerUserIdForStatusAsync(userId, cancellationToken)
             ?? throw new NotFoundException(nameof(Tenant), userId);

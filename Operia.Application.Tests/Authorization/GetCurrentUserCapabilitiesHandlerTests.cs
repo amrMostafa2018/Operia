@@ -1,6 +1,7 @@
 using Moq;
 using Operia.Application.Auth.Queries.GetCurrentUserCapabilities;
 using Operia.Application.Common.Authorization;
+using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Xunit;
 
@@ -35,7 +36,7 @@ public sealed class GetCurrentUserCapabilitiesHandlerTests
         var permissionStore = new Mock<IPermissionGrantStore>();
         var handler = new GetCurrentUserCapabilitiesHandler(currentUser.Object, permissionStore.Object);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<UnauthorizedException>(() =>
             handler.Handle(new GetCurrentUserCapabilitiesQuery(), CancellationToken.None));
 
         permissionStore.Verify(

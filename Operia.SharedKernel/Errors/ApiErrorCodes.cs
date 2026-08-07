@@ -8,6 +8,7 @@ public static class ApiErrorCodes
 {
     public static class Auth
     {
+        public const string AuthenticationRequired = "AuthenticationRequired";
         public const string EmailAlreadyRegistered = "EmailAlreadyRegistered";
         public const string EmailRequired = "EmailRequired";
         public const string EmailInvalid = "EmailInvalid";
@@ -26,8 +27,20 @@ public static class ApiErrorCodes
         public const string IdentityError = "IdentityError";
     }
 
+    public static class Access
+    {
+        public const string TenantContextRequired = "TenantContextRequired";
+        public const string TenantAccessDenied = "TenantAccessDenied";
+    }
+
     public static class EmployeeSchedule
     {
         public const string OutsideBusinessHours = "EmployeeScheduleOutsideBusinessHours";
+    }
+
+    public static class Settings
+    {
+        public const string GalleryPhotoLimitExceeded = "GalleryPhotoLimitExceeded";
+        public const string BusinessProfileRequired = "BusinessProfileRequired";
     }
 }

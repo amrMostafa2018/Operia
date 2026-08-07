@@ -1,5 +1,7 @@
 using System.Globalization;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Common.Exceptions;
+using Operia.SharedKernel.Errors;
 using Operia.Application.Common.PhoneNumbers;
 using Operia.Domain.Entities;
 
@@ -10,7 +12,7 @@ internal static class BranchMapper
 {
     public static string RequireTenant(ICurrentUserService currentUser) =>
         currentUser.TenantId
-        ?? throw new UnauthorizedAccessException("The current user does not have a tenant.");
+        ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
 
     public static Branch CreateEntity(
         string tenantId,

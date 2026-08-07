@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Entities;
@@ -72,6 +73,6 @@ public sealed class TenantIsolationTests
 
         await FluentActions.Invoking(() => db.SaveChangesAsync())
             .Should()
-            .ThrowAsync<UnauthorizedAccessException>();
+            .ThrowAsync<ForbiddenException>();
     }
 }

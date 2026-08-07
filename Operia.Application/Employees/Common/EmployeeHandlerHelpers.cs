@@ -8,6 +8,7 @@ using Operia.Application.Common.Models;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
 using Operia.Domain.Exceptions;
+using Operia.SharedKernel.Errors;
 using ValidationException = Operia.Application.Common.Exceptions.ValidationException;
 
 namespace Operia.Application.Employees.Common;
@@ -17,7 +18,7 @@ internal static class EmployeeHandlerHelpers
     private static readonly string[] AllowedRoles = [Roles.SuperAdmin, Roles.Admin, Roles.Reception, Roles.Staff];
 
     public static string RequireTenant(ICurrentUserService currentUser) =>
-        currentUser.TenantId ?? throw new UnauthorizedAccessException("The current user does not have a tenant.");
+        currentUser.TenantId ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
 
     public static string? Clean(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

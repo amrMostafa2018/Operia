@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Common.Exceptions;
 using Operia.Domain.Common;
 using Operia.Domain.Entities;
 using Operia.Domain.Interfaces;
 using Operia.Infrastructure.Identity;
 using Operia.SharedKernel.Interfaces;
+using Operia.SharedKernel.Errors;
 
 namespace Operia.Infrastructure.Persistence;
 
@@ -107,8 +109,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
 
             if (!string.Equals(entry.Entity.TenantId, tenantId, StringComparison.Ordinal))
             {
-                throw new UnauthorizedAccessException(
-                    "A tenant-scoped record cannot be written outside the authenticated tenant.");
+                throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantAccessDenied);
             }
         }
     }

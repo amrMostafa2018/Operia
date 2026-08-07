@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Domain.Entities;
+using Operia.SharedKernel.Errors;
 
 namespace Operia.Application.Settings.Common;
 
@@ -10,14 +12,14 @@ internal static class SettingsHandlerHelpers
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public static string RequireTenant(ICurrentUserService currentUserService)
-        => currentUserService.TenantId ?? throw new UnauthorizedAccessException("The current user does not have a tenant.");
+        => currentUserService.TenantId ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
 
     public static string RequireUser(ICurrentUserService currentUserService)
-        => currentUserService.UserId ?? throw new UnauthorizedAccessException("The current user is not authenticated.");
+        => currentUserService.UserId ?? throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.AuthenticationRequired, "detail");
 
     public static async Task<Business> GetBusinessAsync(IApplicationDbContext db, string tenantId, CancellationToken cancellationToken)
         => await db.Businesses.FirstOrDefaultAsync(x => x.TenantId == tenantId, cancellationToken)
-           ?? throw new InvalidOperationException("The current tenant has no business profile.");
+           ?? throw ConflictException.FromCode(ApiErrorCodes.Settings.BusinessProfileRequired);
 
     public static async Task<BusinessSettings> GetBusinessSettingsAsync(IApplicationDbContext db, string tenantId, CancellationToken cancellationToken)
     {

@@ -1,5 +1,25 @@
 [
   {
+    "Name": "AuthenticationRequired",
+    "Value": "تسجيل الدخول مطلوب."
+  },
+  {
+    "Name": "TenantContextRequired",
+    "Value": "حسابك غير مرتبط بنشاط."
+  },
+  {
+    "Name": "TenantAccessDenied",
+    "Value": "لا يمكنك الوصول إلى سجلات خارج نشاطك."
+  },
+  {
+    "Name": "GalleryPhotoLimitExceeded",
+    "Value": "الحد الأقصى لصور النشاط هو ست صور."
+  },
+  {
+    "Name": "BusinessProfileRequired",
+    "Value": "أكمل الملف التعريفي للنشاط قبل تعديل إعداداته."
+  },
+  {
     "Name": "EmailAlreadyRegistered",
     "Value": "هذا البريد الإلكتروني مسجل بالفعل"
   },

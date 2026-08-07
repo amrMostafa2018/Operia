@@ -1,9 +1,11 @@
 using MediatR;
+using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Onboarding.DTOs;
 using Operia.Domain.Enums;
 using Operia.Domain.Interfaces;
 using Operia.SharedKernel.Interfaces;
+using Operia.SharedKernel.Errors;
 
 namespace Operia.Application.Onboarding.Queries.GetOnboardingStatus;
 
@@ -39,7 +41,7 @@ public sealed class GetOnboardingStatusHandler
         CancellationToken cancellationToken)
     {
         var userId = _currentUserService.UserId
-            ?? throw new UnauthorizedAccessException();
+            ?? throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.AuthenticationRequired, "detail");
 
         var tenantId = _currentUserService.TenantId;
 

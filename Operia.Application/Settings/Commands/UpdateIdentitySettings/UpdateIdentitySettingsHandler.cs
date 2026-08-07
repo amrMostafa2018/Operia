@@ -1,10 +1,13 @@
+using FluentValidation.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Common.Auditing;
+using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Settings.Common;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
+using Operia.SharedKernel.Errors;
 
 namespace Operia.Application.Settings.Commands.UpdateIdentitySettings;
 
@@ -47,7 +50,15 @@ public sealed class UpdateIdentitySettingsHandler : IRequestHandler<UpdateIdenti
 
         var kept = model.ExistingPhotoUrls.Where(x => !string.IsNullOrWhiteSpace(x)).ToHashSet(StringComparer.Ordinal);
         if (kept.Count + model.NewPhotos.Count > 6)
-            throw new InvalidOperationException("A maximum of six business photos is allowed.");
+        {
+            throw new ValidationException(
+            [
+                new ValidationFailure("newPhotos", "")
+                {
+                    ErrorCode = ApiErrorCodes.Settings.GalleryPhotoLimitExceeded
+                }
+            ]);
+        }
 
         foreach (var item in photos.Where(x => !kept.Contains(x.ImageUrl)).ToList())
         {

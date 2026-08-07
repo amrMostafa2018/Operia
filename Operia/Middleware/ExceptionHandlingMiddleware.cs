@@ -58,8 +58,17 @@ public sealed class ExceptionHandlingMiddleware
             ConflictException conflict => (
                 StatusCodes.Status409Conflict,
                 "Conflict",
-                new Dictionary<string, string[]> { ["detail"] = [conflict.Message] },
-                null),
+                new Dictionary<string, string[]>
+                {
+                    [conflict.Field] = [
+                        conflict.ErrorCode is not null
+                            ? ApiErrorCatalog.GetMessage(conflict.ErrorCode, language)
+                            : conflict.Message
+                    ]
+                },
+                conflict.ErrorCode is not null
+                    ? new Dictionary<string, string[]> { [conflict.Field] = [conflict.ErrorCode] }
+                    : null),
 
             UnauthorizedException unauthorized => (
                 StatusCodes.Status401Unauthorized,
@@ -76,23 +85,20 @@ public sealed class ExceptionHandlingMiddleware
                     ? new Dictionary<string, string[]> { [unauthorized.Field] = [unauthorized.ErrorCode] }
                     : null),
 
-            UnauthorizedAccessException unauthorizedAccess => (
-                StatusCodes.Status401Unauthorized,
-                "Unauthorized",
-                new Dictionary<string, string[]> { ["detail"] = [unauthorizedAccess.Message] },
-                null),
-
-            ArgumentException argument => (
-                StatusCodes.Status400BadRequest,
-                "Bad Request",
-                new Dictionary<string, string[]> { ["detail"] = [argument.Message] },
-                null),
-
-            InvalidOperationException invalidOperation => (
-                StatusCodes.Status400BadRequest,
-                "Bad Request",
-                new Dictionary<string, string[]> { ["detail"] = [invalidOperation.Message] },
-                null),
+            ForbiddenException forbidden => (
+                StatusCodes.Status403Forbidden,
+                "Forbidden",
+                new Dictionary<string, string[]>
+                {
+                    [forbidden.Field] = [
+                        forbidden.ErrorCode is not null
+                            ? ApiErrorCatalog.GetMessage(forbidden.ErrorCode, language)
+                            : forbidden.Message
+                    ]
+                },
+                forbidden.ErrorCode is not null
+                    ? new Dictionary<string, string[]> { [forbidden.Field] = [forbidden.ErrorCode] }
+                    : null),
 
             _ => (
                 StatusCodes.Status500InternalServerError,

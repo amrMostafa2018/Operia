@@ -1,5 +1,25 @@
 [
   {
+    "Name": "AuthenticationRequired",
+    "Value": "Authentication is required."
+  },
+  {
+    "Name": "TenantContextRequired",
+    "Value": "Your account is not associated with an activity."
+  },
+  {
+    "Name": "TenantAccessDenied",
+    "Value": "You cannot access records outside your activity."
+  },
+  {
+    "Name": "GalleryPhotoLimitExceeded",
+    "Value": "A maximum of six business photos is allowed."
+  },
+  {
+    "Name": "BusinessProfileRequired",
+    "Value": "Complete the business profile before changing activity settings."
+  },
+  {
     "Name": "EmailAlreadyRegistered",
     "Value": "Email is already registered."
   },

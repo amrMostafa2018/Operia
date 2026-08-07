@@ -1,4 +1,5 @@
 using MediatR;
+using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Onboarding.Common;
 using Operia.Application.Onboarding.DTOs;
@@ -6,6 +7,7 @@ using Operia.Domain.Entities;
 using Operia.Domain.Enums;
 using Operia.Domain.Interfaces;
 using Operia.SharedKernel.Interfaces;
+using Operia.SharedKernel.Errors;
 
 namespace Operia.Application.Onboarding.Commands.SetupBusiness;
 
@@ -46,7 +48,7 @@ public sealed class SetupBusinessHandler
         CancellationToken cancellationToken)
     {
         var userId = _currentUserService.UserId
-            ?? throw new UnauthorizedAccessException();
+            ?? throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.AuthenticationRequired, "detail");
 
         string? logoUrl = null;
         string? predeterminedTenantId = null;
