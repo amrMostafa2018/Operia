@@ -24,7 +24,10 @@ internal static class SettingsHandlerHelpers
         var business = await GetBusinessAsync(db, tenantId, cancellationToken);
         var settings = await db.BusinessSettings.FirstOrDefaultAsync(x => x.BusinessId == business.Id, cancellationToken);
         if (settings is not null)
+        {
             return settings;
+        }
+
         settings = new BusinessSettings { BusinessId = business.Id };
         await db.BusinessSettings.AddAsync(settings, cancellationToken);
         return settings;
