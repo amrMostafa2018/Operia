@@ -9,6 +9,10 @@ public interface ITenantSubscriptionRepository
         string id,
         CancellationToken cancellationToken = default);
 
+    Task<TenantSubscription?> GetByIdForPlatformAsync(
+        string id,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<TenantSubscription>> GetFilteredByTenantAsync(
         string tenantId,
         DateOnly? dateFrom,

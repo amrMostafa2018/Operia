@@ -16,9 +16,16 @@ public sealed class BusinessGalleryRepository : IBusinessGalleryRepository
 
     public Task<BusinessGallery?> GetMainImageByBusinessIdAsync(
         string businessId,
+        string tenantId,
         CancellationToken cancellationToken = default)
         => _context.BusinessGalleries
-            .FirstOrDefaultAsync(g => g.BusinessId == businessId && g.IsMainImage, cancellationToken);
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(
+                g => g.BusinessId == businessId
+                     && g.IsMainImage
+                     && g.Business != null
+                     && g.Business.TenantId == tenantId,
+                cancellationToken);
 
     public Task AddAsync(BusinessGallery gallery, CancellationToken cancellationToken = default)
         => _context.BusinessGalleries.AddAsync(gallery, cancellationToken).AsTask();

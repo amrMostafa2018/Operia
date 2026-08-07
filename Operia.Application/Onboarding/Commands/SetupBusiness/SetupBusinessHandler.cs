@@ -145,6 +145,7 @@ public sealed class SetupBusinessHandler
 
         var existingLogo = await _businessGalleryRepository.GetMainImageByBusinessIdAsync(
             business.Id,
+            business.TenantId,
             cancellationToken);
 
         if (existingLogo is null)

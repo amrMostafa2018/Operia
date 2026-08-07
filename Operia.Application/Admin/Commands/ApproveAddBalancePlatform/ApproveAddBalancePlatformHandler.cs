@@ -31,7 +31,7 @@ public sealed class ApproveAddBalancePlatformHandler : IRequestHandler<ApproveAd
 
     public async Task Handle(ApproveAddBalancePlatformCommand request, CancellationToken cancellationToken)
     {
-        var revenue = await _platformRevenueRepository.GetByIdAsync(request.RevenueId, cancellationToken)
+        var revenue = await _platformRevenueRepository.GetByIdForPlatformAsync(request.RevenueId, cancellationToken)
             ?? throw new NotFoundException(nameof(PlatformRevenue), request.RevenueId);
 
         if (revenue.Status == PlatformRevenueStatus.Confirmed)

@@ -6,6 +6,7 @@ public interface IBusinessGalleryRepository
 {
     Task<BusinessGallery?> GetMainImageByBusinessIdAsync(
         string businessId,
+        string tenantId,
         CancellationToken cancellationToken = default);
 
     Task AddAsync(BusinessGallery gallery, CancellationToken cancellationToken = default);

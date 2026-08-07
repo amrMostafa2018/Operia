@@ -18,6 +18,7 @@ public sealed class TenantRepository : ITenantRepository
         string ownerUserId,
         CancellationToken cancellationToken = default)
         => _context.Tenants
+            .IgnoreQueryFilters()
             .Include(t => t.Businesses)
             .Include(t => t.Subscriptions)
             .FirstOrDefaultAsync(t => t.OwnerUserId == ownerUserId, cancellationToken);
@@ -26,6 +27,7 @@ public sealed class TenantRepository : ITenantRepository
         string ownerUserId,
         CancellationToken cancellationToken = default)
         => _context.Tenants
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Include(t => t.Businesses)
             .Include(t => t.Subscriptions)

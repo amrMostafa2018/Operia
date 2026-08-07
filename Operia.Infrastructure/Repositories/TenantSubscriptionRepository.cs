@@ -23,6 +23,15 @@ public sealed class TenantSubscriptionRepository : ITenantSubscriptionRepository
             .Include(s => s.Plan)
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
+    public Task<TenantSubscription?> GetByIdForPlatformAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+        => _context.TenantSubscriptions
+            .IgnoreQueryFilters()
+            .Include(s => s.Tenant)
+            .Include(s => s.Plan)
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+
     public async Task<IReadOnlyList<TenantSubscription>> GetFilteredByTenantAsync(
         string tenantId,
         DateOnly? dateFrom,

@@ -28,6 +28,7 @@ public class EmployeeBranchMappingTests
     private readonly Mock<IFileStorageService> _fileStorageServiceMock = new();
     private readonly Mock<IEmployeeCodeGenerator> _employeeCodeGeneratorMock = new();
     private readonly TestApplicationDbContext _db;
+    private string? _tenantId = "tenant-1";
 
     public EmployeeBranchMappingTests()
     {
@@ -44,7 +45,7 @@ public class EmployeeBranchMappingTests
         _unitOfWorkMock.Setup(x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         _currentUserServiceMock.Setup(x => x.UserId).Returns("current-admin");
-        _currentUserServiceMock.Setup(x => x.TenantId).Returns("tenant-1");
+        _currentUserServiceMock.Setup(x => x.TenantId).Returns(() => _tenantId);
         _currentUserServiceMock.Setup(x => x.DisplayName).Returns("Admin Tester");
         _employeeCodeGeneratorMock.Setup(x => x.ReserveNextAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("EMP-0001");
@@ -57,8 +58,10 @@ public class EmployeeBranchMappingTests
         var branch1 = new Branch { Id = "b-1", TenantId = "tenant-1", Name = "Branch 1", Address = "Addr", PhoneNumber = "123", GoogleMapsUrl = "url" };
         var branch2 = new Branch { Id = "b-2", TenantId = "tenant-1", Name = "Branch 2", Address = "Addr", PhoneNumber = "123", GoogleMapsUrl = "url" };
         var crossBranch = new Branch { Id = "b-cross", TenantId = "tenant-2", Name = "Cross Branch", Address = "Addr", PhoneNumber = "123", GoogleMapsUrl = "url" };
+        _tenantId = null;
         _db.Branches.AddRange(branch1, branch2, crossBranch);
         await _db.SaveChangesAsync();
+        _tenantId = "tenant-1";
 
         var handler = new CreateEmployeeHandler(
             _db,

@@ -1,8 +1,9 @@
 using Operia.Domain.Common;
+using Operia.Domain.Interfaces;
 
 namespace Operia.Domain.Entities;
 
-public sealed class Branch : Entity
+public sealed class Branch : Entity, ITenantScoped
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string TenantId { get; set; } = string.Empty;

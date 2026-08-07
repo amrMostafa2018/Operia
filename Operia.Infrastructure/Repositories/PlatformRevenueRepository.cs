@@ -28,6 +28,13 @@ public sealed class PlatformRevenueRepository : IPlatformRevenueRepository
         CancellationToken cancellationToken = default)
         => _context.PlatformRevenues.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
+    public Task<PlatformRevenue?> GetByIdForPlatformAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+        => _context.PlatformRevenues
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+
     public Task AddAsync(PlatformRevenue revenue, CancellationToken cancellationToken = default)
         => _context.PlatformRevenues.AddAsync(revenue, cancellationToken).AsTask();
 }

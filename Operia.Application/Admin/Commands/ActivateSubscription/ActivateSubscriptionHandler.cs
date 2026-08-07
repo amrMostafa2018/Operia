@@ -28,7 +28,7 @@ public sealed class ActivateSubscriptionHandler : IRequestHandler<ActivateSubscr
 
     public async Task Handle(ActivateSubscriptionCommand request, CancellationToken cancellationToken)
     {
-        var subscription = await _tenantSubscriptionRepository.GetByIdWithDetailsAsync(
+        var subscription = await _tenantSubscriptionRepository.GetByIdForPlatformAsync(
             request.SubscriptionId,
             cancellationToken)
             ?? throw new NotFoundException(nameof(TenantSubscription), request.SubscriptionId);

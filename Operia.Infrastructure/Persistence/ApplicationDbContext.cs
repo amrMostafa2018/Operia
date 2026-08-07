@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Operia.Application.Common.Interfaces;
 using Operia.Domain.Common;
 using Operia.Domain.Entities;
+using Operia.Domain.Interfaces;
 using Operia.Infrastructure.Identity;
 using Operia.SharedKernel.Interfaces;
 
@@ -12,6 +13,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
 {
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ICurrentUserService _currentUserService;
+
+    private string? CurrentTenantId => _currentUserService.TenantId;
 
     public ApplicationDbContext(
         DbContextOptions<ApplicationDbContext> options,
@@ -43,10 +46,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+        ApplyTenantQueryFilters(modelBuilder);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        EnforceTenantWriteScope();
+
         var now = _dateTimeProvider.UtcNow;
         var userId = _currentUserService.UserId;
 
@@ -65,5 +71,45 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
         }
 
         return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ApplyTenantQueryFilters(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Business>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<TenantSubscription>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<PlatformRevenue>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<Branch>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AuditLog>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<Employee>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<EmployeeWorkingDay>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<UserBranch>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<TenantNumberCounter>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<BusinessGallery>().HasQueryFilter(
+            x => x.Business != null && x.Business.TenantId == CurrentTenantId);
+        modelBuilder.Entity<BusinessSettings>().HasQueryFilter(
+            x => x.Business != null && x.Business.TenantId == CurrentTenantId);
+    }
+
+    private void EnforceTenantWriteScope()
+    {
+        var tenantId = CurrentTenantId;
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            return;
+        }
+
+        foreach (var entry in ChangeTracker.Entries<ITenantScoped>())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted))
+            {
+                continue;
+            }
+
+            if (!string.Equals(entry.Entity.TenantId, tenantId, StringComparison.Ordinal))
+            {
+                throw new UnauthorizedAccessException(
+                    "A tenant-scoped record cannot be written outside the authenticated tenant.");
+            }
+        }
     }
 }
