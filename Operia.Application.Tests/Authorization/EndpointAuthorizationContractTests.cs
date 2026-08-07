@@ -58,20 +58,19 @@ public sealed class EndpointAuthorizationContractTests
             ["OnboardingController.AddBalancePlatform"] = Policies.OnboardingManage,
             ["OnboardingController.Activate"] = Policies.OnboardingManage,
 
-            ["SettingsController.Get"] = Policies.SettingsManage,
-            ["SettingsController.Update"] = Policies.SettingsManage,
-
-            ["SettingsManagementController.GetPaymentMethods"] = Policies.SettingsManage,
-            ["SettingsManagementController.UpdatePaymentMethods"] = Policies.SettingsManage,
-            ["SettingsManagementController.GetWorkingDays"] = Policies.SettingsManage,
-            ["SettingsManagementController.UpdateWorkingDays"] = Policies.SettingsManage,
-            ["SettingsManagementController.GetSecurity"] = Policies.SettingsManage,
-            ["SettingsManagementController.UpdateSecurity"] = Policies.SettingsManage,
-            ["SettingsManagementController.SendPasswordOtp"] = Policies.SettingsManage,
-            ["SettingsManagementController.ChangePassword"] = Policies.SettingsManage,
-            ["SettingsManagementController.BanUser"] = Policies.SettingsManage,
-            ["SettingsManagementController.DeleteUser"] = Policies.SettingsManage,
-            ["SettingsManagementController.Deactivate"] = Policies.SettingsManage
+            ["SettingsController.GetIdentity"] = Policies.SettingsManage,
+            ["SettingsController.UpdateIdentity"] = Policies.SettingsManage,
+            ["SettingsController.GetPaymentMethods"] = Policies.SettingsManage,
+            ["SettingsController.UpdatePaymentMethods"] = Policies.SettingsManage,
+            ["SettingsController.GetWorkingDays"] = Policies.SettingsManage,
+            ["SettingsController.UpdateWorkingDays"] = Policies.SettingsManage,
+            ["SettingsController.GetSecurity"] = Policies.SettingsManage,
+            ["SettingsController.UpdateSecurity"] = Policies.SettingsManage,
+            ["SettingsController.SendPasswordOtp"] = Policies.SettingsManage,
+            ["SettingsController.ChangePassword"] = Policies.SettingsManage,
+            ["SettingsController.BanUser"] = Policies.SettingsManage,
+            ["SettingsController.DeleteUser"] = Policies.SettingsManage,
+            ["SettingsController.Deactivate"] = Policies.SettingsManage
         };
 
     [Fact]
