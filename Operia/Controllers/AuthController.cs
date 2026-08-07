@@ -16,6 +16,7 @@ using Operia.Application.Auth.Commands.VerifyOtp;
 using Operia.Application.Auth.Commands.VerifyRegisterOtp;
 using Operia.Application.Auth.Commands.CompleteFirstLogin;
 using Operia.Application.Auth.DTOs;
+using Operia.Application.Auth.Queries.GetCurrentUserCapabilities;
 
 namespace Operia.Controllers;
 
@@ -100,6 +101,15 @@ public sealed class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponseDto>> Refresh([FromBody] RefreshTokenCommand command, CancellationToken cancellationToken)
     {
         return Ok(await _mediator.Send(command, cancellationToken));
+    }
+
+    [Authorize(Policy = Policies.AuthenticatedUser)]
+    [HttpGet("capabilities")]
+    [ProducesResponseType(typeof(CurrentUserCapabilitiesDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<CurrentUserCapabilitiesDto>> GetCapabilities(
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.Send(new GetCurrentUserCapabilitiesQuery(), cancellationToken));
     }
 
     [Authorize(Policy = Policies.AuthenticatedUser)]

@@ -25,6 +25,7 @@ public sealed class EndpointAuthorizationContractTests
             ["AuthController.CompleteFirstLogin"] = null,
             ["AuthController.ResendLoginOtp"] = null,
             ["AuthController.Refresh"] = null,
+            ["AuthController.GetCapabilities"] = Policies.AuthenticatedUser,
             ["AuthController.Logout"] = Policies.AuthenticatedUser,
             ["AuthController.ForgotPassword"] = null,
             ["AuthController.VerifyForgotPasswordOtp"] = null,

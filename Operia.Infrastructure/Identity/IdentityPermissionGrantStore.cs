@@ -8,46 +8,53 @@ public sealed class IdentityPermissionGrantStore(
     UserManager<ApplicationUser> userManager,
     RoleManager<IdentityRole> roleManager) : IPermissionGrantStore
 {
-    public async Task<bool> HasPermissionAsync(
+    public async Task<PermissionGrantSnapshot?> GetUserCapabilitiesAsync(
         string userId,
-        string permission,
         CancellationToken cancellationToken = default)
     {
         var user = await userManager.FindByIdAsync(userId);
         if (user is null)
         {
-            return false;
+            return null;
         }
 
-        var userClaims = await userManager.GetClaimsAsync(user);
-        if (HasPermission(userClaims, permission))
-        {
-            return true;
-        }
+        var roles = await userManager.GetRolesAsync(user);
+        var permissions = new HashSet<string>(StringComparer.Ordinal);
 
-        var roleNames = await userManager.GetRolesAsync(user);
-        foreach (var roleName in roleNames)
+        AddPermissionClaims(await userManager.GetClaimsAsync(user), permissions);
+
+        foreach (var roleName in roles)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var role = await roleManager.FindByNameAsync(roleName);
-            if (role is null)
+            if (role is not null)
             {
-                continue;
-            }
-
-            var roleClaims = await roleManager.GetClaimsAsync(role);
-            if (HasPermission(roleClaims, permission))
-            {
-                return true;
+                AddPermissionClaims(await roleManager.GetClaimsAsync(role), permissions);
             }
         }
 
-        return false;
+        return new PermissionGrantSnapshot(
+            roles.OrderBy(role => role, StringComparer.Ordinal).ToArray(),
+            permissions.OrderBy(permission => permission, StringComparer.Ordinal).ToArray());
     }
 
-    private static bool HasPermission(IEnumerable<System.Security.Claims.Claim> claims, string permission) =>
-        claims.Any(claim =>
-            claim.Type == Policies.PermissionClaimType
-            && string.Equals(claim.Value, permission, StringComparison.Ordinal));
+    public async Task<bool> HasPermissionAsync(
+        string userId,
+        string permission,
+        CancellationToken cancellationToken = default)
+    {
+        var capabilities = await GetUserCapabilitiesAsync(userId, cancellationToken);
+        return capabilities?.Permissions.Contains(permission, StringComparer.Ordinal) == true;
+    }
+
+    private static void AddPermissionClaims(
+        IEnumerable<System.Security.Claims.Claim> claims,
+        ISet<string> permissions)
+    {
+        foreach (var claim in claims.Where(claim => claim.Type == Policies.PermissionClaimType))
+        {
+            permissions.Add(claim.Value);
+        }
+    }
 }
