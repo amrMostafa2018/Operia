@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Operia.Application.Auth;
 using Operia.Application.Finance.DTOs;
 using Operia.Application.Finance.Queries.ExportTenantSubscriptions;
 using Operia.Application.Finance.Queries.GetTenantSubscriptions;
@@ -9,7 +10,7 @@ using Operia.SharedKernel.Pagination;
 namespace Operia.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Policy = Policies.SubscriptionsRead)]
 [Route("api/finance")]
 public sealed class FinanceController : ControllerBase
 {

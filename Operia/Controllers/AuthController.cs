@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Operia.Application.Auth;
 using Operia.Application.Auth.Commands.ForgotPassword;
 using Operia.Application.Auth.Commands.Login;
 using Operia.Application.Auth.Commands.Logout;
@@ -30,6 +31,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(RegisterResultDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<RegisterResultDto>> Register(
         [FromBody] RegisterCommand command,
@@ -39,6 +41,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("verify-register-otp")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<AuthResponseDto>> VerifyRegisterOtp(
         [FromBody] VerifyRegisterOtpCommand command,
@@ -48,6 +51,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("resend-register-otp")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ResendRegisterOtp(
         [FromBody] ResendRegisterOtpCommand command,
@@ -58,6 +62,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(LoginResultDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<LoginResultDto>> Login([FromBody] LoginCommand command, CancellationToken cancellationToken)
     {
@@ -65,6 +70,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("verify-otp")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(VerifyLoginOtpResultDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<VerifyLoginOtpResultDto>> VerifyOtp([FromBody] VerifyOtpCommand command, CancellationToken cancellationToken)
     {
@@ -72,11 +78,13 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("complete-first-login")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<AuthResponseDto>> CompleteFirstLogin([FromBody] CompleteFirstLoginCommand command, CancellationToken cancellationToken)
         => Ok(await _mediator.Send(command, cancellationToken));
 
     [HttpPost("resend-login-otp")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ResendLoginOtp(
         [FromBody] ResendLoginOtpCommand command,
@@ -87,13 +95,14 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("refresh")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<AuthResponseDto>> Refresh([FromBody] RefreshTokenCommand command, CancellationToken cancellationToken)
     {
         return Ok(await _mediator.Send(command, cancellationToken));
     }
 
-    [Authorize]
+    [Authorize(Policy = Policies.AuthenticatedUser)]
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
@@ -103,6 +112,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("forgot-password")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ForgotPassword(
         [FromBody] ForgotPasswordCommand command,
@@ -113,6 +123,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("verify-forgot-password-otp")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(VerifyForgotPasswordOtpResultDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<VerifyForgotPasswordOtpResultDto>> VerifyForgotPasswordOtp(
         [FromBody] VerifyForgotPasswordOtpCommand command,
@@ -122,6 +133,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("reset-password")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ResetPassword(
         [FromBody] ResetPasswordCommand command,
@@ -132,6 +144,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("resend-forgot-password-otp")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ResendForgotPasswordOtp(
         [FromBody] ResendForgotPasswordOtpCommand command,

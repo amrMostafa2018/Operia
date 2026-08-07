@@ -3,6 +3,7 @@ namespace Operia.Application.Auth;
 public static class Policies
 {
     public const string PermissionClaimType = "permission";
+    public const string AuthenticatedUser = "AuthenticatedUser";
 
     public const string DashboardRead = "Dashboard.Read";
     public const string BookingsRead = "Bookings.Read";
@@ -22,6 +23,29 @@ public static class Policies
     public const string SubscriptionsRead = "Subscriptions.Read";
     public const string SubscriptionsManage = "Subscriptions.Manage";
     public const string OnboardingManage = "Onboarding.Manage";
+
+    public static readonly IReadOnlyList<string> PermissionValues =
+    [
+        DashboardRead,
+        BookingsRead,
+        BookingsManage,
+        CustomersRead,
+        CustomersManage,
+        RevenueRead,
+        RevenueReview,
+        ReportsRead,
+        EmployeesRead,
+        EmployeesManage,
+        PackagesRead,
+        PackagesManage,
+        BranchesRead,
+        BranchesManage,
+        SettingsManage,
+        SubscriptionsRead,
+        SubscriptionsManage,
+        OnboardingManage,
+        Platform.Manage
+    ];
 
     public static class Platform
     {

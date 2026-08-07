@@ -25,7 +25,7 @@ public sealed class OnboardingController : ControllerBase
         _mediator = mediator;
     }
 
-    [Authorize]
+    [Authorize(Policy = Policies.AuthenticatedUser)]
     [HttpGet("status")]
     [ProducesResponseType(typeof(OnboardingStatusDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<OnboardingStatusDto>> GetStatus(CancellationToken cancellationToken)

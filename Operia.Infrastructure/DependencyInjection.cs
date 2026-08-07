@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Common.Authorization;
 using Operia.Domain.Interfaces;
 using Operia.Infrastructure.Authorization;
 using Operia.Infrastructure.Identity;
@@ -52,6 +53,8 @@ public static class DependencyInjection
             .AddDefaultTokenProviders();
 
         services.AddAuthorization(options => PolicyDefinitions.RegisterPolicies(options));
+        services.AddScoped<IPermissionGrantStore, IdentityPermissionGrantStore>();
+        services.AddScoped<IAuthorizationHandler, DatabasePermissionAuthorizationHandler>();
 
         services.AddScoped<IApplicationDbContext>(sp =>
             sp.GetRequiredService<ApplicationDbContext>());
