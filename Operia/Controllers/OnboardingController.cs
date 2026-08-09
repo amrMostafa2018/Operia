@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Operia.Application.Auth;
 using Operia.Application.Common.Models;
+using Operia.Application.Onboarding.Commands.ExpireTenantSubscriptionIfPastEndDate;
 using Operia.Application.Onboarding.Commands.CompleteOnboarding;
 using Operia.Application.Onboarding.Commands.ActivateSubscription;
 using Operia.Application.Onboarding.Commands.AddBalancePlatform;
@@ -30,6 +31,7 @@ public sealed class OnboardingController : ControllerBase
     [ProducesResponseType(typeof(OnboardingStatusDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<OnboardingStatusDto>> GetStatus(CancellationToken cancellationToken)
     {
+        await _mediator.Send(new ExpireTenantSubscriptionIfPastEndDateCommand(), cancellationToken);
         return Ok(await _mediator.Send(new GetOnboardingStatusQuery(), cancellationToken));
     }
 

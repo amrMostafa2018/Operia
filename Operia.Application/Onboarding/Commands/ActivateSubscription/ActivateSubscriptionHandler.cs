@@ -2,6 +2,7 @@ using FluentValidation.Results;
 using MediatR;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Onboarding.Common;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
 using Operia.Domain.Exceptions;
@@ -71,15 +72,29 @@ public sealed class ActivateSubscriptionHandler : IRequestHandler<ActivateSubscr
         tenant.Balance -= subscription.Amount;
 
         var today = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
-        subscription.Status = SubscriptionStatus.Active;
-        subscription.StartDate = today;
-        subscription.EndDate = subscription.BillingType == BillingType.Monthly
-            ? today.AddMonths(1)
-            : today.AddYears(1);
+        var (startDate, endDate) = OnboardingHandlerHelpers.ComputeActivationPeriod(subscription, today);
 
-        if (subscription.Plan?.TrialDays > 0 && subscription.Amount == 0)
+        if (subscription.Status == SubscriptionStatus.Expired)
         {
-            subscription.EndDate = today.AddDays(subscription.Plan.TrialDays);
+            var renewedSubscription = new TenantSubscription
+            {
+                TenantId = subscription.TenantId,
+                PlanId = subscription.PlanId,
+                Amount = subscription.Amount,
+                Currency = subscription.Currency,
+                BillingType = subscription.BillingType,
+                Status = SubscriptionStatus.Active,
+                StartDate = startDate,
+                EndDate = endDate
+            };
+
+            await _tenantSubscriptionRepository.AddAsync(renewedSubscription, cancellationToken);
+        }
+        else
+        {
+            subscription.Status = SubscriptionStatus.Active;
+            subscription.StartDate = startDate;
+            subscription.EndDate = endDate;
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);

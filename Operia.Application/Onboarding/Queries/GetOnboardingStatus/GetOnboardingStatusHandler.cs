@@ -1,6 +1,7 @@
 using MediatR;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Onboarding.Common;
 using Operia.Application.Onboarding.DTOs;
 using Operia.Domain.Enums;
 using Operia.Domain.Interfaces;
@@ -17,22 +18,19 @@ public sealed class GetOnboardingStatusHandler
     private readonly IPlatformRevenueRepository _platformRevenueRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
-    private readonly IApplicationDbContext _dbContext;
 
     public GetOnboardingStatusHandler(
         ITenantRepository tenantRepository,
         ITenantSubscriptionRepository tenantSubscriptionRepository,
         IPlatformRevenueRepository platformRevenueRepository,
         ICurrentUserService currentUserService,
-        IDateTimeProvider dateTimeProvider,
-        IApplicationDbContext dbContext)
+        IDateTimeProvider dateTimeProvider)
     {
         _tenantRepository = tenantRepository;
         _tenantSubscriptionRepository = tenantSubscriptionRepository;
         _platformRevenueRepository = platformRevenueRepository;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
-        _dbContext = dbContext;
     }
 
 
@@ -43,18 +41,11 @@ public sealed class GetOnboardingStatusHandler
         var userId = _currentUserService.UserId
             ?? throw UnauthorizedException.FromCode(ApiErrorCodes.Auth.AuthenticationRequired, "detail");
 
-        var tenantId = _currentUserService.TenantId;
-
-        Operia.Domain.Entities.Tenant? tenant = null;
-        if (!string.IsNullOrEmpty(tenantId))
-        {
-            tenant = await _tenantRepository.GetByIdForStatusAsync(tenantId, cancellationToken);
-        }
-
-        if (tenant is null)
-        {
-            tenant = await _tenantRepository.GetByOwnerUserIdForStatusAsync(userId, cancellationToken);
-        }
+        var tenant = await OnboardingHandlerHelpers.ResolveTenantForStatusAsync(
+            _tenantRepository,
+            userId,
+            _currentUserService.TenantId,
+            cancellationToken);
 
         if (tenant is null)
         {
@@ -75,9 +66,9 @@ public sealed class GetOnboardingStatusHandler
         var pendingAddBalancePlatform = await MapPendingAddBalancePlatformAsync(tenant.Id, cancellationToken);
         var (usableBalance, totalBalance) = MapBalances(tenant.Balance);
 
-        var subscription = tenant.Subscriptions
-            .OrderByDescending(s => s.CreatedAt)
-            .FirstOrDefault();
+        var subscription = await _tenantSubscriptionRepository.GetLastByTenantIdAsync(
+            tenant.Id,
+            cancellationToken);
 
         if (subscription is null)
         {
@@ -96,18 +87,8 @@ public sealed class GetOnboardingStatusHandler
         if (subscription.Status == SubscriptionStatus.Active)
         {
             var today = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
-            if (subscription.EndDate.HasValue && subscription.EndDate.Value < today)
+            if (OnboardingHandlerHelpers.IsPastEndDate(subscription, today))
             {
-                var trackedSubscription = await _tenantSubscriptionRepository.GetByIdWithDetailsAsync(
-                    subscription.Id,
-                    cancellationToken);
-
-                if (trackedSubscription is not null)
-                {
-                    trackedSubscription.Status = SubscriptionStatus.Expired;
-                    await _dbContext.SaveChangesAsync(cancellationToken);
-                }
-
                 return BuildStatusDto(
                     OnboardingStep.Plan,
                     tenant.Id,

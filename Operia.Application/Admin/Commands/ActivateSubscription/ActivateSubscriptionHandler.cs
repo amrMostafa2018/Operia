@@ -52,15 +52,37 @@ public sealed class ActivateSubscriptionHandler : IRequestHandler<ActivateSubscr
         tenant.Balance -= subscription.Amount;
 
         var today = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
-        subscription.Status = SubscriptionStatus.Active;
-        subscription.StartDate = today;
-        subscription.EndDate = subscription.BillingType == BillingType.Monthly
+        var startDate = today;
+        var endDate = subscription.BillingType == BillingType.Monthly
             ? today.AddMonths(1)
             : today.AddYears(1);
 
         if (subscription.Plan?.TrialDays > 0 && subscription.Amount == 0)
         {
-            subscription.EndDate = today.AddDays(subscription.Plan.TrialDays);
+            endDate = today.AddDays(subscription.Plan.TrialDays);
+        }
+
+        if (subscription.Status == SubscriptionStatus.Expired)
+        {
+            var renewedSubscription = new TenantSubscription
+            {
+                TenantId = subscription.TenantId,
+                PlanId = subscription.PlanId,
+                Amount = subscription.Amount,
+                Currency = subscription.Currency,
+                BillingType = subscription.BillingType,
+                Status = SubscriptionStatus.Active,
+                StartDate = startDate,
+                EndDate = endDate
+            };
+
+            await _tenantSubscriptionRepository.AddAsync(renewedSubscription, cancellationToken);
+        }
+        else
+        {
+            subscription.Status = SubscriptionStatus.Active;
+            subscription.StartDate = startDate;
+            subscription.EndDate = endDate;
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
