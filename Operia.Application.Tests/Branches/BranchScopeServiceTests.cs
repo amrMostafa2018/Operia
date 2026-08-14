@@ -36,10 +36,13 @@ public class BranchScopeServiceTests
     public async Task SuperAdmin_ReturnsAllTenantBranches_ExcludesOtherTenants()
     {
         // Arrange
-        var branchA = new Branch { Id = "branch-a", TenantId = "tenant-1", Name = "Branch A", Address = "Addr A", PhoneNumber = "123", GoogleMapsUrl = "url" };
-        var branchB = new Branch { Id = "branch-b", TenantId = "tenant-1", Name = "Branch B", Address = "Addr B", PhoneNumber = "123", GoogleMapsUrl = "url" };
-        var branchC = new Branch { Id = "branch-c", TenantId = "tenant-2", Name = "Branch C", Address = "Addr C", PhoneNumber = "123", GoogleMapsUrl = "url" };
-        _db.Branches.AddRange(branchA, branchB, branchC);
+        _db.Businesses.AddRange(
+            BranchTestData.Business("tenant-1"),
+            BranchTestData.Business("tenant-2"));
+        _db.Branches.AddRange(
+            BranchTestData.Branch("branch-a", "tenant-1", "business-tenant-1", "Branch A", "Addr A"),
+            BranchTestData.Branch("branch-b", "tenant-1", "business-tenant-1", "Branch B", "Addr B"),
+            BranchTestData.Branch("branch-c", "tenant-2", "business-tenant-2", "Branch C", "Addr C"));
         await _db.SaveChangesAsync();
 
         _currentUserServiceMock.Setup(x => x.UserId).Returns("super-admin");
@@ -58,12 +61,13 @@ public class BranchScopeServiceTests
     public async Task Admin_MappedOnlyToBranchA_ReturnsOnlyBranchA()
     {
         // Arrange
-        var branchA = new Branch { Id = "branch-a", TenantId = "tenant-1", Name = "Branch A", Address = "Addr A", PhoneNumber = "123", GoogleMapsUrl = "url" };
-        var branchB = new Branch { Id = "branch-b", TenantId = "tenant-1", Name = "Branch B", Address = "Addr B", PhoneNumber = "123", GoogleMapsUrl = "url" };
-        var emp = new Employee { Id = "emp-1", TenantId = "tenant-1", IdentityUserId = "user-admin", FullName = "Admin User", Email = "a@test.com", MobileNumber = "123", Code = "EMP-0001", IsActive = true };
+        _db.Businesses.Add(BranchTestData.Business("tenant-1"));
+        _db.Branches.AddRange(
+            BranchTestData.Branch("branch-a", "tenant-1", "business-tenant-1", "Branch A", "Addr A"),
+            BranchTestData.Branch("branch-b", "tenant-1", "business-tenant-1", "Branch B", "Addr B"));
+        var emp = BranchTestData.Employee("emp-1", "tenant-1", "business-tenant-1", "user-admin", "EMP-0001", "Admin User", "a@test.com", "123");
         var mapA = new UserBranch { TenantId = "tenant-1", EmployeeId = "emp-1", BranchId = "branch-a" };
 
-        _db.Branches.AddRange(branchA, branchB);
         _db.Employees.Add(emp);
         _db.UserBranches.Add(mapA);
         await _db.SaveChangesAsync();
@@ -84,13 +88,14 @@ public class BranchScopeServiceTests
     public async Task ReceptionAndStaff_FollowSameMappedSetRule()
     {
         // Arrange
-        var branchA = new Branch { Id = "branch-a", TenantId = "tenant-1", Name = "Branch A", Address = "Addr A", PhoneNumber = "123", GoogleMapsUrl = "url" };
-        var branchB = new Branch { Id = "branch-b", TenantId = "tenant-1", Name = "Branch B", Address = "Addr B", PhoneNumber = "123", GoogleMapsUrl = "url" };
+        _db.Businesses.Add(BranchTestData.Business("tenant-1"));
+        _db.Branches.AddRange(
+            BranchTestData.Branch("branch-a", "tenant-1", "business-tenant-1", "Branch A", "Addr A"),
+            BranchTestData.Branch("branch-b", "tenant-1", "business-tenant-1", "Branch B", "Addr B"));
 
-        var recEmp = new Employee { Id = "emp-rec", TenantId = "tenant-1", IdentityUserId = "user-rec", FullName = "Rec User", Email = "rec@test.com", MobileNumber = "111", Code = "EMP-0001", IsActive = true };
-        var staffEmp = new Employee { Id = "emp-staff", TenantId = "tenant-1", IdentityUserId = "user-staff", FullName = "Staff User", Email = "staff@test.com", MobileNumber = "222", Code = "EMP-0002", IsActive = true };
+        var recEmp = BranchTestData.Employee("emp-rec", "tenant-1", "business-tenant-1", "user-rec", "EMP-0001", "Rec User", "rec@test.com", "111");
+        var staffEmp = BranchTestData.Employee("emp-staff", "tenant-1", "business-tenant-1", "user-staff", "EMP-0002", "Staff User", "staff@test.com", "222");
 
-        _db.Branches.AddRange(branchA, branchB);
         _db.Employees.AddRange(recEmp, staffEmp);
         _db.UserBranches.AddRange(
             new UserBranch { TenantId = "tenant-1", EmployeeId = "emp-rec", BranchId = "branch-a" },
@@ -116,9 +121,9 @@ public class BranchScopeServiceTests
     public async Task NonSuperAdmin_WithNoMapping_ReturnsEmptySet()
     {
         // Arrange
-        var branchA = new Branch { Id = "branch-a", TenantId = "tenant-1", Name = "Branch A", Address = "Addr A", PhoneNumber = "123", GoogleMapsUrl = "url" };
-        var emp = new Employee { Id = "emp-nomap", TenantId = "tenant-1", IdentityUserId = "user-nomap", FullName = "NoMap User", Email = "nomap@test.com", MobileNumber = "333", Code = "EMP-0003", IsActive = true };
-        _db.Branches.Add(branchA);
+        _db.Businesses.Add(BranchTestData.Business("tenant-1"));
+        _db.Branches.Add(BranchTestData.Branch("branch-a", "tenant-1", "business-tenant-1", "Branch A", "Addr A"));
+        var emp = BranchTestData.Employee("emp-nomap", "tenant-1", "business-tenant-1", "user-nomap", "EMP-0003", "NoMap User", "nomap@test.com", "333");
         _db.Employees.Add(emp);
         await _db.SaveChangesAsync();
 

@@ -25,7 +25,7 @@ public sealed class UpdateBranchHandler(
         var name = request.Name.Trim();
 
         var nameExists = await db.Branches.AnyAsync(
-            item => item.Id != branch.Id && item.TenantId == tenantId && item.Name == name,
+            item => item.Id != branch.Id && item.BusinessId == branch.BusinessId && item.Name == name,
             cancellationToken);
 
         if (nameExists)

@@ -12,8 +12,8 @@ using Operia.Infrastructure.Persistence;
 namespace Operia.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260722213622_AddEmployeeWorkingDays")]
-    partial class AddEmployeeWorkingDays
+    [Migration("20260814151411_AddEmployeeBusinessRelation")]
+    partial class AddEmployeeBusinessRelation
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -225,6 +225,11 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("BusinessId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -265,7 +270,9 @@ namespace Operia.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Name")
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("BusinessId", "Name")
                         .IsUnique();
 
                     b.ToTable("Branches", (string)null);
@@ -402,6 +409,11 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
 
+                    b.Property<string>("BusinessId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(8)
@@ -460,6 +472,8 @@ namespace Operia.Infrastructure.Migrations
                         .HasColumnType("nvarchar(36)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BusinessId");
 
                     b.HasIndex("IdentityUserId")
                         .IsUnique();
@@ -1020,11 +1034,19 @@ namespace Operia.Infrastructure.Migrations
 
             modelBuilder.Entity("Operia.Domain.Entities.Branch", b =>
                 {
+                    b.HasOne("Operia.Domain.Entities.Business", "Business")
+                        .WithMany("Branches")
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Operia.Domain.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Business");
 
                     b.Navigation("Tenant");
                 });
@@ -1064,6 +1086,12 @@ namespace Operia.Infrastructure.Migrations
 
             modelBuilder.Entity("Operia.Domain.Entities.Employee", b =>
                 {
+                    b.HasOne("Operia.Domain.Entities.Business", "Business")
+                        .WithMany("Employees")
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Operia.Infrastructure.Identity.ApplicationUser", null)
                         .WithOne()
                         .HasForeignKey("Operia.Domain.Entities.Employee", "IdentityUserId")
@@ -1073,8 +1101,10 @@ namespace Operia.Infrastructure.Migrations
                     b.HasOne("Operia.Domain.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Business");
 
                     b.Navigation("Tenant");
                 });
@@ -1090,7 +1120,7 @@ namespace Operia.Infrastructure.Migrations
                     b.HasOne("Operia.Domain.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Employee");
@@ -1169,6 +1199,10 @@ namespace Operia.Infrastructure.Migrations
 
             modelBuilder.Entity("Operia.Domain.Entities.Business", b =>
                 {
+                    b.Navigation("Branches");
+
+                    b.Navigation("Employees");
+
                     b.Navigation("Gallery");
 
                     b.Navigation("Settings");

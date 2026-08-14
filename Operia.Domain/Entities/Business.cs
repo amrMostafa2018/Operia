@@ -18,5 +18,7 @@ public sealed class Business : Entity, ITenantScoped
 
     public Tenant? Tenant { get; set; }
     public ICollection<BusinessGallery> Gallery { get; set; } = [];
+    public ICollection<Branch> Branches { get; set; } = [];
+    public ICollection<Employee> Employees { get; set; } = [];
     public BusinessSettings? Settings { get; set; }
 }

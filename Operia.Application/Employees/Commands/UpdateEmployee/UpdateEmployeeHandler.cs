@@ -39,11 +39,12 @@ public sealed class UpdateEmployeeHandler : IRequestHandler<UpdateEmployeeComman
     {
         var tenantId = EmployeeHandlerHelpers.RequireTenant(_currentUserService);
         EmployeeHandlerHelpers.ValidateRole(request.Role);
-        await EmployeeHandlerHelpers.ValidateBranchesAsync(_db, tenantId, request.BranchIds, cancellationToken);
 
         var employee = await _db.Employees.Include(x => x.UserBranches)
             .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.Id, cancellationToken)
             ?? throw new NotFoundException(nameof(Employee), request.Id);
+
+        await EmployeeHandlerHelpers.ValidateBranchesAsync(_db, employee.BusinessId, request.BranchIds, cancellationToken);
 
         await _identityService.EnsureIdentityUniqueAsync(employee.IdentityUserId, request.UserName, request.Email, request.MobileNumber, cancellationToken);
 

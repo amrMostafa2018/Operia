@@ -58,10 +58,13 @@ public class EmployeeBranchMappingTests
     public async Task CreateEmployee_DeduplicatesMappings_And_RejectsEmptyOrCrossTenantBranchIds()
     {
         // Arrange
-        var branch1 = new Branch { Id = "b-1", TenantId = "tenant-1", Name = "Branch 1", Address = "Addr", PhoneNumber = "123", GoogleMapsUrl = "url" };
-        var branch2 = new Branch { Id = "b-2", TenantId = "tenant-1", Name = "Branch 2", Address = "Addr", PhoneNumber = "123", GoogleMapsUrl = "url" };
-        var crossBranch = new Branch { Id = "b-cross", TenantId = "tenant-2", Name = "Cross Branch", Address = "Addr", PhoneNumber = "123", GoogleMapsUrl = "url" };
+        var branch1 = BranchTestData.Branch("b-1", "tenant-1", "business-tenant-1", "Branch 1");
+        var branch2 = BranchTestData.Branch("b-2", "tenant-1", "business-tenant-1", "Branch 2");
+        var crossBranch = BranchTestData.Branch("b-cross", "tenant-2", "business-tenant-2", "Cross Branch");
         _tenantId = null;
+        _db.Businesses.AddRange(
+            BranchTestData.Business("tenant-1"),
+            BranchTestData.Business("tenant-2"));
         _db.Branches.AddRange(branch1, branch2, crossBranch);
         await _db.SaveChangesAsync();
         _tenantId = "tenant-1";
@@ -90,7 +93,7 @@ public class EmployeeBranchMappingTests
         var crossCmd = new CreateEmployeeCommand("Name", "test@test.com", "1234567890", "testuser", null, null, DateOnly.FromDateTime(DateTime.Today), true, Roles.Staff, new[] { "b-cross" }, "Password123!", null);
         var exCross = await Assert.ThrowsAsync<ValidationException>(() => handler.Handle(crossCmd, default));
         exCross.Errors.Keys.Should().Contain(k => k.Equals("branchIds", StringComparison.OrdinalIgnoreCase));
-        exCross.Errors.Values.SelectMany(v => v).Should().Contain("One or more branches are invalid for this tenant.");
+        exCross.Errors.Values.SelectMany(v => v).Should().Contain("One or more branches are invalid for this business.");
 
         // Act & Assert 3: Deduplication with duplicates [b-1, b-1, b-2]
         var validCmd = new CreateEmployeeCommand("Name", "test@test.com", "+1234567890", "testuser", null, null, DateOnly.FromDateTime(DateTime.Today), true, Roles.Staff, new[] { "b-1", "b-1", "b-2" }, "Password123!", null);
@@ -113,13 +116,14 @@ public class EmployeeBranchMappingTests
     public async Task UpdateEmployee_ReplacesMappingSet_And_CapturesBeforeAfterAudit()
     {
         // Arrange
-        var branchA = new Branch { Id = "b-a", TenantId = "tenant-1", Name = "Branch A", Address = "Addr", PhoneNumber = "123", GoogleMapsUrl = "url" };
-        var branchB = new Branch { Id = "b-b", TenantId = "tenant-1", Name = "Branch B", Address = "Addr", PhoneNumber = "123", GoogleMapsUrl = "url" };
-        var branchC = new Branch { Id = "b-c", TenantId = "tenant-1", Name = "Branch C", Address = "Addr", PhoneNumber = "123", GoogleMapsUrl = "url" };
-        var emp = new Employee { Id = "emp-upd", TenantId = "tenant-1", IdentityUserId = "user-upd", FullName = "Update User", Email = "upd@test.com", MobileNumber = "+1111111111", Code = "EMP-0010", IsActive = true };
+        var branchA = BranchTestData.Branch("b-a", "tenant-1", "business-tenant-1", "Branch A");
+        var branchB = BranchTestData.Branch("b-b", "tenant-1", "business-tenant-1", "Branch B");
+        var branchC = BranchTestData.Branch("b-c", "tenant-1", "business-tenant-1", "Branch C");
+        var emp = BranchTestData.Employee("emp-upd", "tenant-1", "business-tenant-1", "user-upd", "EMP-0010", "Update User", "upd@test.com", "+1111111111");
         var mapA = new UserBranch { TenantId = "tenant-1", EmployeeId = "emp-upd", BranchId = "b-a" };
         var mapB = new UserBranch { TenantId = "tenant-1", EmployeeId = "emp-upd", BranchId = "b-b" };
 
+        _db.Businesses.Add(BranchTestData.Business("tenant-1"));
         _db.Branches.AddRange(branchA, branchB, branchC);
         _db.Employees.Add(emp);
         _db.UserBranches.AddRange(mapA, mapB);
@@ -159,12 +163,13 @@ public class EmployeeBranchMappingTests
     public async Task GetEmployee_And_ListEmployees_ReturnCompleteAssignedSet()
     {
         // Arrange
-        var branch1 = new Branch { Id = "br-1", TenantId = "tenant-1", Name = "North Branch", Address = "Addr 1", PhoneNumber = "111", GoogleMapsUrl = "url" };
-        var branch2 = new Branch { Id = "br-2", TenantId = "tenant-1", Name = "South Branch", Address = "Addr 2", PhoneNumber = "222", GoogleMapsUrl = "url" };
-        var emp = new Employee { Id = "emp-read", TenantId = "tenant-1", IdentityUserId = "user-read", FullName = "Read Tester", Email = "read@test.com", MobileNumber = "+9999999999", Code = "EMP-0099", IsActive = true };
+        var branch1 = BranchTestData.Branch("br-1", "tenant-1", "business-tenant-1", "North Branch", "Addr 1", "111");
+        var branch2 = BranchTestData.Branch("br-2", "tenant-1", "business-tenant-1", "South Branch", "Addr 2", "222");
+        var emp = BranchTestData.Employee("emp-read", "tenant-1", "business-tenant-1", "user-read", "EMP-0099", "Read Tester", "read@test.com", "+9999999999");
         var map1 = new UserBranch { TenantId = "tenant-1", EmployeeId = "emp-read", BranchId = "br-1" };
         var map2 = new UserBranch { TenantId = "tenant-1", EmployeeId = "emp-read", BranchId = "br-2" };
 
+        _db.Businesses.Add(BranchTestData.Business("tenant-1"));
         _db.Branches.AddRange(branch1, branch2);
         _db.Employees.Add(emp);
         _db.UserBranches.AddRange(map1, map2);

@@ -35,25 +35,12 @@ public sealed class TenantIsolationTests
         db.Tenants.AddRange(
             new Tenant { Id = "tenant-a", OwnerUserId = "owner-a", BusinessName = "A" },
             new Tenant { Id = "tenant-b", OwnerUserId = "owner-b", BusinessName = "B" });
+        db.Businesses.AddRange(
+            BranchTestData.Business("tenant-a", "business-a"),
+            BranchTestData.Business("tenant-b", "business-b"));
         db.Branches.AddRange(
-            new Branch
-            {
-                Id = "branch-a",
-                TenantId = "tenant-a",
-                Name = "Tenant A Branch",
-                Address = "A",
-                PhoneNumber = "100",
-                GoogleMapsUrl = "https://example.test/a"
-            },
-            new Branch
-            {
-                Id = "branch-b",
-                TenantId = "tenant-b",
-                Name = "Tenant B Branch",
-                Address = "B",
-                PhoneNumber = "200",
-                GoogleMapsUrl = "https://example.test/b"
-            });
+            BranchTestData.Branch("branch-a", "tenant-a", "business-a", "Tenant A Branch", "A", "100"),
+            BranchTestData.Branch("branch-b", "tenant-b", "business-b", "Tenant B Branch", "B", "200"));
         await db.SaveChangesAsync();
 
         currentTenantId = "tenant-a";

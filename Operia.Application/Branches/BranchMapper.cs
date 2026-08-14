@@ -16,6 +16,7 @@ internal static class BranchMapper
 
     public static Branch CreateEntity(
         string tenantId,
+        string businessId,
         string name,
         string address,
         string phoneNumber,
@@ -23,6 +24,7 @@ internal static class BranchMapper
         decimal longitude) => new()
         {
             TenantId = tenantId,
+            BusinessId = businessId,
             Name = name,
             Address = address.Trim(),
             PhoneNumber = PhoneNumberHelper.ToE164(phoneNumber),

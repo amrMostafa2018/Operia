@@ -32,17 +32,37 @@ internal static class EmployeeHandlerHelpers
     public static ValidationException Invalid(string field, string message) =>
         new([new ValidationFailure(field, message)]);
 
-    public static async Task ValidateBranchesAsync(
+    public static async Task<Business> GetBusinessAsync(
         IApplicationDbContext db,
         string tenantId,
+        CancellationToken cancellationToken) =>
+        await db.Businesses.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.TenantId == tenantId, cancellationToken)
+        ?? throw ConflictException.FromCode(ApiErrorCodes.Settings.BusinessProfileRequired);
+
+    public static async Task ValidateBranchesAsync(
+        IApplicationDbContext db,
+        string businessId,
         IReadOnlyList<string> branchIds,
         CancellationToken cancellationToken)
     {
         var ids = branchIds.Distinct().ToList();
         if (ids.Count == 0)
             throw Invalid("branchIds", "At least one branch is required.");
-        if (await db.Branches.CountAsync(x => x.TenantId == tenantId && ids.Contains(x.Id), cancellationToken) != ids.Count)
-            throw Invalid("branchIds", "One or more branches are invalid for this tenant.");
+
+        if (await db.Branches.CountAsync(x => x.BusinessId == businessId && ids.Contains(x.Id), cancellationToken) != ids.Count)
+            throw Invalid("branchIds", "One or more branches are invalid for this business.");
+    }
+
+    public static async Task<Business> ValidateBranchesForTenantAsync(
+        IApplicationDbContext db,
+        string tenantId,
+        IReadOnlyList<string> branchIds,
+        CancellationToken cancellationToken)
+    {
+        var business = await GetBusinessAsync(db, tenantId, cancellationToken);
+        await ValidateBranchesAsync(db, business.Id, branchIds, cancellationToken);
+        return business;
     }
 
     public static void AddBranches(Employee employee, IEnumerable<string> ids)
