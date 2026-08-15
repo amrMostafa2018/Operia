@@ -22,7 +22,9 @@ public sealed class ListBranchesHandler(
         if (!string.IsNullOrWhiteSpace(search))
         {
             query = query.Where(branch =>
-                branch.Name.Contains(search) || branch.Address.Contains(search));
+                branch.Name.Contains(search)
+                || branch.Address.Contains(search)
+                || branch.PhoneNumber.Contains(search));
         }
 
         var descending = string.Equals(

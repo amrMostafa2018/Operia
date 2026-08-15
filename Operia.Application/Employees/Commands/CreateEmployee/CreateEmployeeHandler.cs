@@ -39,7 +39,7 @@ public sealed class CreateEmployeeHandler : IRequestHandler<CreateEmployeeComman
     {
         var tenantId = EmployeeHandlerHelpers.RequireTenant(_currentUserService);
         EmployeeHandlerHelpers.ValidateRole(request.Role);
-        var business =         await EmployeeHandlerHelpers.ValidateBranchesForTenantAsync(
+        var business = await EmployeeHandlerHelpers.ValidateBranchesForTenantAsync(
             _db,
             tenantId,
             request.BranchIds,
