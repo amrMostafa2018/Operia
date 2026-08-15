@@ -182,7 +182,7 @@ public sealed class RegistrationService : IRegistrationService
         string phoneNumber,
         CancellationToken cancellationToken)
     {
-        if (await _identityService.IsPhoneRegisteredAsync(phoneNumber, cancellationToken))
+        if (await _identityService.IsPhoneRegisteredAsync(phoneNumber, cancellationToken: cancellationToken))
         {
             throw new ValidationException([
                 ValidationFailureFactory.Create("phoneNumber", ApiErrorCodes.Auth.PhoneAlreadyRegistered)
@@ -192,7 +192,7 @@ public sealed class RegistrationService : IRegistrationService
 
     private async Task EnsureEmailAvailableAsync(string email, CancellationToken cancellationToken)
     {
-        if (await _identityService.IsEmailRegisteredAsync(email, cancellationToken))
+        if (await _identityService.IsEmailRegisteredAsync(email, cancellationToken: cancellationToken))
         {
             throw new ValidationException([
                 ValidationFailureFactory.Create("email", ApiErrorCodes.Auth.EmailAlreadyRegistered)

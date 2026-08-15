@@ -11,6 +11,12 @@ public interface IIdentityService
 
     Task<bool> IsPhoneRegisteredAsync(
         string phoneNumber,
+        string? ignoreUserId = null,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> IsUserNameRegisteredAsync(
+        string userName,
+        string? ignoreUserId = null,
         CancellationToken cancellationToken = default);
 
     Task LogoutAsync(string userId, CancellationToken cancellationToken = default);
@@ -36,6 +42,7 @@ public interface IIdentityService
 
     Task<bool> IsEmailRegisteredAsync(
         string email,
+        string? ignoreUserId = null,
         CancellationToken cancellationToken = default);
 
     Task<bool> MustChangePasswordAsync(string userId, CancellationToken cancellationToken = default);
@@ -46,7 +53,6 @@ public interface IIdentityService
     Task UpdateUserAsync(string userId, string fullName, string userName, string email, string mobileNumber, CancellationToken cancellationToken = default);
     Task ChangeRoleAsync(string userId, string newRole, CancellationToken cancellationToken = default);
     Task SetStatusAsync(string userId, bool isActive, CancellationToken cancellationToken = default);
-    Task EnsureIdentityUniqueAsync(string? ignoreUserId, string userName, string email, string mobileNumber, CancellationToken cancellationToken = default);
     Task<Dictionary<string, string>> GetRolesAsync(IEnumerable<string> userIds, CancellationToken cancellationToken = default);
     Task<Dictionary<string, UserSummaryDto>> GetUsersSummaryAsync(IEnumerable<string> userIds, CancellationToken cancellationToken = default);
     Task<UserSummaryDto?> GetUserSummaryAsync(string userId, CancellationToken cancellationToken = default);

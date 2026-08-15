@@ -10,6 +10,7 @@ public static class ApiErrorCodes
     {
         public const string AuthenticationRequired = "AuthenticationRequired";
         public const string EmailAlreadyRegistered = "EmailAlreadyRegistered";
+        public const string UserNameAlreadyRegistered = "UserNameAlreadyRegistered";
         public const string EmailRequired = "EmailRequired";
         public const string EmailInvalid = "EmailInvalid";
         public const string PasswordRequired = "PasswordRequired";

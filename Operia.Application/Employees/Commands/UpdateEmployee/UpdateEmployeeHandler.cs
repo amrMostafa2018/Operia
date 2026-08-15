@@ -45,8 +45,13 @@ public sealed class UpdateEmployeeHandler : IRequestHandler<UpdateEmployeeComman
             ?? throw new NotFoundException(nameof(Employee), request.Id);
 
         await EmployeeHandlerHelpers.ValidateBranchesAsync(_db, employee.BusinessId, request.BranchIds, cancellationToken);
-
-        await _identityService.EnsureIdentityUniqueAsync(employee.IdentityUserId, request.UserName, request.Email, request.MobileNumber, cancellationToken);
+        await EmployeeIdentityUniquenessHelper.EnsureUniqueAsync(
+            _identityService,
+            employee.IdentityUserId,
+            request.UserName,
+            request.Email,
+            request.MobileNumber,
+            cancellationToken);
 
         var oldPhoto = employee.PhotoUrl;
         string? newPhoto = null;

@@ -44,10 +44,22 @@ public sealed class IdentityService : IIdentityService
 
     public async Task<bool> IsPhoneRegisteredAsync(
         string phoneNumber,
+        string? ignoreUserId = null,
         CancellationToken cancellationToken = default)
     {
         return await _userManager.Users
-            .AnyAsync(u => u.PhoneNumber == phoneNumber, cancellationToken);
+            .AnyAsync(u => u.Id != ignoreUserId && u.PhoneNumber == phoneNumber, cancellationToken);
+    }
+
+    public async Task<bool> IsUserNameRegisteredAsync(
+        string userName,
+        string? ignoreUserId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedName = _userManager.NormalizeName(userName.Trim());
+        return await _userManager.Users.AnyAsync(
+            x => x.Id != ignoreUserId && x.NormalizedUserName == normalizedName,
+            cancellationToken);
     }
 
     public async Task LogoutAsync(string userId, CancellationToken cancellationToken = default)
@@ -124,11 +136,12 @@ public sealed class IdentityService : IIdentityService
 
     public async Task<bool> IsEmailRegisteredAsync(
         string email,
+        string? ignoreUserId = null,
         CancellationToken cancellationToken = default)
     {
         var normalizedEmail = _userManager.NormalizeEmail(email.Trim());
         return await _userManager.Users.AnyAsync(
-            user => user.NormalizedEmail == normalizedEmail,
+            user => user.Id != ignoreUserId && user.NormalizedEmail == normalizedEmail,
             cancellationToken);
     }
 
@@ -198,15 +211,6 @@ public sealed class IdentityService : IIdentityService
         EnsureIdentityResult(await _userManager.UpdateSecurityStampAsync(user), "status");
         EnsureIdentityResult(await _userManager.UpdateAsync(user), "status");
         await _tokenService.RevokeAllRefreshTokensAsync(user.Id, cancellationToken);
-    }
-
-    public async Task EnsureIdentityUniqueAsync(string? ignoreUserId, string userName, string email, string mobileNumber, CancellationToken cancellationToken = default)
-    {
-        var normalizedName = _userManager.NormalizeName(userName.Trim());
-        var normalizedEmail = _userManager.NormalizeEmail(email.Trim());
-        var mobile = PhoneNumberHelper.ToE164(mobileNumber);
-        if (await _userManager.Users.AnyAsync(x => x.Id != ignoreUserId && (x.NormalizedUserName == normalizedName || x.NormalizedEmail == normalizedEmail || x.PhoneNumber == mobile), cancellationToken))
-            throw new ConflictException("Username, email, or mobile number is already registered.");
     }
 
     public async Task<Dictionary<string, string>> GetRolesAsync(IEnumerable<string> userIds, CancellationToken cancellationToken = default)

@@ -24,6 +24,10 @@
     "Value": "Email is already registered."
   },
   {
+    "Name": "UserNameAlreadyRegistered",
+    "Value": "Username is already registered."
+  },
+  {
     "Name": "EmailRequired",
     "Value": "Email is required."
   },

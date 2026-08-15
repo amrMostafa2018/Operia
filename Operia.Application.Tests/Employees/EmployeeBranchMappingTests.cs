@@ -78,7 +78,9 @@ public class EmployeeBranchMappingTests
             _fileStorageServiceMock.Object,
             _auditWriter);
 
-        _identityServiceMock.Setup(x => x.EnsureIdentityUniqueAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _identityServiceMock.Setup(x => x.IsEmailRegisteredAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _identityServiceMock.Setup(x => x.IsUserNameRegisteredAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _identityServiceMock.Setup(x => x.IsPhoneRegisteredAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _identityServiceMock.Setup(x => x.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync("new-id-user");
         _identityServiceMock.Setup(x => x.GetUsersSummaryAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<string, UserSummaryDto> { ["new-id-user"] = new UserSummaryDto("new-id-user", "testuser", "test@test.com", "123", false) });
@@ -129,7 +131,9 @@ public class EmployeeBranchMappingTests
         _db.UserBranches.AddRange(mapA, mapB);
         await _db.SaveChangesAsync();
 
-        _identityServiceMock.Setup(x => x.EnsureIdentityUniqueAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _identityServiceMock.Setup(x => x.IsEmailRegisteredAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _identityServiceMock.Setup(x => x.IsUserNameRegisteredAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _identityServiceMock.Setup(x => x.IsPhoneRegisteredAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _identityServiceMock.Setup(x => x.UpdateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         _identityServiceMock.Setup(x => x.GetRolesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(new Dictionary<string, string> { ["user-upd"] = Roles.Staff });
         _identityServiceMock.Setup(x => x.GetUsersSummaryAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))

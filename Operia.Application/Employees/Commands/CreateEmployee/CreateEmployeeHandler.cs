@@ -39,12 +39,18 @@ public sealed class CreateEmployeeHandler : IRequestHandler<CreateEmployeeComman
     {
         var tenantId = EmployeeHandlerHelpers.RequireTenant(_currentUserService);
         EmployeeHandlerHelpers.ValidateRole(request.Role);
-        var business = await EmployeeHandlerHelpers.ValidateBranchesForTenantAsync(
+        var business =         await EmployeeHandlerHelpers.ValidateBranchesForTenantAsync(
             _db,
             tenantId,
             request.BranchIds,
             cancellationToken);
-        await _identityService.EnsureIdentityUniqueAsync(null, request.UserName, request.Email, request.MobileNumber, cancellationToken);
+        await EmployeeIdentityUniquenessHelper.EnsureUniqueAsync(
+            _identityService,
+            null,
+            request.UserName,
+            request.Email,
+            request.MobileNumber,
+            cancellationToken);
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         string? photoUrl = null;

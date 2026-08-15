@@ -24,6 +24,10 @@
     "Value": "هذا البريد الإلكتروني مسجل بالفعل"
   },
   {
+    "Name": "UserNameAlreadyRegistered",
+    "Value": "اسم المستخدم مسجل بالفعل"
+  },
+  {
     "Name": "EmailRequired",
     "Value": "البريد الإلكتروني مطلوب"
   },
