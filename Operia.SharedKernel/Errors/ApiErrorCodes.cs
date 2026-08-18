@@ -37,6 +37,8 @@ public static class ApiErrorCodes
     public static class EmployeeSchedule
     {
         public const string OutsideBusinessHours = "EmployeeScheduleOutsideBusinessHours";
+        public const string BranchNotAssigned = "EmployeeScheduleBranchNotAssigned";
+        public const string OverlappingBranchHours = "EmployeeScheduleOverlappingBranchHours";
     }
 
     public static class Settings

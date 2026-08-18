@@ -86,19 +86,19 @@ public class EmployeeBranchMappingTests
             .ReturnsAsync(new Dictionary<string, UserSummaryDto> { ["new-id-user"] = new UserSummaryDto("new-id-user", "testuser", "test@test.com", "123", false) });
 
         // Act & Assert 1: Empty branch IDs
-        var emptyCmd = new CreateEmployeeCommand("Name", "test@test.com", "1234567890", "testuser", null, null, DateOnly.FromDateTime(DateTime.Today), true, Roles.Staff, new string[0], "Password123!", null);
+        var emptyCmd = new CreateEmployeeCommand("Name", "test@test.com", "1234567890", "testuser", null, null, DateOnly.FromDateTime(DateTime.Today), true, Roles.Staff, new string[0], "Password123!", null, null);
         var exEmpty = await Assert.ThrowsAsync<ValidationException>(() => handler.Handle(emptyCmd, default));
         exEmpty.Errors.Keys.Should().Contain(k => k.Equals("branchIds", StringComparison.OrdinalIgnoreCase));
         exEmpty.Errors.Values.SelectMany(v => v).Should().Contain("At least one branch is required.");
 
         // Act & Assert 2: Cross-tenant branch ID
-        var crossCmd = new CreateEmployeeCommand("Name", "test@test.com", "1234567890", "testuser", null, null, DateOnly.FromDateTime(DateTime.Today), true, Roles.Staff, new[] { "b-cross" }, "Password123!", null);
+        var crossCmd = new CreateEmployeeCommand("Name", "test@test.com", "1234567890", "testuser", null, null, DateOnly.FromDateTime(DateTime.Today), true, Roles.Staff, new[] { "b-cross" }, "Password123!", null, null);
         var exCross = await Assert.ThrowsAsync<ValidationException>(() => handler.Handle(crossCmd, default));
         exCross.Errors.Keys.Should().Contain(k => k.Equals("branchIds", StringComparison.OrdinalIgnoreCase));
         exCross.Errors.Values.SelectMany(v => v).Should().Contain("One or more branches are invalid for this business.");
 
         // Act & Assert 3: Deduplication with duplicates [b-1, b-1, b-2]
-        var validCmd = new CreateEmployeeCommand("Name", "test@test.com", "+1234567890", "testuser", null, null, DateOnly.FromDateTime(DateTime.Today), true, Roles.Staff, new[] { "b-1", "b-1", "b-2" }, "Password123!", null);
+        var validCmd = new CreateEmployeeCommand("Name", "test@test.com", "+1234567890", "testuser", null, null, DateOnly.FromDateTime(DateTime.Today), true, Roles.Staff, new[] { "b-1", "b-1", "b-2" }, "Password123!", null, null);
         var res = await handler.Handle(validCmd, default);
         await _db.SaveChangesAsync();
 

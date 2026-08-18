@@ -90,5 +90,13 @@
   {
     "Name": "EmployeeScheduleOutsideBusinessHours",
     "Value": "يجب أن تكون ساعات عمل الموظف ضمن ساعات عمل النشاط المفعلة لذلك اليوم."
+  },
+  {
+    "Name": "EmployeeScheduleBranchNotAssigned",
+    "Value": "الفرع المحدد في الجدول غير مرتبط بهذا الموظف."
+  },
+  {
+    "Name": "EmployeeScheduleOverlappingBranchHours",
+    "Value": "لا يمكن للموظف العمل في أكثر من فرع في نفس الوقت في نفس اليوم."
   }
 ]

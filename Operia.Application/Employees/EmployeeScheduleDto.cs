@@ -6,4 +6,9 @@ public sealed record EmployeeWorkingDayDto(
     TimeOnly? FromTime,
     TimeOnly? ToTime);
 
-public sealed record EmployeeScheduleDto(IReadOnlyList<EmployeeWorkingDayDto> Days);
+public sealed record EmployeeBranchScheduleDto(
+    string BranchId,
+    string BranchName,
+    IReadOnlyList<EmployeeWorkingDayDto> Days);
+
+public sealed record EmployeeScheduleDto(IReadOnlyList<EmployeeBranchScheduleDto> Branches);

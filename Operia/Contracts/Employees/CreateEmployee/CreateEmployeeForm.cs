@@ -14,4 +14,9 @@ public sealed class CreateEmployeeForm
     public List<string> BranchIds { get; init; } = [];
     public string TemporaryPassword { get; init; } = string.Empty;
     public IFormFile? Photo { get; init; }
+    /// <summary>
+    /// JSON-encoded branch schedules to create atomically with the employee.
+    /// Serialized as <c>BranchScheduleRequest[]</c> (camelCase).
+    /// </summary>
+    public string? ScheduleJson { get; init; }
 }

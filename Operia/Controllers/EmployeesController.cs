@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Operia.Application.Auth;
 using MediatR;
@@ -65,7 +66,12 @@ public sealed class EmployeesController(IMediator mediator) : ControllerBase
         string id,
         [FromBody] UpdateEmployeeScheduleRequest request,
         CancellationToken cancellationToken) =>
-        mediator.Send(new UpdateEmployeeScheduleCommand(id, request.Days), cancellationToken);
+        mediator.Send(new UpdateEmployeeScheduleCommand(
+            id,
+            request.Branches
+                .Select(branch => new EmployeeBranchScheduleInput(branch.BranchId, branch.Days))
+                .ToList()),
+            cancellationToken);
 
     [HttpGet("bookable")]
     [Authorize(Policy = Policies.BookingsManage)]
@@ -82,6 +88,17 @@ public sealed class EmployeesController(IMediator mediator) : ControllerBase
         CancellationToken cancellationToken)
     {
         await using var photo = Open(form.Photo);
+
+        IReadOnlyList<EmployeeBranchScheduleInput>? schedule = null;
+        if (!string.IsNullOrWhiteSpace(form.ScheduleJson))
+        {
+            var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            var branches = JsonSerializer.Deserialize<List<BranchScheduleRequest>>(form.ScheduleJson, options);
+            schedule = branches?
+                .Select(b => new EmployeeBranchScheduleInput(b.BranchId, b.Days))
+                .ToList();
+        }
+
         var command = new CreateEmployeeCommand(
             form.FullName,
             form.Email,
@@ -94,7 +111,8 @@ public sealed class EmployeesController(IMediator mediator) : ControllerBase
             form.Role,
             form.BranchIds,
             form.TemporaryPassword,
-            photo);
+            photo,
+            schedule);
 
         var employee = await mediator.Send(command, cancellationToken);
         return CreatedAtAction(nameof(Get), new { id = employee.Id }, employee);

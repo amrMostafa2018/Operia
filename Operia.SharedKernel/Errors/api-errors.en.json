@@ -98,5 +98,13 @@
   {
     "Name": "EmployeeScheduleOutsideBusinessHours",
     "Value": "Employee working hours must be within the enabled business working hours for that day."
+  },
+  {
+    "Name": "EmployeeScheduleBranchNotAssigned",
+    "Value": "Employee schedule branch is not assigned to this employee."
+  },
+  {
+    "Name": "EmployeeScheduleOverlappingBranchHours",
+    "Value": "An employee cannot work in multiple branches at the same time on the same day."
   }
 ]
