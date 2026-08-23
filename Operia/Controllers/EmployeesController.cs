@@ -35,8 +35,7 @@ public sealed class EmployeesController(IMediator mediator) : ControllerBase
         [FromQuery] string? role = null,
         [FromQuery] bool? isActive = null,
         [FromQuery] string? branchId = null,
-        [FromQuery] DateOnly? createdFrom = null,
-        [FromQuery] DateOnly? createdTo = null,
+        [FromQuery] DateOnly? joiningDate = null,
         CancellationToken cancellationToken = default) =>
         mediator.Send(
             new ListEmployeesQuery(
@@ -46,8 +45,7 @@ public sealed class EmployeesController(IMediator mediator) : ControllerBase
                 role,
                 isActive,
                 branchId,
-                createdFrom,
-                createdTo),
+                joiningDate),
             cancellationToken);
 
     [HttpGet("{id}")]

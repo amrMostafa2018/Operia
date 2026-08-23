@@ -188,7 +188,7 @@ public class EmployeeBranchMappingTests
 
         // Act
         var getRes = await getHandler.Handle(new GetEmployeeQuery("emp-read"), default);
-        var listRes = await listHandler.Handle(new ListEmployeesQuery(1, 10, null, null, null, null, null, null), default);
+        var listRes = await listHandler.Handle(new ListEmployeesQuery(1, 10, null, null, null, null, null), default);
 
         // Assert
         getRes.Branches.Should().HaveCount(2);

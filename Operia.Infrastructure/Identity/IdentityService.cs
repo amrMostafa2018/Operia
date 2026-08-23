@@ -268,12 +268,28 @@ public sealed class IdentityService : IIdentityService
         return new SecurityUserSettingsDto(user.Id, user.TwoFactorEnabled, user.LoginAlertsEnabled, user.PhoneNumber);
     }
 
-    public async Task<IReadOnlyList<UserSummaryDto>> GetTenantUsersAsync(string tenantId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<UserSummaryDto>> GetTenantUsersAsync(
+        string tenantId,
+        string? excludeUserId = null,
+        CancellationToken cancellationToken = default)
     {
-        var list = await _userManager.Users.AsNoTracking()
-            .Where(x => x.TenantId == tenantId)
+        var query = _userManager.Users.AsNoTracking()
+            .Where(x => x.TenantId == tenantId);
+
+        if (!string.IsNullOrWhiteSpace(excludeUserId))
+        {
+            query = query.Where(x => x.Id != excludeUserId);
+        }
+
+        var list = await query
             .OrderBy(x => x.UserName)
-            .Select(x => new UserSummaryDto(x.Id, x.UserName ?? x.Email ?? x.PhoneNumber ?? "User", x.Email ?? string.Empty, x.PhoneNumber ?? string.Empty, x.LockoutEnd.HasValue && x.LockoutEnd > DateTimeOffset.UtcNow))
+            .Select(x => new UserSummaryDto(
+                x.Id,
+                x.UserName ?? string.Empty,
+                x.Email ?? string.Empty,
+                string.Empty,
+                x.LockoutEnd.HasValue && x.LockoutEnd > DateTimeOffset.UtcNow,
+                x.FullName ?? string.Empty))
             .ToListAsync(cancellationToken);
         return list;
     }

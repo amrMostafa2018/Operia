@@ -1,6 +1,12 @@
 namespace Operia.Application.Common.Interfaces;
 
-public record UserSummaryDto(string Id, string UserName, string Email, string PhoneNumber, bool IsLockedOut);
+public record UserSummaryDto(
+    string Id,
+    string UserName,
+    string Email,
+    string PhoneNumber,
+    bool IsLockedOut,
+    string FullName = "");
 
 public interface IIdentityService
 {
@@ -62,7 +68,10 @@ public interface IIdentityService
 
     // Settings Security & User Operations
     Task<SecurityUserSettingsDto> GetSecurityUserSettingsAsync(string userId, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<UserSummaryDto>> GetTenantUsersAsync(string tenantId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<UserSummaryDto>> GetTenantUsersAsync(
+        string tenantId,
+        string? excludeUserId = null,
+        CancellationToken cancellationToken = default);
     Task UpdateSecurityUserSettingsAsync(string userId, bool enableTwoFactor, bool loginAlertsEnabled, bool logoutOtherDevices, CancellationToken cancellationToken = default);
     Task BanTenantUserAsync(string currentUserId, string targetUserId, CancellationToken cancellationToken = default);
     Task DeleteTenantUserAsync(string currentUserId, string targetUserId, CancellationToken cancellationToken = default);

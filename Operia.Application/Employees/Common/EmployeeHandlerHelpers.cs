@@ -106,7 +106,7 @@ internal static class EmployeeHandlerHelpers
         return employees.Select(x => new EmployeeDto(x.Id, x.Code, x.FullName, x.Email, x.MobileNumber,
             users.GetValueOrDefault(x.IdentityUserId)?.UserName ?? string.Empty, x.Specialty, x.JobTitle, x.JoiningDate,
             x.PhotoUrl, x.IsActive, roles.GetValueOrDefault(x.IdentityUserId) ?? string.Empty,
-            branches.Where(b => b.EmployeeId == x.Id).Select(b => b.Branch).ToList(), x.CreatedAt)).ToList();
+            branches.Where(b => b.EmployeeId == x.Id).Select(b => b.Branch).OrderBy(b => b.Name).ToList(), x.CreatedAt)).ToList();
     }
 
     public static async Task ProtectLastSuperAdminAsync(
