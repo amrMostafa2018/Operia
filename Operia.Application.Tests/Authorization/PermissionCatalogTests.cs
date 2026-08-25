@@ -33,6 +33,81 @@ public sealed class PermissionCatalogTests
     }
 
     [Fact]
+    public void SuperAdmin_BaselineHasAllTenantPermissions()
+    {
+        var permissions = PermissionClaimBootstrapper.GetBaselinePermissions(Roles.SuperAdmin);
+
+        Assert.Equal(Policies.TenantPermissionValues, permissions);
+    }
+
+    [Fact]
+    public void Admin_BaselineExcludesRestrictedPermissions()
+    {
+        var permissions = PermissionClaimBootstrapper.GetBaselinePermissions(Roles.Admin);
+
+        Assert.Equal(
+            Policies.TenantPermissionValues
+                .Where(permission => permission is not (
+                    Policies.SettingsManage
+                    or Policies.SettingsIdentityManage
+                    or Policies.SettingsPaymentsManage
+                    or Policies.SettingsWorkingDaysManage
+                    or Policies.SettingsSecurityManage
+                    or Policies.SettingsPasswordChange
+                    or Policies.SettingsUsersBan
+                    or Policies.SettingsUsersDelete
+                    or Policies.SettingsAccountDeactivate
+                    or Policies.SettingsNotificationsManage
+                    or Policies.SettingsLanguageManage
+                    or Policies.SubscriptionsManage
+                    or Policies.OnboardingManage)),
+            permissions);
+    }
+
+    [Fact]
+    public void Reception_BaselineMatchesOperationalMatrix()
+    {
+        var permissions = PermissionClaimBootstrapper.GetBaselinePermissions(Roles.Reception);
+
+        Assert.Equal(
+        [
+            Policies.DashboardRead,
+            Policies.DashboardExport,
+            Policies.BookingsRead,
+            Policies.BookingsManage,
+            Policies.BookingsExport,
+            Policies.BookingsCancel,
+            Policies.BookingsReassign,
+            Policies.BookingsChangeStatus,
+            Policies.CustomersRead,
+            Policies.CustomersManage,
+            Policies.CustomersExport,
+            Policies.CustomersActivatePackage,
+            Policies.CustomersCancelPackage,
+            Policies.CustomersAddPackage,
+            Policies.PackagesRead,
+            Policies.PackagesSell,
+            Policies.OffersRead,
+            Policies.BranchesRead,
+            Policies.SupportRead,
+            Policies.NotificationsRead
+        ], permissions);
+    }
+
+    [Fact]
+    public void Staff_BaselineMatchesOperationalMatrix()
+    {
+        var permissions = PermissionClaimBootstrapper.GetBaselinePermissions(Roles.Staff);
+
+        Assert.Equal(
+        [
+            Policies.BookingsRead,
+            Policies.SupportRead,
+            Policies.NotificationsRead
+        ], permissions);
+    }
+
+    [Fact]
     public void PlatformAdmin_BaselineHasOnlyThePlatformPermission()
     {
         var permissions = PermissionClaimBootstrapper.GetBaselinePermissions(Roles.PlatformAdmin);

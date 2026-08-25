@@ -8,64 +8,66 @@ namespace Operia.Infrastructure.Identity;
 public static class PermissionClaimBootstrapper
 {
     private const string BaselineVersionClaimType = "operia.permission-baseline";
-    private const string BaselineVersion = "v1";
+    private const string BaselineVersion = "v2";
+
+    private static readonly IReadOnlySet<string> AdminExcludedPermissions =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            Policies.SettingsManage,
+            Policies.SettingsIdentityManage,
+            Policies.SettingsPaymentsManage,
+            Policies.SettingsWorkingDaysManage,
+            Policies.SettingsSecurityManage,
+            Policies.SettingsPasswordChange,
+            Policies.SettingsUsersBan,
+            Policies.SettingsUsersDelete,
+            Policies.SettingsAccountDeactivate,
+            Policies.SettingsNotificationsManage,
+            Policies.SettingsLanguageManage,
+            Policies.SubscriptionsManage,
+            Policies.OnboardingManage
+        };
+
+    private static readonly IReadOnlyList<string> ReceptionPermissions =
+    [
+        Policies.DashboardRead,
+        Policies.DashboardExport,
+        Policies.BookingsRead,
+        Policies.BookingsManage,
+        Policies.BookingsExport,
+        Policies.BookingsCancel,
+        Policies.BookingsReassign,
+        Policies.BookingsChangeStatus,
+        Policies.CustomersRead,
+        Policies.CustomersManage,
+        Policies.CustomersExport,
+        Policies.CustomersActivatePackage,
+        Policies.CustomersCancelPackage,
+        Policies.CustomersAddPackage,
+        Policies.PackagesRead,
+        Policies.PackagesSell,
+        Policies.OffersRead,
+        Policies.BranchesRead,
+        Policies.SupportRead,
+        Policies.NotificationsRead
+    ];
+
+    private static readonly IReadOnlyList<string> StaffPermissions =
+    [
+        Policies.BookingsRead,
+        Policies.SupportRead,
+        Policies.NotificationsRead
+    ];
 
     private static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> BaselinePermissions =
         new Dictionary<string, IReadOnlyList<string>>
         {
-            [Roles.SuperAdmin] =
-            [
-                Policies.DashboardRead,
-                Policies.BookingsRead,
-                Policies.BookingsManage,
-                Policies.CustomersRead,
-                Policies.CustomersManage,
-                Policies.RevenueRead,
-                Policies.RevenueReview,
-                Policies.ReportsRead,
-                Policies.EmployeesRead,
-                Policies.EmployeesManage,
-                Policies.PackagesRead,
-                Policies.PackagesManage,
-                Policies.BranchesRead,
-                Policies.BranchesManage,
-                Policies.SettingsManage,
-                Policies.SubscriptionsRead,
-                Policies.SubscriptionsManage,
-                Policies.OnboardingManage
-            ],
-            [Roles.Admin] =
-            [
-                Policies.DashboardRead,
-                Policies.BookingsRead,
-                Policies.BookingsManage,
-                Policies.CustomersRead,
-                Policies.CustomersManage,
-                Policies.RevenueRead,
-                Policies.RevenueReview,
-                Policies.ReportsRead,
-                Policies.EmployeesRead,
-                Policies.EmployeesManage,
-                Policies.PackagesRead,
-                Policies.PackagesManage,
-                Policies.BranchesRead,
-                Policies.BranchesManage,
-                Policies.SubscriptionsRead
-            ],
-            [Roles.Reception] =
-            [
-                Policies.DashboardRead,
-                Policies.BookingsRead,
-                Policies.BookingsManage,
-                Policies.CustomersRead,
-                Policies.CustomersManage,
-                Policies.PackagesRead,
-                Policies.BranchesRead
-            ],
-            [Roles.Staff] =
-            [
-                Policies.BookingsRead
-            ],
+            [Roles.SuperAdmin] = Policies.TenantPermissionValues,
+            [Roles.Admin] = Policies.TenantPermissionValues
+                .Where(permission => !AdminExcludedPermissions.Contains(permission))
+                .ToArray(),
+            [Roles.Reception] = ReceptionPermissions,
+            [Roles.Staff] = StaffPermissions,
             [Roles.PlatformAdmin] =
             [
                 Policies.Platform.Manage
@@ -79,13 +81,6 @@ public static class PermissionClaimBootstrapper
             var role = await roleManager.FindByNameAsync(roleName)
                 ?? throw new InvalidOperationException($"Role '{roleName}' was not found.");
             var claims = await roleManager.GetClaimsAsync(role);
-
-            if (claims.Any(claim =>
-                    claim.Type == BaselineVersionClaimType
-                    && claim.Value == BaselineVersion))
-            {
-                continue;
-            }
 
             foreach (var permission in permissions)
             {
@@ -101,9 +96,14 @@ public static class PermissionClaimBootstrapper
                     new Claim(Policies.PermissionClaimType, permission));
             }
 
-            await roleManager.AddClaimAsync(
-                role,
-                new Claim(BaselineVersionClaimType, BaselineVersion));
+            if (!claims.Any(claim =>
+                    claim.Type == BaselineVersionClaimType
+                    && claim.Value == BaselineVersion))
+            {
+                await roleManager.AddClaimAsync(
+                    role,
+                    new Claim(BaselineVersionClaimType, BaselineVersion));
+            }
         }
     }
 
