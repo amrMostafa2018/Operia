@@ -45,11 +45,11 @@ public sealed class EndpointAuthorizationContractTests
             ["EmployeesController.Bookable"] = Policies.BookingsManage,
             ["EmployeesController.Create"] = Policies.EmployeesManage,
             ["EmployeesController.Update"] = Policies.EmployeesManage,
-            ["EmployeesController.Role"] = Policies.EmployeesManage,
-            ["EmployeesController.Status"] = Policies.EmployeesManage,
+            ["EmployeesController.Role"] = Policies.EmployeesChangeRole,
+            ["EmployeesController.Status"] = Policies.EmployeesChangeStatus,
 
             ["FinanceController.GetSubscriptions"] = Policies.SubscriptionsRead,
-            ["FinanceController.ExportSubscriptions"] = Policies.SubscriptionsRead,
+            ["FinanceController.ExportSubscriptions"] = Policies.SubscriptionsExport,
 
             ["OnboardingController.GetStatus"] = Policies.AuthenticatedUser,
             ["OnboardingController.GetPlans"] = null,
@@ -58,19 +58,19 @@ public sealed class EndpointAuthorizationContractTests
             ["OnboardingController.AddBalancePlatform"] = Policies.OnboardingManage,
             ["OnboardingController.Activate"] = Policies.OnboardingManage,
 
-            ["SettingsController.GetIdentity"] = Policies.SettingsManage,
-            ["SettingsController.UpdateIdentity"] = Policies.SettingsManage,
-            ["SettingsController.GetPaymentMethods"] = Policies.SettingsManage,
-            ["SettingsController.UpdatePaymentMethods"] = Policies.SettingsManage,
-            ["SettingsController.GetWorkingDays"] = Policies.SettingsManage,
-            ["SettingsController.UpdateWorkingDays"] = Policies.SettingsManage,
-            ["SettingsController.GetSecurity"] = Policies.SettingsManage,
-            ["SettingsController.UpdateSecurity"] = Policies.SettingsManage,
-            ["SettingsController.SendPasswordOtp"] = Policies.SettingsManage,
-            ["SettingsController.ChangePassword"] = Policies.SettingsManage,
-            ["SettingsController.BanUser"] = Policies.SettingsManage,
-            ["SettingsController.DeleteUser"] = Policies.SettingsManage,
-            ["SettingsController.Deactivate"] = Policies.SettingsManage
+            ["SettingsController.GetIdentity"] = Policies.SettingsIdentityRead,
+            ["SettingsController.UpdateIdentity"] = Policies.SettingsIdentityManage,
+            ["SettingsController.GetPaymentMethods"] = Policies.SettingsPaymentsRead,
+            ["SettingsController.UpdatePaymentMethods"] = Policies.SettingsPaymentsManage,
+            ["SettingsController.GetWorkingDays"] = Policies.SettingsWorkingDaysRead,
+            ["SettingsController.UpdateWorkingDays"] = Policies.SettingsWorkingDaysManage,
+            ["SettingsController.GetSecurity"] = Policies.SettingsSecurityRead,
+            ["SettingsController.UpdateSecurity"] = Policies.SettingsSecurityManage,
+            ["SettingsController.SendPasswordOtp"] = Policies.SettingsPasswordChange,
+            ["SettingsController.ChangePassword"] = Policies.SettingsPasswordChange,
+            ["SettingsController.BanUser"] = Policies.SettingsUsersBan,
+            ["SettingsController.DeleteUser"] = Policies.SettingsUsersDelete,
+            ["SettingsController.Deactivate"] = Policies.SettingsAccountDeactivate
         };
 
     [Fact]

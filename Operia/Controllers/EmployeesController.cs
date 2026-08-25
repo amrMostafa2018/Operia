@@ -144,7 +144,7 @@ public sealed class EmployeesController(IMediator mediator) : ControllerBase
     }
 
     [HttpPatch("{id}/role")]
-    [Authorize(Policy = Policies.EmployeesManage)]
+    [Authorize(Policy = Policies.EmployeesChangeRole)]
     public async Task<IActionResult> Role(
         string id,
         [FromBody] ChangeEmployeeRoleRequest request,
@@ -158,7 +158,7 @@ public sealed class EmployeesController(IMediator mediator) : ControllerBase
     }
 
     [HttpPatch("{id}/status")]
-    [Authorize(Policy = Policies.EmployeesManage)]
+    [Authorize(Policy = Policies.EmployeesChangeStatus)]
     public async Task<IActionResult> Status(
         string id,
         [FromBody] ChangeEmployeeStatusRequest request,

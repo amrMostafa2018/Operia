@@ -45,23 +45,11 @@ public sealed class PermissionCatalogTests
     {
         var permissions = PermissionClaimBootstrapper.GetBaselinePermissions(Roles.Admin);
 
-        Assert.Equal(
-            Policies.TenantPermissionValues
-                .Where(permission => permission is not (
-                    Policies.SettingsManage
-                    or Policies.SettingsIdentityManage
-                    or Policies.SettingsPaymentsManage
-                    or Policies.SettingsWorkingDaysManage
-                    or Policies.SettingsSecurityManage
-                    or Policies.SettingsPasswordChange
-                    or Policies.SettingsUsersBan
-                    or Policies.SettingsUsersDelete
-                    or Policies.SettingsAccountDeactivate
-                    or Policies.SettingsNotificationsManage
-                    or Policies.SettingsLanguageManage
-                    or Policies.SubscriptionsManage
-                    or Policies.OnboardingManage)),
-            permissions);
+        var expected = Policies.TenantPermissionValues
+            .Where(permission => !PermissionClaimBootstrapper.AdminExcludedPermissions.Contains(permission))
+            .ToArray();
+
+        Assert.Equal(expected, permissions);
     }
 
     [Fact]

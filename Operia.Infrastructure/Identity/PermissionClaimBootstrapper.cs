@@ -8,9 +8,9 @@ namespace Operia.Infrastructure.Identity;
 public static class PermissionClaimBootstrapper
 {
     private const string BaselineVersionClaimType = "operia.permission-baseline";
-    private const string BaselineVersion = "v2";
+    private const string BaselineVersion = "v3";
 
-    private static readonly IReadOnlySet<string> AdminExcludedPermissions =
+    public static readonly IReadOnlySet<string> AdminExcludedPermissions =
         new HashSet<string>(StringComparer.Ordinal)
         {
             Policies.SettingsManage,

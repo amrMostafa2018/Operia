@@ -10,7 +10,6 @@ using Operia.SharedKernel.Pagination;
 namespace Operia.Controllers;
 
 [ApiController]
-[Authorize(Policy = Policies.SubscriptionsRead)]
 [Route("api/finance")]
 public sealed class FinanceController : ControllerBase
 {
@@ -22,6 +21,7 @@ public sealed class FinanceController : ControllerBase
     }
 
     [HttpGet("subscriptions")]
+    [Authorize(Policy = Policies.SubscriptionsRead)]
     [ProducesResponseType(typeof(PagedList<TenantSubscriptionDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedList<TenantSubscriptionDto>>> GetSubscriptions(
         [FromQuery] DateOnly? dateFrom,
@@ -44,6 +44,7 @@ public sealed class FinanceController : ControllerBase
     }
 
     [HttpGet("subscriptions/export")]
+    [Authorize(Policy = Policies.SubscriptionsExport)]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     public async Task<IActionResult> ExportSubscriptions(
         [FromQuery] DateOnly? dateFrom,

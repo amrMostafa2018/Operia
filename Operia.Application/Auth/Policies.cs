@@ -36,9 +36,13 @@ public static class Policies
     public const string BranchesRead = "Branches.Read";
     public const string BranchesManage = "Branches.Manage";
     public const string SettingsManage = "Settings.Manage";
+    public const string SettingsIdentityRead = "Settings.Identity.Read";
     public const string SettingsIdentityManage = "Settings.Identity.Manage";
+    public const string SettingsPaymentsRead = "Settings.Payments.Read";
     public const string SettingsPaymentsManage = "Settings.Payments.Manage";
+    public const string SettingsWorkingDaysRead = "Settings.WorkingDays.Read";
     public const string SettingsWorkingDaysManage = "Settings.WorkingDays.Manage";
+    public const string SettingsSecurityRead = "Settings.Security.Read";
     public const string SettingsSecurityManage = "Settings.Security.Manage";
     public const string SettingsPasswordChange = "Settings.Password.Change";
     public const string SettingsUsersBan = "Settings.Users.Ban";
@@ -87,9 +91,13 @@ public static class Policies
         BranchesRead,
         BranchesManage,
         SettingsManage,
+        SettingsIdentityRead,
         SettingsIdentityManage,
+        SettingsPaymentsRead,
         SettingsPaymentsManage,
+        SettingsWorkingDaysRead,
         SettingsWorkingDaysManage,
+        SettingsSecurityRead,
         SettingsSecurityManage,
         SettingsPasswordChange,
         SettingsUsersBan,
