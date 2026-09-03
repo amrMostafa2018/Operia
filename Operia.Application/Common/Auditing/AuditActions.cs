@@ -20,4 +20,10 @@ public static class AuditActions
     public const string TenantUserBanned = "TenantUserBanned";
     public const string TenantUserDeleted = "TenantUserDeleted";
     public const string AccountDeactivated = "AccountDeactivated";
+
+    public const string ServiceCategoryCreated = "ServiceCategoryCreated";
+    public const string SubServiceCategoryCreated = "SubServiceCategoryCreated";
+    public const string PackageCreated = "PackageCreated";
+    public const string PackageUpdated = "PackageUpdated";
+    public const string PackageDeleted = "PackageDeleted";
 }

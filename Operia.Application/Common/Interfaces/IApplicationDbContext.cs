@@ -23,6 +23,9 @@ public interface IApplicationDbContext
     DbSet<EmployeeWorkingDay> EmployeeWorkingDays { get; }
     DbSet<UserBranch> UserBranches { get; }
     DbSet<TenantNumberCounter> TenantNumberCounters { get; }
+    DbSet<ServiceCategory> ServiceCategories { get; }
+    DbSet<SubServiceCategory> SubServiceCategories { get; }
+    DbSet<Package> Packages { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

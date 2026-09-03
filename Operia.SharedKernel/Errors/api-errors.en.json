@@ -106,5 +106,97 @@
   {
     "Name": "EmployeeScheduleOverlappingBranchHours",
     "Value": "An employee cannot work in multiple branches at the same time on the same day."
+  },
+  {
+    "Name": "CATEGORY_NAME_REQUIRED",
+    "Value": "Service category name is required."
+  },
+  {
+    "Name": "CATEGORY_NAME_MAX",
+    "Value": "Service category name must not exceed 200 characters."
+  },
+  {
+    "Name": "CATEGORY_ICON_REQUIRED",
+    "Value": "Service category icon is required."
+  },
+  {
+    "Name": "CATEGORY_NAME_TAKEN",
+    "Value": "A service category with this name already exists."
+  },
+  {
+    "Name": "SUB_CATEGORY_NAME_REQUIRED",
+    "Value": "Sub-service category name is required."
+  },
+  {
+    "Name": "SUB_CATEGORY_NAME_MAX",
+    "Value": "Sub-service category name must not exceed 200 characters."
+  },
+  {
+    "Name": "SUB_CATEGORY_PARENT_REQUIRED",
+    "Value": "A parent service category is required."
+  },
+  {
+    "Name": "SUB_CATEGORY_PARENT_NOT_FOUND",
+    "Value": "The selected service category was not found."
+  },
+  {
+    "Name": "SUB_CATEGORY_NAME_TAKEN",
+    "Value": "A sub-service category with this name already exists for the selected category."
+  },
+  {
+    "Name": "PACKAGE_NAME_REQUIRED",
+    "Value": "Service or offer name is required."
+  },
+  {
+    "Name": "PACKAGE_NAME_MAX",
+    "Value": "Service or offer name must not exceed 200 characters."
+  },
+  {
+    "Name": "PACKAGE_DESCRIPTION_MAX",
+    "Value": "Description must not exceed 250 characters."
+  },
+  {
+    "Name": "PACKAGE_CATEGORY_REQUIRED",
+    "Value": "Service category is required."
+  },
+  {
+    "Name": "PACKAGE_DURATION_REQUIRED",
+    "Value": "Session duration is required."
+  },
+  {
+    "Name": "PACKAGE_DURATION_MIN",
+    "Value": "Session duration must be at least 1 minute."
+  },
+  {
+    "Name": "PACKAGE_SESSION_COUNT_REQUIRED",
+    "Value": "Session count is required for packages."
+  },
+  {
+    "Name": "PACKAGE_SESSION_COUNT_MIN",
+    "Value": "Session count must be at least 1."
+  },
+  {
+    "Name": "PACKAGE_PULSE_COUNT_MIN",
+    "Value": "Pulse count cannot be negative."
+  },
+  {
+    "Name": "PACKAGE_PRICE_REQUIRED",
+    "Value": "Price is required."
+  },
+  {
+    "Name": "PACKAGE_PRICE_MIN",
+    "Value": "Price cannot be negative."
+  },
+  {
+    "Name": "PACKAGE_DISCOUNT_PERCENT_RANGE",
+    "Value": "Discount percent must be between 0 and 100."
+  },
+  {
+    "Name": "PACKAGE_NOT_FOUND",
+    "Value": "Service or offer was not found."
+  },
+  {
+    "Name": "PACKAGE_ALREADY_CANCELLED",
+    "Value": "This service or offer is already cancelled."
   }
 ]

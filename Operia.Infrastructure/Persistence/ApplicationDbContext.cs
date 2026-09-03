@@ -43,6 +43,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<EmployeeWorkingDay> EmployeeWorkingDays => Set<EmployeeWorkingDay>();
     public DbSet<UserBranch> UserBranches => Set<UserBranch>();
     public DbSet<TenantNumberCounter> TenantNumberCounters => Set<TenantNumberCounter>();
+    public DbSet<ServiceCategory> ServiceCategories => Set<ServiceCategory>();
+    public DbSet<SubServiceCategory> SubServiceCategories => Set<SubServiceCategory>();
+    public DbSet<Package> Packages => Set<Package>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -90,6 +93,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             x => x.Business != null && x.Business.TenantId == CurrentTenantId);
         modelBuilder.Entity<BusinessSettings>().HasQueryFilter(
             x => x.Business != null && x.Business.TenantId == CurrentTenantId);
+        modelBuilder.Entity<ServiceCategory>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<SubServiceCategory>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<Package>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
     }
 
     private void EnforceTenantWriteScope()

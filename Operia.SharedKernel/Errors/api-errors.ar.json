@@ -98,5 +98,97 @@
   {
     "Name": "EmployeeScheduleOverlappingBranchHours",
     "Value": "لا يمكن للموظف العمل في أكثر من فرع في نفس الوقت في نفس اليوم."
+  },
+  {
+    "Name": "CATEGORY_NAME_REQUIRED",
+    "Value": "اسم تصنيف الخدمة مطلوب."
+  },
+  {
+    "Name": "CATEGORY_NAME_MAX",
+    "Value": "يجب ألا يتجاوز اسم تصنيف الخدمة 200 حرف."
+  },
+  {
+    "Name": "CATEGORY_ICON_REQUIRED",
+    "Value": "أيقونة تصنيف الخدمة مطلوبة."
+  },
+  {
+    "Name": "CATEGORY_NAME_TAKEN",
+    "Value": "يوجد تصنيف خدمة بهذا الاسم بالفعل."
+  },
+  {
+    "Name": "SUB_CATEGORY_NAME_REQUIRED",
+    "Value": "اسم التصنيف الفرعي مطلوب."
+  },
+  {
+    "Name": "SUB_CATEGORY_NAME_MAX",
+    "Value": "يجب ألا يتجاوز اسم التصنيف الفرعي 200 حرف."
+  },
+  {
+    "Name": "SUB_CATEGORY_PARENT_REQUIRED",
+    "Value": "تصنيف الخدمة الرئيسي مطلوب."
+  },
+  {
+    "Name": "SUB_CATEGORY_PARENT_NOT_FOUND",
+    "Value": "تصنيف الخدمة المحدد غير موجود."
+  },
+  {
+    "Name": "SUB_CATEGORY_NAME_TAKEN",
+    "Value": "يوجد تصنيف فرعي بهذا الاسم ضمن التصنيف المحدد."
+  },
+  {
+    "Name": "PACKAGE_NAME_REQUIRED",
+    "Value": "اسم الخدمة أو العرض مطلوب."
+  },
+  {
+    "Name": "PACKAGE_NAME_MAX",
+    "Value": "يجب ألا يتجاوز اسم الخدمة أو العرض 200 حرف."
+  },
+  {
+    "Name": "PACKAGE_DESCRIPTION_MAX",
+    "Value": "يجب ألا يتجاوز الوصف 250 حرفًا."
+  },
+  {
+    "Name": "PACKAGE_CATEGORY_REQUIRED",
+    "Value": "تصنيف الخدمة مطلوب."
+  },
+  {
+    "Name": "PACKAGE_DURATION_REQUIRED",
+    "Value": "مدة الجلسة مطلوبة."
+  },
+  {
+    "Name": "PACKAGE_DURATION_MIN",
+    "Value": "يجب أن تكون مدة الجلسة دقيقة واحدة على الأقل."
+  },
+  {
+    "Name": "PACKAGE_SESSION_COUNT_REQUIRED",
+    "Value": "عدد الجلسات مطلوب للباقات."
+  },
+  {
+    "Name": "PACKAGE_SESSION_COUNT_MIN",
+    "Value": "يجب أن يكون عدد الجلسات 1 على الأقل."
+  },
+  {
+    "Name": "PACKAGE_PULSE_COUNT_MIN",
+    "Value": "لا يمكن أن يكون عدد النبضات سالبًا."
+  },
+  {
+    "Name": "PACKAGE_PRICE_REQUIRED",
+    "Value": "السعر مطلوب."
+  },
+  {
+    "Name": "PACKAGE_PRICE_MIN",
+    "Value": "لا يمكن أن يكون السعر سالبًا."
+  },
+  {
+    "Name": "PACKAGE_DISCOUNT_PERCENT_RANGE",
+    "Value": "يجب أن تكون نسبة الخصم بين 0 و 100."
+  },
+  {
+    "Name": "PACKAGE_NOT_FOUND",
+    "Value": "الخدمة أو العرض غير موجود."
+  },
+  {
+    "Name": "PACKAGE_ALREADY_CANCELLED",
+    "Value": "هذه الخدمة أو العرض ملغاة بالفعل."
   }
 ]

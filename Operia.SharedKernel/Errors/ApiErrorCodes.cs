@@ -46,4 +46,31 @@ public static class ApiErrorCodes
         public const string GalleryPhotoLimitExceeded = "GalleryPhotoLimitExceeded";
         public const string BusinessProfileRequired = "BusinessProfileRequired";
     }
+
+    public static class Packages
+    {
+        public const string CategoryNameRequired = "CATEGORY_NAME_REQUIRED";
+        public const string CategoryNameMax = "CATEGORY_NAME_MAX";
+        public const string CategoryIconRequired = "CATEGORY_ICON_REQUIRED";
+        public const string CategoryNameTaken = "CATEGORY_NAME_TAKEN";
+        public const string SubCategoryNameRequired = "SUB_CATEGORY_NAME_REQUIRED";
+        public const string SubCategoryNameMax = "SUB_CATEGORY_NAME_MAX";
+        public const string SubCategoryParentRequired = "SUB_CATEGORY_PARENT_REQUIRED";
+        public const string SubCategoryParentNotFound = "SUB_CATEGORY_PARENT_NOT_FOUND";
+        public const string SubCategoryNameTaken = "SUB_CATEGORY_NAME_TAKEN";
+        public const string PackageNameRequired = "PACKAGE_NAME_REQUIRED";
+        public const string PackageNameMax = "PACKAGE_NAME_MAX";
+        public const string PackageDescriptionMax = "PACKAGE_DESCRIPTION_MAX";
+        public const string PackageCategoryRequired = "PACKAGE_CATEGORY_REQUIRED";
+        public const string PackageDurationRequired = "PACKAGE_DURATION_REQUIRED";
+        public const string PackageDurationMin = "PACKAGE_DURATION_MIN";
+        public const string PackageSessionCountRequired = "PACKAGE_SESSION_COUNT_REQUIRED";
+        public const string PackageSessionCountMin = "PACKAGE_SESSION_COUNT_MIN";
+        public const string PackagePulseCountMin = "PACKAGE_PULSE_COUNT_MIN";
+        public const string PackagePriceRequired = "PACKAGE_PRICE_REQUIRED";
+        public const string PackagePriceMin = "PACKAGE_PRICE_MIN";
+        public const string PackageDiscountPercentRange = "PACKAGE_DISCOUNT_PERCENT_RANGE";
+        public const string PackageNotFound = "PACKAGE_NOT_FOUND";
+        public const string PackageAlreadyCancelled = "PACKAGE_ALREADY_CANCELLED";
+    }
 }
