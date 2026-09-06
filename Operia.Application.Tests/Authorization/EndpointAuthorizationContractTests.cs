@@ -42,7 +42,7 @@ public sealed class EndpointAuthorizationContractTests
             ["EmployeesController.Get"] = Policies.EmployeesRead,
             ["EmployeesController.GetSchedule"] = Policies.EmployeesRead,
             ["EmployeesController.UpdateSchedule"] = Policies.EmployeesManage,
-            ["EmployeesController.Bookable"] = Policies.BookingsManage,
+            ["EmployeesController.Bookable"] = Policies.BookingsRead,
             ["EmployeesController.Create"] = Policies.EmployeesManage,
             ["EmployeesController.Update"] = Policies.EmployeesManage,
             ["EmployeesController.Role"] = Policies.EmployeesChangeRole,

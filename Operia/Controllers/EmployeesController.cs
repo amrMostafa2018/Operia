@@ -72,7 +72,7 @@ public sealed class EmployeesController(IMediator mediator) : ControllerBase
             cancellationToken);
 
     [HttpGet("bookable")]
-    [Authorize(Policy = Policies.BookingsManage)]
+    [Authorize(Policy = Policies.BookingsRead)]
     public Task<IReadOnlyList<BookableEmployeeDto>> Bookable(
         [FromQuery] string branchId,
         CancellationToken cancellationToken) =>
