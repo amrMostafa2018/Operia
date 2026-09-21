@@ -11,6 +11,7 @@ using Operia.SharedKernel.Errors;
 
 namespace Operia.Infrastructure.Persistence;
 
+/// <summary>Configures tenant-filtered persistence and rejects cross-tenant writes.</summary>
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplicationDbContext
 {
     private readonly IDateTimeProvider _dateTimeProvider;
@@ -46,7 +47,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<ServiceCategory> ServiceCategories => Set<ServiceCategory>();
     public DbSet<SubServiceCategory> SubServiceCategories => Set<SubServiceCategory>();
     public DbSet<Package> Packages => Set<Package>();
+    public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<BookingItem> BookingItems => Set<BookingItem>();
+    public DbSet<BookingHistory> BookingHistory => Set<BookingHistory>();
+    public DbSet<BookingHold> BookingHolds => Set<BookingHold>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<CustomerPackage> CustomerPackages => Set<CustomerPackage>();
+    public DbSet<BookingPackageReservation> BookingPackageReservations => Set<BookingPackageReservation>();
 
+    /// <summary>Applies entity configuration and global tenant query filters.</summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -54,6 +63,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
         ApplyTenantQueryFilters(modelBuilder);
     }
 
+    /// <summary>Rejects cross-tenant writes before persisting tracked changes.</summary>
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         EnforceTenantWriteScope();
@@ -96,6 +106,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
         modelBuilder.Entity<ServiceCategory>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<SubServiceCategory>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<Package>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<Booking>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<BookingItem>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<BookingHistory>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<BookingHold>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<Customer>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<CustomerPackage>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<BookingPackageReservation>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
     }
 
     private void EnforceTenantWriteScope()

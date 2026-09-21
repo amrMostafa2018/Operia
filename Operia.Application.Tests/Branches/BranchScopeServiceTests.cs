@@ -2,7 +2,9 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Operia.Application.Common.Authorization;
+using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.SharedKernel.Errors;
 using Operia.SharedKernel.Interfaces;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Entities;
@@ -13,6 +15,7 @@ using Xunit;
 
 namespace Operia.Application.Tests.Branches;
 
+/// <summary>Verifies branch access decisions for users and tenant-owned branches.</summary>
 public class BranchScopeServiceTests
 {
     private readonly Mock<ICurrentUserService> _currentUserServiceMock = new();
@@ -139,7 +142,7 @@ public class BranchScopeServiceTests
     }
 
     [Fact]
-    public async Task MismatchedUserId_ThrowsUnauthorizedAccessException()
+    public async Task MismatchedUserId_ThrowsCodedForbiddenException()
     {
         // Arrange
         _currentUserServiceMock.Setup(x => x.UserId).Returns("actual-user");
@@ -148,8 +151,8 @@ public class BranchScopeServiceTests
         var act = () => _sut.GetAllowedBranchIdsAsync("different-user");
 
         // Assert
-        await act.Should().ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage("Requested user ID does not match the authenticated user.");
+        var exception = await act.Should().ThrowAsync<ForbiddenException>();
+        exception.Which.ErrorCode.Should().Be(ApiErrorCodes.Access.TenantAccessDenied);
     }
 
     [Fact]
@@ -173,6 +176,7 @@ public class BranchScopeServiceTests
         scopedEmpty.Should().BeEmpty();
     }
 
+    /// <summary>Represents dummy branch scoped in the booking workflow.</summary>
     private class DummyBranchScoped : IBranchScoped
     {
         public string BranchId { get; set; } = string.Empty;

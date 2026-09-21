@@ -8,13 +8,23 @@ using Operia.Application.Branches.Commands.DeleteBranch;
 using Operia.Application.Branches.Commands.UpdateBranch;
 using Operia.Application.Branches.Queries.GetBranch;
 using Operia.Application.Branches.Queries.ListBranches;
+using Operia.Application.Branches.Queries.GetBookingBranches;
 
 namespace Operia.Controllers;
 
+/// <summary>Exposes branch administration and booking branch lookup endpoints.</summary>
 [ApiController]
 [Route("api/branches")]
 public sealed class BranchesController(IMediator mediator) : ControllerBase
 {
+    /// <summary>Lists only tenant branches the caller may use for bookings.</summary>
+    [HttpGet("bookable")]
+    [Authorize(Policy = Policies.BookingsRead)]
+    public Task<IReadOnlyList<BookingBranchDto>> Bookable(CancellationToken cancellationToken)
+    {
+        return mediator.Send(new GetBookingBranchesQuery(), cancellationToken);
+    }
+
     [HttpGet]
     [Authorize(Policy = Policies.BranchesRead)]
     public Task<BranchListResult> List(

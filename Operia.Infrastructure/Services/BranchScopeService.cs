@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Common.Authorization;
+using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.SharedKernel.Errors;
 
 namespace Operia.Infrastructure.Services;
 
+/// <summary>Resolves the branches a user may access within the authenticated tenant.</summary>
 public sealed class BranchScopeService : IBranchScope
 {
     private readonly IApplicationDbContext _db;
@@ -15,17 +18,18 @@ public sealed class BranchScopeService : IBranchScope
         _currentUserService = currentUserService;
     }
 
+    /// <summary>Returns tenant branches permitted to the authenticated user; rejects a mismatched user ID.</summary>
     public async Task<IReadOnlyCollection<string>> GetAllowedBranchIdsAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(_currentUserService.UserId) || !string.Equals(userId, _currentUserService.UserId, StringComparison.Ordinal))
         {
-            throw new UnauthorizedAccessException("Requested user ID does not match the authenticated user.");
+            throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantAccessDenied);
         }
 
         var tenantId = _currentUserService.TenantId;
         if (string.IsNullOrEmpty(tenantId))
         {
-            throw new UnauthorizedAccessException("The current user does not have a tenant.");
+            throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
         }
 
         if (_currentUserService.IsInRole(Roles.SuperAdmin))

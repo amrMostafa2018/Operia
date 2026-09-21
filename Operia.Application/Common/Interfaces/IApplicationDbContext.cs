@@ -26,6 +26,13 @@ public interface IApplicationDbContext
     DbSet<ServiceCategory> ServiceCategories { get; }
     DbSet<SubServiceCategory> SubServiceCategories { get; }
     DbSet<Package> Packages { get; }
+    DbSet<Booking> Bookings { get; }
+    DbSet<BookingItem> BookingItems { get; }
+    DbSet<BookingHistory> BookingHistory { get; }
+    DbSet<BookingHold> BookingHolds { get; }
+    DbSet<Customer> Customers { get; }
+    DbSet<CustomerPackage> CustomerPackages { get; }
+    DbSet<BookingPackageReservation> BookingPackageReservations { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

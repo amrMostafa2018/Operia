@@ -12,6 +12,78 @@
     "Value": "لا يمكنك الوصول إلى سجلات خارج نشاطك."
   },
   {
+    "Name": "BookingBranchRequired",
+    "Value": "اختر فرعًا لعرض الموظفين المتاحين للحجز."
+  },
+  {
+    "Name": "BookingDateRangeInvalid",
+    "Value": "يجب أن يكون تاريخ النهاية في تاريخ البداية أو بعده."
+  },
+  {
+    "Name": "BookingDateRangeTooLarge",
+    "Value": "يمكن عرض 31 يومًا كحد أقصى في التقويم."
+  },
+  {
+    "Name": "BookingNotFound",
+    "Value": "الحجز المحدد غير موجود."
+  },
+  {
+    "Name": "BookingSlotUnavailable",
+    "Value": "هذا الموعد لم يعد متاحًا. يرجى اختيار موعد آخر."
+  },
+  {
+    "Name": "BookingChanged",
+    "Value": "تم تعديل هذا الحجز بواسطة مستخدم آخر. حدّث الصفحة وحاول مرة أخرى."
+  },
+  {
+    "Name": "BookingStatusInvalid",
+    "Value": "اختر حالة حجز صحيحة."
+  },
+  {
+    "Name": "BookingCustomerNotFound",
+    "Value": "اختر عميلاً مسجلاً."
+  },
+  {
+    "Name": "BookingEmployeeNotFound",
+    "Value": "الموظف المحدد غير موجود."
+  },
+  {
+    "Name": "BookingEmployeeNotInBranch",
+    "Value": "الموظف المحدد غير مرتبط بهذا الفرع."
+  },
+  {
+    "Name": "BookingOutsideWorkingHours",
+    "Value": "الموعد المحدد خارج ساعات عمل الموظف."
+  },
+  {
+    "Name": "BookingOnePackageSessionRequired",
+    "Value": "يمكن للحجز أن يحجز جلسة واحدة فقط من باقة مملوكة للعميل."
+  },
+  {
+    "Name": "BookingReusedServiceQuantityOne",
+    "Value": "احجز الخدمة الفردية المعادة جلسة واحدة في كل مرة."
+  },
+  {
+    "Name": "BookingOwnedPackageRequired",
+    "Value": "اختر باقة مؤهلة يملكها هذا العميل."
+  },
+  {
+    "Name": "BookingPackageSessionUnavailable",
+    "Value": "لا توجد جلسة متاحة للحجز في الباقة المحددة."
+  },
+  {
+    "Name": "BookingTerminalReadOnly",
+    "Value": "الحجوزات المكتملة والملغاة للقراءة فقط."
+  },
+  {
+    "Name": "BookingPackageEditNotAllowed",
+    "Value": "لا يمكن إضافة جلسة الباقة المحجوزة أو حذفها أو استبدالها أثناء تعديل هذا الحجز."
+  },
+  {
+    "Name": "BookingPaymentMethodUnavailable",
+    "Value": "طريقة الدفع المحددة لم تعد مفعّلة. اختر طريقة أخرى."
+  },
+  {
     "Name": "GalleryPhotoLimitExceeded",
     "Value": "الحد الأقصى لصور النشاط هو ست صور."
   },

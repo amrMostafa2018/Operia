@@ -12,6 +12,78 @@
     "Value": "You cannot access records outside your activity."
   },
   {
+    "Name": "BookingBranchRequired",
+    "Value": "Select a branch to view bookable employees."
+  },
+  {
+    "Name": "BookingDateRangeInvalid",
+    "Value": "The end date must be on or after the start date."
+  },
+  {
+    "Name": "BookingDateRangeTooLarge",
+    "Value": "The calendar can show at most 31 days at a time."
+  },
+  {
+    "Name": "BookingNotFound",
+    "Value": "The selected booking was not found."
+  },
+  {
+    "Name": "BookingSlotUnavailable",
+    "Value": "This appointment is no longer available. Please choose another time."
+  },
+  {
+    "Name": "BookingChanged",
+    "Value": "This booking was changed by another user. Refresh and try again."
+  },
+  {
+    "Name": "BookingStatusInvalid",
+    "Value": "Select a valid booking status."
+  },
+  {
+    "Name": "BookingCustomerNotFound",
+    "Value": "Select a registered customer."
+  },
+  {
+    "Name": "BookingEmployeeNotFound",
+    "Value": "The selected employee was not found."
+  },
+  {
+    "Name": "BookingEmployeeNotInBranch",
+    "Value": "The selected employee is not assigned to this branch."
+  },
+  {
+    "Name": "BookingOutsideWorkingHours",
+    "Value": "The selected time is outside the employee's working hours."
+  },
+  {
+    "Name": "BookingOnePackageSessionRequired",
+    "Value": "A booking can reserve only one owned package session."
+  },
+  {
+    "Name": "BookingReusedServiceQuantityOne",
+    "Value": "Book a returned standalone service one session at a time."
+  },
+  {
+    "Name": "BookingOwnedPackageRequired",
+    "Value": "Select an eligible package owned by this customer."
+  },
+  {
+    "Name": "BookingPackageSessionUnavailable",
+    "Value": "The selected package has no session available to reserve."
+  },
+  {
+    "Name": "BookingTerminalReadOnly",
+    "Value": "Completed and cancelled bookings are read-only."
+  },
+  {
+    "Name": "BookingPackageEditNotAllowed",
+    "Value": "The reserved package session cannot be added, removed or replaced while editing this booking."
+  },
+  {
+    "Name": "BookingPaymentMethodUnavailable",
+    "Value": "The selected payment method is no longer enabled. Choose another method."
+  },
+  {
     "Name": "GalleryPhotoLimitExceeded",
     "Value": "A maximum of six business photos is allowed."
   },

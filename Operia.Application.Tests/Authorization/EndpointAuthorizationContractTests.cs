@@ -9,6 +9,7 @@ using Xunit;
 
 namespace Operia.Application.Tests.Authorization;
 
+/// <summary>Verifies the named authorization policy assigned to every API endpoint.</summary>
 public sealed class EndpointAuthorizationContractTests
 {
     private static readonly IReadOnlyDictionary<string, string?> ExpectedPolicies =
@@ -33,10 +34,21 @@ public sealed class EndpointAuthorizationContractTests
             ["AuthController.ResendForgotPasswordOtp"] = null,
 
             ["BranchesController.List"] = Policies.BranchesRead,
+            ["BranchesController.Bookable"] = Policies.BookingsRead,
             ["BranchesController.Get"] = Policies.BranchesRead,
             ["BranchesController.Create"] = Policies.BranchesManage,
             ["BranchesController.Update"] = Policies.BranchesManage,
             ["BranchesController.Delete"] = Policies.BranchesManage,
+
+            ["BookingsController.Create"] = Policies.BookingsManage,
+            ["BookingsController.FindCustomer"] = Policies.BookingsManage,
+            ["BookingsController.Calendar"] = Policies.BookingsRead,
+            ["BookingsController.List"] = Policies.BookingsRead,
+            ["BookingsController.History"] = Policies.BookingsRead,
+            ["BookingsController.Cancel"] = Policies.BookingsCancel,
+            ["BookingsController.Update"] = Policies.BookingsManage,
+            ["BookingsController.PaymentMethods"] = Policies.BookingsRead,
+            ["BookingsController.Export"] = Policies.BookingsExport,
 
             ["EmployeesController.List"] = Policies.EmployeesRead,
             ["EmployeesController.Get"] = Policies.EmployeesRead,
@@ -119,6 +131,32 @@ public sealed class EndpointAuthorizationContractTests
         }
     }
 
+    [Fact]
+    public void BookingBranchLookup_RequiresBookingReadAndCannotBeAnonymous()
+    {
+        var controller = typeof(BranchesController);
+        var method = controller.GetMethod(nameof(BranchesController.Bookable))!;
+        method.GetCustomAttributes<AuthorizeAttribute>().Single().Policy
+            .Should().Be(Policies.BookingsRead);
+        method.GetCustomAttributes<AllowAnonymousAttribute>().Should().BeEmpty();
+        controller.GetCustomAttributes<AllowAnonymousAttribute>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BookingEndpoints_UseNamedPoliciesAndCannotBeAnonymous()
+    {
+        var methods = typeof(BookingsController)
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+            .Where(method => method.GetCustomAttributes<HttpMethodAttribute>().Any());
+
+        foreach (var method in methods)
+        {
+            method.GetCustomAttributes<AuthorizeAttribute>().Single().Policy.Should().NotBeNullOrWhiteSpace();
+            method.GetCustomAttributes<AllowAnonymousAttribute>().Should().BeEmpty();
+        }
+    }
+
+    /// <summary>Represents endpoint in the booking workflow.</summary>
     private sealed record Endpoint(Type Controller, MethodInfo Method)
     {
         public string Key => $"{Controller.Name}.{Method.Name}";

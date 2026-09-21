@@ -17,9 +17,12 @@ using Operia.SharedKernel.Interfaces;
 using Operia.Application.Employees;
 using Operia.Application.Employees.Commands.CreateEmployee;
 using Operia.Application.Onboarding.Commands.SetupBusiness;
+using Operia.Application.Bookings.Commands.CreateBooking;
+using Operia.Application.Bookings.Commands.CancelBooking;
 
 namespace Operia.Infrastructure;
 
+/// <summary>Registers Infrastructure persistence and integration services with Application contracts.</summary>
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(
@@ -60,6 +63,9 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(sp =>
             sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IEmployeeCodeGenerator, EmployeeCodeGenerator>();
+        // Both booking interfaces use the same scoped context and lock implementation.
+        services.AddScoped<IBookingConcurrencyStore, BookingConcurrencyStore>();
+        services.AddScoped<IBookingCancellationStore, BookingConcurrencyStore>();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ITenantRepository, TenantRepository>();

@@ -6,6 +6,7 @@ namespace Operia.SharedKernel.Errors;
 /// </summary>
 public static class ApiErrorCodes
 {
+    /// <summary>Authentication and account validation failures.</summary>
     public static class Auth
     {
         public const string AuthenticationRequired = "AuthenticationRequired";
@@ -28,12 +29,14 @@ public static class ApiErrorCodes
         public const string IdentityError = "IdentityError";
     }
 
+    /// <summary>Tenant and resource access failures.</summary>
     public static class Access
     {
         public const string TenantContextRequired = "TenantContextRequired";
         public const string TenantAccessDenied = "TenantAccessDenied";
     }
 
+    /// <summary>Employee working-day and branch schedule failures.</summary>
     public static class EmployeeSchedule
     {
         public const string OutsideBusinessHours = "EmployeeScheduleOutsideBusinessHours";
@@ -41,12 +44,14 @@ public static class ApiErrorCodes
         public const string OverlappingBranchHours = "EmployeeScheduleOverlappingBranchHours";
     }
 
+    /// <summary>Business settings and profile prerequisite failures.</summary>
     public static class Settings
     {
         public const string GalleryPhotoLimitExceeded = "GalleryPhotoLimitExceeded";
         public const string BusinessProfileRequired = "BusinessProfileRequired";
     }
 
+    /// <summary>Service, offer, and Package validation failures.</summary>
     public static class Packages
     {
         public const string CategoryNameRequired = "CATEGORY_NAME_REQUIRED";
@@ -72,5 +77,28 @@ public static class ApiErrorCodes
         public const string PackageDiscountPercentRange = "PACKAGE_DISCOUNT_PERCENT_RANGE";
         public const string PackageNotFound = "PACKAGE_NOT_FOUND";
         public const string PackageAlreadyCancelled = "PACKAGE_ALREADY_CANCELLED";
+    }
+
+    /// <summary>Booking access, availability, state, and reservation failures.</summary>
+    public static class Bookings
+    {
+        public const string BranchRequired = "BookingBranchRequired";
+        public const string DateRangeInvalid = "BookingDateRangeInvalid";
+        public const string DateRangeTooLarge = "BookingDateRangeTooLarge";
+        public const string NotFound = "BookingNotFound";
+        public const string SlotUnavailable = "BookingSlotUnavailable";
+        public const string Changed = "BookingChanged";
+        public const string StatusInvalid = "BookingStatusInvalid";
+        public const string CustomerNotFound = "BookingCustomerNotFound";
+        public const string EmployeeNotFound = "BookingEmployeeNotFound";
+        public const string EmployeeNotInBranch = "BookingEmployeeNotInBranch";
+        public const string OutsideWorkingHours = "BookingOutsideWorkingHours";
+        public const string OnePackageSessionRequired = "BookingOnePackageSessionRequired";
+        public const string ReusedServiceQuantityOne = "BookingReusedServiceQuantityOne";
+        public const string OwnedPackageRequired = "BookingOwnedPackageRequired";
+        public const string PackageSessionUnavailable = "BookingPackageSessionUnavailable";
+        public const string TerminalReadOnly = "BookingTerminalReadOnly";
+        public const string PackageEditNotAllowed = "BookingPackageEditNotAllowed";
+        public const string PaymentMethodUnavailable = "BookingPaymentMethodUnavailable";
     }
 }

@@ -1,11 +1,12 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Operia.Application.Common.Exceptions;
-using Operia.Domain.Exceptions;
 using Operia.SharedKernel.Errors;
+using DomainNotFoundException = Operia.Domain.Exceptions.NotFoundException;
 
 namespace Operia.Middleware;
 
+/// <summary>Maps coded application failures to safe localized HTTP responses.</summary>
 public sealed class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
@@ -43,7 +44,16 @@ public sealed class ExceptionHandlingMiddleware
                 LocalizeValidationErrors(validation, language),
                 validation.ErrorCodes.Count > 0 ? validation.ErrorCodes : null),
 
-            NotFoundException notFound => (
+            ApiNotFoundException notFound => (
+                StatusCodes.Status404NotFound,
+                "Resource Not Found",
+                new Dictionary<string, string[]>
+                {
+                    [notFound.Field] = [ApiErrorCatalog.GetMessage(notFound.ErrorCode, language)]
+                },
+                new Dictionary<string, string[]> { [notFound.Field] = [notFound.ErrorCode] }),
+
+            DomainNotFoundException notFound => (
                 StatusCodes.Status404NotFound,
                 "Resource Not Found",
                 new Dictionary<string, string[]> { ["detail"] = [notFound.Message] },
