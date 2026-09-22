@@ -102,5 +102,6 @@ public static class ApiErrorCodes
         public const string TerminalReadOnly = "BookingTerminalReadOnly";
         public const string PackageEditNotAllowed = "BookingPackageEditNotAllowed";
         public const string PaymentMethodUnavailable = "BookingPaymentMethodUnavailable";
+        public const string ItemsRequired = "BookingItemsRequired";
     }
 }

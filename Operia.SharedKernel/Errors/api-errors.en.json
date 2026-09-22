@@ -84,6 +84,10 @@
     "Value": "The selected payment method is no longer enabled. Choose another method."
   },
   {
+    "Name": "BookingItemsRequired",
+    "Value": "Choose at least one service before saving changes."
+  },
+  {
     "Name": "GalleryPhotoLimitExceeded",
     "Value": "A maximum of six business photos is allowed."
   },
