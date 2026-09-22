@@ -15,7 +15,7 @@ public sealed class Package : Entity, ITenantScoped
     public string ServiceCategoryId { get; set; } = string.Empty;
     public string? SubServiceCategoryId { get; set; }
     public int SessionDurationMinutes { get; set; }
-    public int SessionCount { get; set; }
+    public int? SessionCount { get; set; }
     public int? PulseCount { get; set; }
     public int? PackageExpiryMonths { get; set; }
     public decimal Price { get; set; }

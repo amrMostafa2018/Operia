@@ -1,4 +1,5 @@
 using FluentValidation;
+using Operia.Application.Packages;
 using Operia.Application.Packages.Commands.CreatePackage;
 using Operia.SharedKernel.Errors;
 
@@ -25,12 +26,10 @@ public sealed class UpdatePackageValidator : AbstractValidator<UpdatePackageComm
         RuleFor(command => command.DiscountPercent)
             .InclusiveBetween(0, 100).When(command => command.DiscountPercent.HasValue)
             .WithErrorCode(ApiErrorCodes.Packages.PackageDiscountPercentRange);
-        RuleFor(command => command.PulseCount)
-            .GreaterThanOrEqualTo(0).When(command => command.PulseCount.HasValue)
-            .WithErrorCode(ApiErrorCodes.Packages.PackagePulseCountMin);
-        RuleFor(command => command.SessionCount)
-            .GreaterThanOrEqualTo(1)
-            .When(command => string.Equals(command.OfferType, "package", StringComparison.OrdinalIgnoreCase))
-            .WithErrorCode(ApiErrorCodes.Packages.PackageSessionCountMin);
+        PackageSessionPulseValidationRules.Apply(
+            this,
+            command => command.OfferType,
+            command => command.SessionCount,
+            command => command.PulseCount);
     }
 }

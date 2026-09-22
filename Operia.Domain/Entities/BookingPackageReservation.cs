@@ -12,8 +12,8 @@ public sealed class BookingPackageReservation : Entity, ITenantScoped
     public string CustomerPackageId { get; set; } = string.Empty;
     /// <summary>The numbered session reserved from the linked customer purchase.</summary>
     public int SessionNumber { get; set; }
-    /// <summary>UTC release time; a null value means this reservation remains active.</summary>
-    public DateTime? ReleasedAtUtc { get; set; }
+    /// <summary>UTC Cancellation time; a null value means this reservation remains active.</summary>
+    public DateTime? CancellationAtUtc { get; set; }
 
     public Booking? Booking { get; set; }
     public CustomerPackage? CustomerPackage { get; set; }

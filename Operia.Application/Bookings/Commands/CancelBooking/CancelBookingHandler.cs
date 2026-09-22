@@ -39,7 +39,7 @@ public sealed class CancelBookingHandler(
 
         var version = ParseVersion(request.Version);
         var packageIds = await db.BookingPackageReservations.AsNoTracking()
-            .Where(x => x.TenantId == tenantId && x.BookingId == booking.Id && x.ReleasedAtUtc == null)
+            .Where(x => x.TenantId == tenantId && x.BookingId == booking.Id && x.CancellationAtUtc == null)
             .Select(x => x.CustomerPackageId)
             .ToListAsync(cancellationToken);
 
@@ -122,7 +122,7 @@ public sealed class CancelBookingHandler(
         CancellationToken cancellationToken)
     {
         var reservations = await db.BookingPackageReservations
-            .Where(x => x.TenantId == tenantId && x.BookingId == booking.Id && x.ReleasedAtUtc == null)
+            .Where(x => x.TenantId == tenantId && x.BookingId == booking.Id && x.CancellationAtUtc == null)
             .ToListAsync(cancellationToken);
         var standaloneUnits = await db.BookingItems.AsNoTracking()
             .Where(x => x.TenantId == tenantId &&
@@ -151,7 +151,7 @@ public sealed class CancelBookingHandler(
                     BookingId = booking.Id,
                     CustomerPackageId = purchase.Id,
                     SessionNumber = 1,
-                    ReleasedAtUtc = clock.UtcNow
+                    CancellationAtUtc = clock.UtcNow
                 });
                 releasedSessions.Add(new ReleasedSession(purchase.Id, 1));
             }
@@ -174,13 +174,13 @@ public sealed class CancelBookingHandler(
                      x.Id == reservation.CustomerPackageId &&
                      x.CustomerId == booking.CustomerId,
                 cancellationToken);
-            if (owned is null || owned.ReservedSessions < 1)
+            if (owned is null || owned.ReservedSessionCount < 1)
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Bookings.Changed);
             }
 
-            reservation.ReleasedAtUtc = clock.UtcNow;
-            owned.ReservedSessions -= 1;
+            reservation.CancellationAtUtc = clock.UtcNow;
+            owned.ReservedSessions = owned.ReservedSessionCount - 1;
             if (releasedServiceCounts.ContainsKey(owned.PackageId))
             {
                 releasedServiceCounts[owned.PackageId] += 1;
@@ -196,7 +196,8 @@ public sealed class CancelBookingHandler(
             TenantId = tenantId,
             CustomerId = booking.CustomerId,
             PackageId = packageId,
-            TotalSessions = 1,
+            Total = 1,
+            ReservedSessions = 0,
             IsActive = true
         };
     }

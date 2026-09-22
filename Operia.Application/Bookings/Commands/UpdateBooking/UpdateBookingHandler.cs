@@ -264,7 +264,7 @@ public sealed class UpdateBookingHandler(
         var active = await db.BookingPackageReservations
             .Include(x => x.CustomerPackage)
             .ThenInclude(x => x!.Package)
-            .Where(x => x.TenantId == tenantId && x.BookingId == booking.Id && x.ReleasedAtUtc == null)
+            .Where(x => x.TenantId == tenantId && x.BookingId == booking.Id && x.CancellationAtUtc == null)
             .ToListAsync(cancellationToken);
         var serviceReservations = active
             .Where(x => x.CustomerPackage?.Package?.OfferType == OfferType.SingleSession)
@@ -284,12 +284,12 @@ public sealed class UpdateBookingHandler(
             foreach (var reservation in current.Skip(target))
             {
                 var owned = reservation.CustomerPackage!;
-                if (owned.ReservedSessions < 1)
+                if (owned.ReservedSessionCount < 1)
                 {
                     throw ConflictException.FromCode(ApiErrorCodes.Bookings.Changed);
                 }
-                reservation.ReleasedAtUtc = clock.UtcNow;
-                owned.ReservedSessions -= 1;
+                reservation.CancellationAtUtc = clock.UtcNow;
+                owned.ReservedSessions = owned.ReservedSessionCount - 1;
             }
 
             for (var unit = current.Count; unit < target; unit++)
@@ -299,7 +299,7 @@ public sealed class UpdateBookingHandler(
                     TenantId = tenantId,
                     CustomerId = booking.CustomerId,
                     PackageId = packageId,
-                    TotalSessions = 1,
+                    Total = 1,
                     ReservedSessions = 1,
                     IsActive = true
                 };

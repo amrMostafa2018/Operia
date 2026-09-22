@@ -142,7 +142,7 @@ public sealed class BookingConcurrencyStore(ApplicationDbContext db) : IBookingC
             }
             if (owned is null || !owned.IsActive ||
                 (owned.ExpiresOn is { } expiresOn && expiresOn < DateOnly.FromDateTime(utcNow)) ||
-                owned.TotalSessions <= owned.UsedSessions + owned.ReservedSessions)
+                !owned.HasAvailableBalance)
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");
             }
@@ -150,14 +150,14 @@ public sealed class BookingConcurrencyStore(ApplicationDbContext db) : IBookingC
             var occupied = await db.BookingPackageReservations.AsNoTracking()
                 .Where(x => x.TenantId == booking.TenantId &&
                             x.CustomerPackageId == owned.Id &&
-                            x.ReleasedAtUtc == null)
+                            x.CancellationAtUtc == null)
                 .Select(x => x.SessionNumber)
                 .ToListAsync(cancellationToken);
             occupied.AddRange(reservations
                 .Where(x => x.CustomerPackageId == owned.Id && x.SessionNumber > 0)
                 .Select(x => x.SessionNumber));
             var taken = occupied.ToHashSet();
-            var next = Enumerable.Range(owned.UsedSessions + 1, owned.TotalSessions - owned.UsedSessions)
+            var next = Enumerable.Range(owned.Used + 1, owned.Total - owned.Used)
                 .FirstOrDefault(x => !taken.Contains(x));
             if (next == 0)
             {
@@ -165,7 +165,7 @@ public sealed class BookingConcurrencyStore(ApplicationDbContext db) : IBookingC
             }
 
             reservation.SessionNumber = next;
-            owned.ReservedSessions += 1;
+            owned.ReservedSessions = owned.ReservedSessionCount + 1;
         }
 
         await db.SaveChangesAsync(cancellationToken);

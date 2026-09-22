@@ -248,6 +248,14 @@
     "Value": "Session count must be at least 1."
   },
   {
+    "Name": "PACKAGE_SESSION_OR_PULSE_REQUIRED",
+    "Value": "Number of sessions or number of pulses is required."
+  },
+  {
+    "Name": "PACKAGE_SESSION_AND_PULSE_BOTH_FILLED",
+    "Value": "Please enter either the number of sessions or the number of pulses, not both."
+  },
+  {
     "Name": "PACKAGE_PULSE_COUNT_MIN",
     "Value": "Pulse count cannot be negative."
   },

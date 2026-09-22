@@ -180,9 +180,9 @@ public sealed class CreateBookingHandlerTests
             .Handle(new CancelBookingCommand(booking.Id, Convert.ToBase64String(booking.Version)), CancellationToken.None);
 
         var returned = await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1");
-        returned.TotalSessions.Should().Be(1);
+        returned.Total.Should().Be(1);
         returned.ReservedSessions.Should().Be(0);
-        (await _db.BookingPackageReservations.SingleAsync()).ReleasedAtUtc.Should().NotBeNull();
+        (await _db.BookingPackageReservations.SingleAsync()).CancellationAtUtc.Should().NotBeNull();
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public sealed class CreateBookingHandlerTests
 
         result.Status.Should().Be(nameof(BookingStatus.Cancelled));
         (await _db.CustomerPackages.SingleAsync()).ReservedSessions.Should().Be(0);
-        (await _db.BookingPackageReservations.SingleAsync()).ReleasedAtUtc.Should().Be(_clock.Object.UtcNow);
+        (await _db.BookingPackageReservations.SingleAsync()).CancellationAtUtc.Should().Be(_clock.Object.UtcNow);
     }
 
     [Fact]
@@ -216,7 +216,7 @@ public sealed class CreateBookingHandlerTests
                 720, 750, [new CreateBookingItemInput("service-1", null, 1)]),
             CancellationToken.None);
         var purchase = await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1");
-        purchase.TotalSessions.Should().Be(1);
+        purchase.Total.Should().Be(1);
         purchase.ReservedSessions.Should().Be(1);
         (await _db.Bookings.SingleAsync(x => x.Id == created.Id)).TotalAmount.Should().Be(250);
 
@@ -227,7 +227,7 @@ public sealed class CreateBookingHandlerTests
 
         cancelled.Status.Should().Be(nameof(BookingStatus.Cancelled));
         purchase.ReservedSessions.Should().Be(0);
-        (await _db.BookingPackageReservations.SingleAsync()).ReleasedAtUtc.Should().NotBeNull();
+        (await _db.BookingPackageReservations.SingleAsync()).CancellationAtUtc.Should().NotBeNull();
         var found = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
             .Handle(new FindBookingCustomerQuery("01012345678"), CancellationToken.None);
         found!.Packages.Single(x => x.CustomerPackageId == purchase.Id).OfferType.Should().Be("session");
@@ -256,7 +256,7 @@ public sealed class CreateBookingHandlerTests
 
         var purchases = await _db.CustomerPackages.Where(x => x.PackageId == "service-1").ToListAsync();
         purchases.Should().HaveCount(2);
-        purchases.Should().OnlyContain(x => x.TotalSessions == 1 && x.ReservedSessions == 1);
+        purchases.Should().OnlyContain(x => x.Total == 1 && x.ReservedSessions == 1);
 
         await new CancelBookingHandler(
                 _db, _user.Object, _branchScope.Object, new AuditWriter(_db, _user.Object),
@@ -264,7 +264,7 @@ public sealed class CreateBookingHandlerTests
             .Handle(new CancelBookingCommand(created.Id, created.Version), CancellationToken.None);
 
         purchases.Should().OnlyContain(x => x.ReservedSessions == 0);
-        (await _db.BookingPackageReservations.CountAsync(x => x.ReleasedAtUtc != null)).Should().Be(2);
+        (await _db.BookingPackageReservations.CountAsync(x => x.CancellationAtUtc != null)).Should().Be(2);
     }
 
     [Fact]
@@ -291,7 +291,7 @@ public sealed class CreateBookingHandlerTests
         second.Status.Should().Be(nameof(BookingStatus.Cancelled));
         (await _db.CustomerPackages.SingleAsync(x => x.Id == "owned-1")).ReservedSessions.Should().Be(0);
         (await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1")).ReservedSessions.Should().Be(0);
-        (await _db.BookingPackageReservations.CountAsync(x => x.ReleasedAtUtc != null)).Should().Be(2);
+        (await _db.BookingPackageReservations.CountAsync(x => x.CancellationAtUtc != null)).Should().Be(2);
         (await _db.BookingHistory.CountAsync(x => x.BookingId == created.Id)).Should().Be(2);
     }
 
@@ -311,7 +311,7 @@ public sealed class CreateBookingHandlerTests
 
         var secondReservation = await _db.BookingPackageReservations.SingleAsync(x => x.BookingId == second.Id);
         var replacementReservation = await _db.BookingPackageReservations.SingleAsync(x => x.BookingId == replacement.Id);
-        firstReservation.ReleasedAtUtc.Should().NotBeNull();
+        firstReservation.CancellationAtUtc.Should().NotBeNull();
         replacementReservation.SessionNumber.Should().Be(firstReservation.SessionNumber);
         secondReservation.SessionNumber.Should().NotBe(replacementReservation.SessionNumber);
         (await _db.CustomerPackages.SingleAsync(x => x.Id == "owned-1")).ReservedSessions.Should().Be(2);
@@ -331,7 +331,7 @@ public sealed class CreateBookingHandlerTests
         var error = await action.Should().ThrowAsync<ConflictException>();
         error.Which.ErrorCode.Should().Be(ApiErrorCodes.Bookings.Changed);
         (await _db.CustomerPackages.SingleAsync(x => x.Id == "owned-1")).ReservedSessions.Should().Be(1);
-        (await _db.BookingPackageReservations.SingleAsync()).ReleasedAtUtc.Should().BeNull();
+        (await _db.BookingPackageReservations.SingleAsync()).CancellationAtUtc.Should().BeNull();
     }
 
     [Fact]
@@ -344,7 +344,7 @@ public sealed class CreateBookingHandlerTests
             TenantId = "tenant-1",
             CustomerId = "other-customer",
             PackageId = "service-1",
-            TotalSessions = 1,
+            Total = 1,
             IsActive = true
         });
         await _db.SaveChangesAsync();
@@ -396,7 +396,7 @@ public sealed class CreateBookingHandlerTests
         var updated = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == reused.Id);
         updated.TotalAmount.Should().Be(250);
         updated.Items.Select(x => x.UnitPrice).Should().BeEquivalentTo(new[] { 0m, 250m });
-        (await _db.BookingPackageReservations.CountAsync(x => x.BookingId == reused.Id && x.ReleasedAtUtc == null))
+        (await _db.BookingPackageReservations.CountAsync(x => x.BookingId == reused.Id && x.CancellationAtUtc == null))
             .Should().Be(2);
     }
 
@@ -721,8 +721,8 @@ public sealed class CreateBookingHandlerTests
             TenantId = "tenant-1",
             CustomerId = "customer-1",
             PackageId = "package-1",
-            TotalSessions = 6,
-            UsedSessions = 2,
+            Total = 6,
+            Used = 2,
             ReservedSessions = 0,
             IsActive = true,
             ExpiresOn = new DateOnly(2026, 12, 31)

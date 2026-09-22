@@ -131,6 +131,24 @@ public sealed class GetPackagesHandlerTests
     }
 
     [Fact]
+    public async Task GetPackages_IgnorePagination_ReturnsAllFilteredRowsInSinglePage()
+    {
+        await SeedPackagesAsync();
+
+        var handler = new GetPackagesHandler(_db, _currentUserServiceMock.Object);
+        var result = await handler.Handle(
+            new GetPackagesQuery(Status: "active", IgnorePagination: true),
+            default);
+
+        result.Items.Should().HaveCount(3);
+        result.Items.Should().OnlyContain(item => item.Status == "active");
+        result.PageNumber.Should().Be(1);
+        result.TotalPages.Should().Be(1);
+        result.TotalCount.Should().Be(3);
+        result.PageSize.Should().Be(3);
+    }
+
+    [Fact]
     public async Task GetPackages_Pagination_SecondPageReturnsCorrectOffset()
     {
         var now = DateTime.UtcNow;

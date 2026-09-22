@@ -46,7 +46,7 @@ public sealed class UpdatePackageHandler(
         package.ServiceCategoryId = request.ServiceCategoryId;
         package.SubServiceCategoryId = request.SubServiceCategoryId;
         package.SessionDurationMinutes = request.SessionDurationMinutes;
-        package.SessionCount = offerType == OfferType.Package ? request.SessionCount : 0;
+        package.SessionCount = offerType == OfferType.Package ? request.SessionCount : null;
         package.PulseCount = offerType == OfferType.Package ? request.PulseCount : null;
         package.PackageExpiryMonths = offerType == OfferType.Package ? request.PackageExpiryMonths : null;
         package.Price = request.Price;

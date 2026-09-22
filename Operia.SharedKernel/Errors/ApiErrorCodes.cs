@@ -71,6 +71,8 @@ public static class ApiErrorCodes
         public const string PackageDurationMin = "PACKAGE_DURATION_MIN";
         public const string PackageSessionCountRequired = "PACKAGE_SESSION_COUNT_REQUIRED";
         public const string PackageSessionCountMin = "PACKAGE_SESSION_COUNT_MIN";
+        public const string PackageSessionOrPulseRequired = "PACKAGE_SESSION_OR_PULSE_REQUIRED";
+        public const string PackageSessionAndPulseBothFilled = "PACKAGE_SESSION_AND_PULSE_BOTH_FILLED";
         public const string PackagePulseCountMin = "PACKAGE_PULSE_COUNT_MIN";
         public const string PackagePriceRequired = "PACKAGE_PRICE_REQUIRED";
         public const string PackagePriceMin = "PACKAGE_PRICE_MIN";

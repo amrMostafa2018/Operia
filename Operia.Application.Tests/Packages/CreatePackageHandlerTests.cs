@@ -45,13 +45,13 @@ public sealed class CreatePackageHandlerTests
         var result = await handler.Handle(ValidCommand("cat-1", "singleSession"), default);
 
         result.OfferType.Should().Be("singleSession");
-        result.SessionCount.Should().Be(0);
+        result.SessionCount.Should().BeNull();
         result.PulseCount.Should().BeNull();
         result.PackageExpiryMonths.Should().BeNull();
 
         var saved = await _db.Packages.SingleAsync();
         saved.OfferType.Should().Be(OfferType.SingleSession);
-        saved.SessionCount.Should().Be(0);
+        saved.SessionCount.Should().BeNull();
         saved.PulseCount.Should().BeNull();
         saved.PackageExpiryMonths.Should().BeNull();
     }
@@ -135,7 +135,7 @@ public sealed class CreatePackageHandlerTests
             subServiceCategoryId,
             45,
             offerType == "package" ? 6 : 0,
-            offerType == "package" ? 100 : null,
+            null,
             offerType == "package" ? 12 : null,
             1500m,
             string.Empty,

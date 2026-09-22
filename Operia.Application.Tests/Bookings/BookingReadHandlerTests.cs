@@ -211,8 +211,8 @@ public sealed class BookingReadHandlerTests
             TenantId = "tenant-1",
             CustomerId = "customer-1",
             PackageId = "package-1",
-            TotalSessions = 11,
-            UsedSessions = 2,
+            Total = 11,
+            Used = 2,
             ReservedSessions = 3
         });
         db.BookingPackageReservations.Add(new BookingPackageReservation

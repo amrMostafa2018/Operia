@@ -8,7 +8,7 @@ public sealed record UpdatePackageRequest(
     string ServiceCategoryId,
     string? SubServiceCategoryId,
     int SessionDurationMinutes,
-    int SessionCount,
+    int? SessionCount,
     int? PulseCount,
     int? PackageExpiryMonths,
     decimal Price,

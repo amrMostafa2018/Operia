@@ -16,6 +16,8 @@ public sealed class CustomerPackageConfiguration : IEntityTypeConfiguration<Cust
         builder.Property(x => x.TenantId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.CustomerId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.PackageId).IsRequired().HasMaxLength(36);
+        builder.Property(x => x.Total);
+        builder.Property(x => x.Used);
         builder.Property(x => x.CreatedBy).HasMaxLength(450);
         builder.Property(x => x.Version).IsRowVersion();
         builder.HasIndex(x => new { x.TenantId, x.CustomerId, x.IsActive });

@@ -105,15 +105,39 @@ public sealed class CreatePackageValidatorTests
     }
 
     [Fact]
-    public async Task CreatePackage_PackageTypeWithoutSessionCount_ThrowsValidationException_WithPackageSessionCountMin()
+    public async Task CreatePackage_PackageTypeWithoutSessionOrPulse_ThrowsValidationException_WithPackageSessionOrPulseRequired()
     {
         _db.ServiceCategories.Add(PackageTestData.ServiceCategory("cat-1", "tenant-1", "Body Laser"));
         await _db.SaveChangesAsync();
 
-        var act = () => HandleAsync(ValidCommand("cat-1", "package") with { SessionCount = 0 });
+        var act = () => HandleAsync(ValidCommand("cat-1", "package") with { SessionCount = null, PulseCount = null });
 
         var exception = await act.Should().ThrowAsync<ValidationException>();
-        exception.Which.ErrorCodes["sessionCount"].Should().Contain(ApiErrorCodes.Packages.PackageSessionCountMin);
+        exception.Which.ErrorCodes[string.Empty].Should().Contain(ApiErrorCodes.Packages.PackageSessionOrPulseRequired);
+    }
+
+    [Fact]
+    public async Task CreatePackage_PackageTypeWithOnlyPulseCount_IsValid()
+    {
+        _db.ServiceCategories.Add(PackageTestData.ServiceCategory("cat-1", "tenant-1", "Body Laser"));
+        await _db.SaveChangesAsync();
+
+        var act = () => HandleAsync(ValidCommand("cat-1", "package") with { SessionCount = null, PulseCount = 120 });
+
+        await act.Should().NotThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task CreatePackage_PackageTypeWithSessionAndPulse_ThrowsValidationException_WithPackageSessionAndPulseBothFilled()
+    {
+        _db.ServiceCategories.Add(PackageTestData.ServiceCategory("cat-1", "tenant-1", "Body Laser"));
+        await _db.SaveChangesAsync();
+
+        var act = () => HandleAsync(ValidCommand("cat-1", "package") with { SessionCount = 6, PulseCount = 120 });
+
+        var exception = await act.Should().ThrowAsync<ValidationException>();
+        exception.Which.ErrorCodes[string.Empty].Should()
+            .Contain(ApiErrorCodes.Packages.PackageSessionAndPulseBothFilled);
     }
 
     [Fact]
@@ -152,7 +176,7 @@ public sealed class CreatePackageValidatorTests
             null,
             45,
             offerType == "package" ? 6 : 0,
-            offerType == "package" ? 100 : null,
+            null,
             offerType == "package" ? 12 : null,
             1500m,
             string.Empty,

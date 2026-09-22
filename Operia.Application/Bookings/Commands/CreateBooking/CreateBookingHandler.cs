@@ -204,7 +204,7 @@ public sealed class CreateBookingHandler(
                          x.IsActive &&
                          (x.ExpiresOn == null || x.ExpiresOn >= today),
                     cancellationToken);
-                if (owned is null || owned.TotalSessions <= owned.UsedSessions + owned.ReservedSessions)
+                if (owned is null || !owned.HasAvailableBalance)
                 {
                     throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");
                 }
@@ -226,7 +226,7 @@ public sealed class CreateBookingHandler(
                     TenantId = tenantId,
                     CustomerId = customerId,
                     PackageId = product.Id,
-                    TotalSessions = 1,
+                    Total = 1,
                     IsActive = true
                 };
                 newPurchases.Add(purchase);

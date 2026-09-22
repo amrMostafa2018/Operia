@@ -240,6 +240,14 @@
     "Value": "يجب أن يكون عدد الجلسات 1 على الأقل."
   },
   {
+    "Name": "PACKAGE_SESSION_OR_PULSE_REQUIRED",
+    "Value": "يجب إدخال عدد الجلسات أو عدد النبضات."
+  },
+  {
+    "Name": "PACKAGE_SESSION_AND_PULSE_BOTH_FILLED",
+    "Value": "يرجى إدخال عدد الجلسات أو عدد النبضات فقط، وليس كليهما."
+  },
+  {
     "Name": "PACKAGE_PULSE_COUNT_MIN",
     "Value": "لا يمكن أن يكون عدد النبضات سالبًا."
   },

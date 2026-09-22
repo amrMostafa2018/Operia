@@ -16,11 +16,12 @@ public sealed class BookingPackageReservationConfiguration : IEntityTypeConfigur
         builder.Property(x => x.TenantId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.BookingId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.CustomerPackageId).IsRequired().HasMaxLength(36);
+        builder.Property(x => x.CancellationAtUtc);
         builder.Property(x => x.CreatedBy).HasMaxLength(450);
         builder.HasIndex(x => new { x.TenantId, x.BookingId });
         builder.HasIndex(x => new { x.TenantId, x.CustomerPackageId, x.SessionNumber })
             .IsUnique()
-            .HasFilter("[ReleasedAtUtc] IS NULL");
+            .HasFilter("[CancellationAtUtc] IS NULL");
         builder.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.CustomerPackage).WithMany(x => x.Reservations).HasForeignKey(x => x.CustomerPackageId).OnDelete(DeleteBehavior.Restrict);
     }

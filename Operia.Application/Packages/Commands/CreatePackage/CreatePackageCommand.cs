@@ -11,7 +11,7 @@ public sealed record CreatePackageCommand(
     string ServiceCategoryId,
     string? SubServiceCategoryId,
     int SessionDurationMinutes,
-    int SessionCount,
+    int? SessionCount,
     int? PulseCount,
     int? PackageExpiryMonths,
     decimal Price,

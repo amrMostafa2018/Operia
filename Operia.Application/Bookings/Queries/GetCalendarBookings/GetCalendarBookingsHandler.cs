@@ -85,7 +85,7 @@ public sealed class GetCalendarBookingsHandler(
             .AsNoTracking()
             .Where(x => x.TenantId == tenantId &&
                         bookingIds.Contains(x.BookingId) &&
-                        x.ReleasedAtUtc == null &&
+                        x.CancellationAtUtc == null &&
                         x.CustomerPackage != null &&
                         x.Booking != null &&
                         x.Booking.Items.Any(item =>
@@ -98,9 +98,9 @@ public sealed class GetCalendarBookingsHandler(
                 Remaining = x.CustomerPackage == null
                     ? 0
                     : Math.Max(
-                        x.CustomerPackage.TotalSessions -
-                        x.CustomerPackage.UsedSessions -
-                        x.CustomerPackage.ReservedSessions,
+                        x.CustomerPackage.Total -
+                        x.CustomerPackage.Used -
+                        (x.CustomerPackage.ReservedSessions ?? 0),
                         0)
             })
             .ToDictionaryAsync(x => x.BookingId, cancellationToken);

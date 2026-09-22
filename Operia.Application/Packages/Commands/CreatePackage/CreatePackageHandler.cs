@@ -40,7 +40,7 @@ public sealed class CreatePackageHandler(
             ServiceCategoryId = request.ServiceCategoryId,
             SubServiceCategoryId = request.SubServiceCategoryId,
             SessionDurationMinutes = request.SessionDurationMinutes,
-            SessionCount = offerType == OfferType.Package ? request.SessionCount : 0,
+            SessionCount = offerType == OfferType.Package ? request.SessionCount : null,
             PulseCount = offerType == OfferType.Package ? request.PulseCount : null,
             PackageExpiryMonths = offerType == OfferType.Package ? request.PackageExpiryMonths : null,
             Price = request.Price,
