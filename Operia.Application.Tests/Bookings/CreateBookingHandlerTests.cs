@@ -61,6 +61,51 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
+    public async Task Calendar_ReusedStandaloneService_ReturnsOwnedPackageMetadata()
+    {
+        await SeedAsync();
+        _db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "owned-service",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "service-1",
+            Total = 1,
+            Used = 0,
+            ReservedSessions = 0,
+            IsActive = true
+        });
+        await _db.SaveChangesAsync();
+
+        await CreateHandler().Handle(
+            new CreateBookingCommand(
+                "reused-service-booking",
+                "customer-1",
+                "branch-1",
+                "employee-1",
+                _scheduledDate,
+                720,
+                750,
+                [new CreateBookingItemInput("service-1", "owned-service", 1)]),
+            CancellationToken.None);
+
+        var calendar = await new GetCalendarBookingsHandler(
+                _db,
+                _user.Object,
+                _branchScope.Object,
+                _clock.Object)
+            .Handle(
+                new GetCalendarBookingsQuery("branch-1", _scheduledDate, _scheduledDate, "employee-1"),
+                CancellationToken.None);
+
+        var item = calendar.Bookings.Single().Items.Should().ContainSingle().Which;
+        item.Type.Should().Be("session");
+        item.UnitPrice.Should().Be(0);
+        item.CustomerPackageId.Should().Be("owned-service");
+        item.PackageSessionLinked.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Create_PackageAndExtraService_AppearInCalendarDetails()
     {
         await SeedAsync();

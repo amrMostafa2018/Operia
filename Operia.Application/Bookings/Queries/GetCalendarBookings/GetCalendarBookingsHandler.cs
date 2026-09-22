@@ -145,14 +145,25 @@ public sealed class GetCalendarBookingsHandler(
             {
                 Items = booking.Items.Select(item =>
                 {
-                    if (item.Type != "package" || item.PackageId is null)
+                    if (item.PackageId is null)
                     {
                         return item;
                     }
 
                     if (reservationLookup.TryGetValue((booking.Id, item.PackageId), out var reserved))
                     {
-                        return EnrichPackageItem(item, reserved) with { PackageSessionLinked = true };
+                        var enriched = EnrichPackageItem(item, reserved);
+                        return item.Type switch
+                        {
+                            "package" => enriched with { PackageSessionLinked = true },
+                            "session" => enriched with { PackageSessionLinked = item.UnitPrice == 0 },
+                            _ => enriched
+                        };
+                    }
+
+                    if (item.Type != "package")
+                    {
+                        return item;
                     }
 
                     if (ownedLookup.TryGetValue((booking.CustomerId, item.PackageId), out var owned))
