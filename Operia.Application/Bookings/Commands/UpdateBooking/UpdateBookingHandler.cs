@@ -29,7 +29,8 @@ public sealed class UpdateBookingHandler(
         var tenantId = BookingAccess.RequireTenant(currentUser);
         var booking = await LoadEditableBookingAsync(tenantId, request, cancellationToken);
         var catalog = await LoadCatalogAsync(tenantId, request.Items, cancellationToken);
-        ValidatePackageSelection(booking.Items, request.Items, catalog);
+        var bookingSessionPackageId = await ResolveBookingSessionPackageIdAsync(tenantId, booking, cancellationToken);
+        ValidatePackageSelection(bookingSessionPackageId, request.Items, catalog);
 
         var itemsChanged = HasItemsChanged(booking.Items, request.Items);
         var paymentMethodChanged = !string.Equals(booking.PaymentMethod, request.PaymentMethod, StringComparison.Ordinal);
@@ -116,23 +117,58 @@ public sealed class UpdateBookingHandler(
         return catalog;
     }
 
-    /// <summary>Rejects edits that add, remove, or change the booking's Package session.</summary>
+    /// <summary>Resolves the catalog package id reserved as this booking's session package.</summary>
+    private async Task<string?> ResolveBookingSessionPackageIdAsync(
+        string tenantId,
+        Booking booking,
+        CancellationToken cancellationToken)
+    {
+        var fromReservation = await db.BookingPackageReservations
+            .AsNoTracking()
+            .Where(x => x.TenantId == tenantId &&
+                        x.BookingId == booking.Id &&
+                        x.CancellationAtUtc == null &&
+                        x.CustomerPackage != null &&
+                        x.CustomerPackage.Package != null &&
+                        x.CustomerPackage.Package.OfferType == OfferType.Package)
+            .Select(x => x.CustomerPackage!.PackageId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (fromReservation is not null)
+        {
+            return fromReservation;
+        }
+
+        return booking.Items
+            .Where(x => x.Type == BookingItemType.PackageSession)
+            .Select(x => x.PackageId)
+            .FirstOrDefault();
+    }
+
+    /// <summary>Rejects edits that add, remove, or change the booking's session package.</summary>
     private static void ValidatePackageSelection(
-        IEnumerable<BookingItem> existingItems,
+        string? existingBookingSessionPackageId,
         IReadOnlyList<CreateBookingItemInput> requestedItems,
         IReadOnlyDictionary<string, Package> catalog)
     {
-        var existingPackageId = existingItems
-            .SingleOrDefault(x => x.Type == BookingItemType.PackageSession)?.PackageId;
-        var requestedPackageItems = requestedItems
-            .Where(x => catalog[x.PackageId].OfferType == OfferType.Package)
+        var requestedBookingSessionPackages = requestedItems
+            .Where(item =>
+                catalog[item.PackageId].OfferType == OfferType.Package &&
+                !IsPackagePurchaseOnly(item))
             .ToList();
-        if (requestedPackageItems.Count > 1 || requestedPackageItems.Any(x => x.Quantity != 1)
-            || !string.Equals(existingPackageId, requestedPackageItems.SingleOrDefault()?.PackageId, StringComparison.Ordinal))
+        if (requestedBookingSessionPackages.Count > 1 ||
+            requestedBookingSessionPackages.Any(x => x.Quantity != 1) ||
+            !string.Equals(
+                existingBookingSessionPackageId,
+                requestedBookingSessionPackages.Select(x => x.PackageId).FirstOrDefault(),
+                StringComparison.Ordinal))
         {
             throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageEditNotAllowed, "items");
         }
     }
+
+    private static bool IsPackagePurchaseOnly(CreateBookingItemInput item) =>
+        string.Equals(item.Type, "packagePurchase", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Compares the product and quantity selection without depending on item order.</summary>
     private static bool HasItemsChanged(

@@ -16,7 +16,9 @@ public sealed record BookingCustomerPackageDto(
     int ReservedSessions,
     int AvailableSessions,
     DateOnly? ExpiresOn,
-    string OfferType);
+    string OfferType,
+    int? SessionCount,
+    int? PulseCount);
 
 /// <summary>Carries booking customer dto data across the operation boundary.</summary>
 public sealed record BookingCustomerDto(

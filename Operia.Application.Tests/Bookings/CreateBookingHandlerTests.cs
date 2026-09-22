@@ -232,6 +232,8 @@ public sealed class CreateBookingHandlerTests
             .Handle(new FindBookingCustomerQuery("01012345678"), CancellationToken.None);
         found!.Packages.Single(x => x.CustomerPackageId == purchase.Id).OfferType.Should().Be("session");
         found.Packages.Single(x => x.CustomerPackageId == purchase.Id).AvailableSessions.Should().Be(1);
+        found.Packages.Single(x => x.CustomerPackageId == purchase.Id).PulseCount.Should().BeNull();
+        found.Packages.Single(x => x.CustomerPackageId == purchase.Id).SessionCount.Should().BeNull();
 
         var rebooked = await CreateHandler().Handle(
             new CreateBookingCommand(
@@ -632,6 +634,237 @@ public sealed class CreateBookingHandlerTests
             start,
             end,
             [new CreateBookingItemInput("package-1", "owned-1", 1)]);
+
+    [Fact]
+    public async Task FindCustomer_PulsePackage_ReturnsItsPulseCount()
+    {
+        await SeedAsync();
+        _db.Packages.Add(new Package
+        {
+            Id = "pulse-1",
+            TenantId = "tenant-1",
+            BusinessId = "business-1",
+            Name = "5000 Plus",
+            Description = "Pulses",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = "category-1",
+            SessionDurationMinutes = 30,
+            SessionCount = null,
+            PulseCount = 5000,
+            Price = 5000,
+            Status = PackageStatus.Active
+        });
+        _db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "owned-pulse",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "pulse-1",
+            Total = 5000,
+            Used = 0,
+            ReservedSessions = null,
+            IsActive = true,
+            ExpiresOn = new DateOnly(2026, 12, 31)
+        });
+        await _db.SaveChangesAsync();
+
+        var found = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
+            .Handle(new FindBookingCustomerQuery("01012345678"), CancellationToken.None);
+
+        var pulse = found!.Packages.Single(x => x.PackageId == "pulse-1");
+        pulse.PulseCount.Should().Be(5000);
+        pulse.SessionCount.Should().BeNull();
+        pulse.TotalSessions.Should().Be(5000);
+        found.Packages.Single(x => x.PackageId == "package-1").PulseCount.Should().BeNull();
+        found.Packages.Single(x => x.PackageId == "package-1").SessionCount.Should().Be(6);
+    }
+
+    [Fact]
+    public async Task Create_PulsePackageBooking_IncrementsReservedSessions()
+    {
+        await SeedAsync();
+        _db.Packages.Add(new Package
+        {
+            Id = "pulse-1",
+            TenantId = "tenant-1",
+            BusinessId = "business-1",
+            Name = "5000 Plus",
+            Description = "Pulses",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = "category-1",
+            SessionDurationMinutes = 30,
+            SessionCount = null,
+            PulseCount = 5000,
+            Price = 5000,
+            Status = PackageStatus.Active
+        });
+        _db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "owned-pulse",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "pulse-1",
+            Total = 5000,
+            Used = 0,
+            ReservedSessions = null,
+            IsActive = true,
+            ExpiresOn = new DateOnly(2026, 12, 31)
+        });
+        await _db.SaveChangesAsync();
+
+        await CreateHandler().Handle(
+            new CreateBookingCommand(
+                "pulse-booking",
+                "customer-1",
+                "branch-1",
+                "employee-1",
+                _scheduledDate,
+                600,
+                630,
+                [new CreateBookingItemInput("pulse-1", "owned-pulse", 1)]),
+            CancellationToken.None);
+
+        var owned = await _db.CustomerPackages.SingleAsync(x => x.Id == "owned-pulse");
+        owned.ReservedSessions.Should().Be(1);
+        (await _db.BookingPackageReservations.CountAsync(x => x.CustomerPackageId == "owned-pulse")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task FindCustomer_PulsePackage_IgnoresReservedSessionsInAvailableBalance()
+    {
+        await SeedAsync();
+        _db.Packages.Add(new Package
+        {
+            Id = "pulse-1",
+            TenantId = "tenant-1",
+            BusinessId = "business-1",
+            Name = "5000 Plus",
+            Description = "Pulses",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = "category-1",
+            SessionDurationMinutes = 30,
+            SessionCount = null,
+            PulseCount = 5000,
+            Price = 5000,
+            Status = PackageStatus.Active
+        });
+        _db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "owned-pulse",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "pulse-1",
+            Total = 5000,
+            Used = 0,
+            ReservedSessions = 3,
+            IsActive = true,
+            ExpiresOn = new DateOnly(2026, 12, 31)
+        });
+        await _db.SaveChangesAsync();
+
+        var found = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
+            .Handle(new FindBookingCustomerQuery("01012345678"), CancellationToken.None);
+
+        var pulse = found!.Packages.Single(x => x.PackageId == "pulse-1");
+        pulse.ReservedSessions.Should().Be(3);
+        pulse.AvailableSessions.Should().Be(5000);
+    }
+
+    [Fact]
+    public async Task FindCustomer_SingleSession_SubtractsReservedSessionsInAvailableBalance()
+    {
+        await SeedAsync();
+        _db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "owned-service",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "service-1",
+            Total = 2,
+            Used = 0,
+            ReservedSessions = 1,
+            IsActive = true
+        });
+        await _db.SaveChangesAsync();
+
+        var found = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
+            .Handle(new FindBookingCustomerQuery("01012345678"), CancellationToken.None);
+
+        var service = found!.Packages.Single(x => x.PackageId == "service-1");
+        service.OfferType.Should().Be("session");
+        service.ReservedSessions.Should().Be(1);
+        service.AvailableSessions.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Update_WithBookingSessionAndPurchasePackage_AllowsUnchangedSave()
+    {
+        await SeedAsync();
+        _db.Packages.Add(new Package
+        {
+            Id = "pulse-1",
+            TenantId = "tenant-1",
+            BusinessId = "business-1",
+            Name = "5000 Plus",
+            Description = "Pulses",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = "category-1",
+            SessionDurationMinutes = 30,
+            SessionCount = null,
+            PulseCount = 5000,
+            Price = 5000,
+            Status = PackageStatus.Active
+        });
+        _db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "owned-pulse",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "pulse-1",
+            Total = 5000,
+            Used = 0,
+            ReservedSessions = 0,
+            IsActive = true,
+            ExpiresOn = new DateOnly(2026, 12, 31)
+        });
+        await _db.SaveChangesAsync();
+
+        var created = await CreateHandler().Handle(
+            new CreateBookingCommand(
+                "multi-package-booking",
+                "customer-1",
+                "branch-1",
+                "employee-1",
+                _scheduledDate,
+                600,
+                630,
+                [
+                    new CreateBookingItemInput("package-1", "owned-1", 1),
+                    new CreateBookingItemInput("pulse-1", null, 1, "packagePurchase")
+                ]),
+            CancellationToken.None);
+
+        var booking = await _db.Bookings.SingleAsync(x => x.Id == created.Id);
+
+        var action = async () => await new UpdateBookingHandler(
+                _db,
+                _user.Object,
+                _branchScope.Object,
+                new AuditWriter(_db, _user.Object),
+                _clock.Object)
+            .Handle(
+                new UpdateBookingCommand(
+                    booking.Id,
+                    Convert.ToBase64String(booking.Version),
+                    [
+                        new CreateBookingItemInput("package-1", "owned-1", 1),
+                        new CreateBookingItemInput("pulse-1", null, 1, "packagePurchase")
+                    ],
+                    "cash"),
+                CancellationToken.None);
+
+        await action.Should().NotThrowAsync();
+    }
 
     private async Task SeedAsync()
     {

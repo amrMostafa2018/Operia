@@ -2,6 +2,7 @@ using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Bookings.Commands.CancelBooking;
 using Operia.Application.Bookings.Commands.CreateBooking;
+using Operia.Application.Bookings.Common;
 using Operia.Application.Common.Exceptions;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
@@ -129,7 +130,9 @@ public sealed class BookingConcurrencyStore(ApplicationDbContext db) : IBookingC
             {
                 if (!loadedPackages.TryGetValue(reservation.CustomerPackageId, out owned))
                 {
-                    owned = await db.CustomerPackages.SingleOrDefaultAsync(
+                    owned = await db.CustomerPackages
+                        .Include(x => x.Package)
+                        .SingleOrDefaultAsync(
                         x => x.TenantId == booking.TenantId &&
                              x.Id == reservation.CustomerPackageId &&
                              x.CustomerId == booking.CustomerId,
@@ -142,7 +145,12 @@ public sealed class BookingConcurrencyStore(ApplicationDbContext db) : IBookingC
             }
             if (owned is null || !owned.IsActive ||
                 (owned.ExpiresOn is { } expiresOn && expiresOn < DateOnly.FromDateTime(utcNow)) ||
-                !owned.HasAvailableBalance)
+                !CustomerPackageBalance.HasAvailable(
+                    owned.Total,
+                    owned.Used,
+                    owned.ReservedSessions,
+                    owned.Package?.OfferType ?? OfferType.SingleSession,
+                    owned.Package?.PulseCount))
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");
             }
@@ -165,7 +173,7 @@ public sealed class BookingConcurrencyStore(ApplicationDbContext db) : IBookingC
             }
 
             reservation.SessionNumber = next;
-            owned.ReservedSessions = owned.ReservedSessionCount + 1;
+            owned.ReservedSessions = (owned.ReservedSessions ?? 0) + 1;
         }
 
         await db.SaveChangesAsync(cancellationToken);

@@ -19,7 +19,7 @@ public sealed class CustomerPackage : Entity, ITenantScoped
 
     /// <summary>
     /// Session slots held by active booking reservations but not yet consumed.
-    /// Null for pulse-based packages: pulse balance is tracked through <see cref="Total"/> and <see cref="Used"/> only.
+    /// Stored for all package types; pulse remaining balance ignores this value when calculating availability.
     /// </summary>
     public int? ReservedSessions { get; set; }
 
@@ -33,10 +33,10 @@ public sealed class CustomerPackage : Entity, ITenantScoped
     public Package? Package { get; set; }
     public ICollection<BookingPackageReservation> Reservations { get; set; } = [];
 
-    /// <summary>Reserved session count; returns 0 when <see cref="ReservedSessions"/> is null (pulse packages).</summary>
+    /// <summary>Reserved session count; returns 0 when <see cref="ReservedSessions"/> is null.</summary>
     public int ReservedSessionCount => ReservedSessions ?? 0;
 
-    /// <summary>Remaining units after used and reserved session slots.</summary>
+    /// <summary>Remaining units using session-package rules only. Use application balance helpers for pulse packages.</summary>
     public int RemainingBalance => Total - Used - ReservedSessionCount;
 
     /// <summary>Whether the purchase still has available balance.</summary>

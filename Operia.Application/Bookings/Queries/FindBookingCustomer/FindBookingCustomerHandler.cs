@@ -34,7 +34,10 @@ public sealed class FindBookingCustomerHandler(
                                     (owned.ExpiresOn == null || owned.ExpiresOn >= today) &&
                                     owned.Package != null &&
                                     owned.Package.Status == PackageStatus.Active &&
-                                    owned.Total > owned.Used + (owned.ReservedSessions ?? 0))
+                                    ((owned.Package.OfferType == OfferType.Package &&
+                                      (owned.Package.PulseCount ?? 0) > 0)
+                                        ? owned.Total > owned.Used
+                                        : owned.Total > owned.Used + (owned.ReservedSessions ?? 0)))
                     .OrderBy(owned => owned.ExpiresOn)
                     .Select(owned => new BookingCustomerPackageDto(
                         owned.Id,
@@ -44,9 +47,14 @@ public sealed class FindBookingCustomerHandler(
                         owned.Total,
                         owned.Used,
                         owned.ReservedSessions ?? 0,
-                        owned.Total - owned.Used - (owned.ReservedSessions ?? 0),
+                        (owned.Package.OfferType == OfferType.Package &&
+                         (owned.Package.PulseCount ?? 0) > 0)
+                            ? owned.Total - owned.Used
+                            : owned.Total - owned.Used - (owned.ReservedSessions ?? 0),
                         owned.ExpiresOn,
-                        owned.Package.OfferType == OfferType.Package ? "package" : "session"))
+                        owned.Package.OfferType == OfferType.Package ? "package" : "session",
+                        owned.Package.SessionCount,
+                        owned.Package.PulseCount))
                     .ToList()))
             .SingleOrDefaultAsync(cancellationToken);
     }

@@ -101,16 +101,83 @@ public sealed class CreateBookingHandler(
         return catalog;
     }
 
-    /// <summary>Allows at most one Package item, representing exactly one session.</summary>
+    /// <summary>Allows one booking-session package plus optional purchase-only package lines.</summary>
     private static void ValidatePackageSelection(
         IReadOnlyList<CreateBookingItemInput> items,
         IReadOnlyDictionary<string, Package> catalog)
     {
-        var packageInputs = items.Where(item => catalog[item.PackageId].OfferType == OfferType.Package).ToList();
-        if (packageInputs.Count > 1 || packageInputs.Any(item => item.Quantity != 1))
+        var sessionPackages = items
+            .Where(item =>
+                catalog[item.PackageId].OfferType == OfferType.Package &&
+                !IsPackagePurchaseOnly(item))
+            .ToList();
+        if (sessionPackages.Count > 1)
         {
             throw Invalid(ApiErrorCodes.Bookings.OnePackageSessionRequired, "items");
         }
+    }
+
+    private static bool IsPackagePurchaseOnly(CreateBookingItemInput item) =>
+        string.Equals(item.Type, "packagePurchase", StringComparison.OrdinalIgnoreCase);
+
+    private static int PackageNewPurchaseUnits(CreateBookingItemInput item)
+    {
+        if (IsPackagePurchaseOnly(item))
+        {
+            return item.Quantity;
+        }
+
+        return item.CustomerPackageId is not null
+            ? Math.Max(0, item.Quantity - 1)
+            : item.Quantity;
+    }
+
+    private static decimal CalculateItemTotal(CreateBookingItemInput item, Package product)
+    {
+        if (product.OfferType == OfferType.SingleSession)
+        {
+            return item.CustomerPackageId is not null ? 0 : product.Price * item.Quantity;
+        }
+
+        return product.Price * PackageNewPurchaseUnits(item);
+    }
+
+    private static decimal CalculateUnitPrice(CreateBookingItemInput item, Package product)
+    {
+        if (product.OfferType == OfferType.SingleSession)
+        {
+            return item.CustomerPackageId is not null ? 0 : product.Price;
+        }
+
+        return PackageNewPurchaseUnits(item) > 0 ? product.Price : 0;
+    }
+
+    private static CustomerPackage CreatePackagePurchase(
+        Package product,
+        string tenantId,
+        string customerId,
+        DateOnly today)
+    {
+        var total = product.PulseCount is > 0 ? product.PulseCount.Value : product.SessionCount ?? 0;
+        if (total <= 0)
+        {
+            throw Invalid(ApiErrorCodes.Packages.PackageSessionOrPulseRequired, "items");
+        }
+
+        DateOnly? expiresOn = product.PackageExpiryMonths is > 0
+            ? today.AddMonths(product.PackageExpiryMonths.Value)
+            : null;
+
+        return new CustomerPackage
+        {
+            TenantId = tenantId,
+            CustomerId = customerId,
+            PackageId = product.Id,
+            Total = total,
+            ReservedSessions = 0,
+            ExpiresOn = expiresOn,
+            IsActive = true
+        };
     }
 
     /// <summary>Accepts a selected payment method only while it is enabled for this tenant.</summary>
@@ -187,13 +254,9 @@ public sealed class CreateBookingHandler(
             var product = catalog[item.PackageId];
             if (!string.IsNullOrWhiteSpace(item.CustomerPackageId))
             {
-                if (item.Quantity != 1)
+                if (product.OfferType == OfferType.SingleSession && item.Quantity != 1)
                 {
-                    throw Invalid(
-                        product.OfferType == OfferType.Package
-                            ? ApiErrorCodes.Bookings.OnePackageSessionRequired
-                            : ApiErrorCodes.Bookings.ReusedServiceQuantityOne,
-                        "items");
+                    throw Invalid(ApiErrorCodes.Bookings.ReusedServiceQuantityOne, "items");
                 }
 
                 var owned = await db.CustomerPackages.AsNoTracking().SingleOrDefaultAsync(
@@ -204,18 +267,53 @@ public sealed class CreateBookingHandler(
                          x.IsActive &&
                          (x.ExpiresOn == null || x.ExpiresOn >= today),
                     cancellationToken);
-                if (owned is null || !owned.HasAvailableBalance)
+                if (owned is null ||
+                    !CustomerPackageBalance.HasAvailable(
+                        owned.Total,
+                        owned.Used,
+                        owned.ReservedSessions,
+                        product.OfferType,
+                        product.PulseCount))
                 {
                     throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");
                 }
 
                 reservations.Add(NewReservation(tenantId, bookingId, owned.Id));
+
+                if (product.OfferType == OfferType.Package)
+                {
+                    for (var unit = 0; unit < Math.Max(0, item.Quantity - 1); unit++)
+                    {
+                        newPurchases.Add(CreatePackagePurchase(product, tenantId, customerId, today));
+                    }
+                }
+
                 continue;
             }
 
             if (product.OfferType == OfferType.Package)
             {
-                throw Invalid(ApiErrorCodes.Bookings.OwnedPackageRequired, "items");
+                if (IsPackagePurchaseOnly(item))
+                {
+                    for (var unit = 0; unit < item.Quantity; unit++)
+                    {
+                        newPurchases.Add(CreatePackagePurchase(product, tenantId, customerId, today));
+                    }
+
+                    continue;
+                }
+
+                for (var unit = 0; unit < item.Quantity; unit++)
+                {
+                    var purchase = CreatePackagePurchase(product, tenantId, customerId, today);
+                    newPurchases.Add(purchase);
+                    if (unit == 0)
+                    {
+                        reservations.Add(NewReservation(tenantId, bookingId, purchase.Id));
+                    }
+                }
+
+                continue;
             }
 
             // Each standalone service unit is a one-session customer purchase.
@@ -227,6 +325,7 @@ public sealed class CreateBookingHandler(
                     CustomerId = customerId,
                     PackageId = product.Id,
                     Total = 1,
+                    ReservedSessions = 0,
                     IsActive = true
                 };
                 newPurchases.Add(purchase);
@@ -281,10 +380,7 @@ public sealed class CreateBookingHandler(
             ScheduledDate = request.ScheduledDate,
             StartMinutes = request.StartMinutes,
             EndMinutes = request.EndMinutes,
-            TotalAmount = request.Items.Sum(item =>
-                catalog[item.PackageId].OfferType == OfferType.Package || item.CustomerPackageId is not null
-                    ? 0
-                    : catalog[item.PackageId].Price * item.Quantity),
+            TotalAmount = request.Items.Sum(item => CalculateItemTotal(item, catalog[item.PackageId])),
             PaymentMethod = request.PaymentMethod
         };
         booking.Items = request.Items.Select(input =>
@@ -303,9 +399,7 @@ public sealed class CreateBookingHandler(
                 Name = product.Name,
                 Quantity = input.Quantity,
                 DurationMinutes = product.SessionDurationMinutes,
-                UnitPrice = product.OfferType == OfferType.Package || input.CustomerPackageId is not null
-                    ? 0
-                    : product.Price
+                UnitPrice = CalculateUnitPrice(input, product)
             };
         }).ToList();
         return booking;

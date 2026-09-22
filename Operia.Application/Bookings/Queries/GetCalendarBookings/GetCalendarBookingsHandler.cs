@@ -76,47 +76,92 @@ public sealed class GetCalendarBookingsHandler(
                         item.UnitPrice,
                         item.PackageId,
                         null,
-                        null))
+                        null,
+                        null,
+                        false))
                     .ToList()))
             .ToListAsync(cancellationToken);
 
         var bookingIds = bookings.Select(x => x.Id).ToList();
-        var packageBalances = await db.BookingPackageReservations
+        var reservationBalances = await db.BookingPackageReservations
             .AsNoTracking()
             .Where(x => x.TenantId == tenantId &&
                         bookingIds.Contains(x.BookingId) &&
                         x.CancellationAtUtc == null &&
-                        x.CustomerPackage != null &&
-                        x.Booking != null &&
-                        x.Booking.Items.Any(item =>
-                            item.Type == BookingItemType.PackageSession &&
-                            item.PackageId == x.CustomerPackage.PackageId))
-            .Select(x => new
-            {
+                        x.CustomerPackage != null)
+            .Select(x => new PackageBalanceRow(
                 x.BookingId,
+                x.CustomerPackage!.CustomerId,
+                x.CustomerPackage.PackageId,
                 x.CustomerPackageId,
-                Remaining = x.CustomerPackage == null
-                    ? 0
-                    : Math.Max(
-                        x.CustomerPackage.Total -
-                        x.CustomerPackage.Used -
-                        (x.CustomerPackage.ReservedSessions ?? 0),
-                        0)
-            })
-            .ToDictionaryAsync(x => x.BookingId, cancellationToken);
+                x.CustomerPackage.Total,
+                x.CustomerPackage.Used,
+                x.CustomerPackage.ReservedSessions,
+                x.CustomerPackage.Package != null ? x.CustomerPackage.Package.OfferType : OfferType.SingleSession,
+                x.CustomerPackage.Package != null ? x.CustomerPackage.Package.PulseCount : null))
+            .ToListAsync(cancellationToken);
+
+        var reservationLookup = reservationBalances.ToDictionary(
+            x => (x.BookingId!, x.PackageId),
+            x => x);
+
+        var customerIds = bookings.Select(x => x.CustomerId).Distinct().ToList();
+        var packageIds = bookings
+            .SelectMany(booking => booking.Items)
+            .Where(item => item.Type == "package" && item.PackageId is not null)
+            .Select(item => item.PackageId!)
+            .Distinct()
+            .ToList();
+
+        var ownedBalances = packageIds.Count == 0 || customerIds.Count == 0
+            ? []
+            : await db.CustomerPackages
+                .AsNoTracking()
+                .Where(x => x.TenantId == tenantId &&
+                            customerIds.Contains(x.CustomerId) &&
+                            packageIds.Contains(x.PackageId) &&
+                            x.IsActive)
+                .Select(x => new PackageBalanceRow(
+                    null,
+                    x.CustomerId,
+                    x.PackageId,
+                    x.Id,
+                    x.Total,
+                    x.Used,
+                    x.ReservedSessions,
+                    x.Package != null ? x.Package.OfferType : OfferType.SingleSession,
+                    x.Package != null ? x.Package.PulseCount : null))
+                .ToListAsync(cancellationToken);
+
+        var ownedLookup = ownedBalances
+            .GroupBy(x => (x.CustomerId, x.PackageId))
+            .ToDictionary(
+                group => group.Key,
+                group => group.First());
 
         bookings = bookings.Select(booking =>
         {
-            packageBalances.TryGetValue(booking.Id, out var balance);
             return booking with
             {
-                Items = booking.Items.Select(item => item.Type == "package" && balance is not null
-                    ? item with
+                Items = booking.Items.Select(item =>
+                {
+                    if (item.Type != "package" || item.PackageId is null)
                     {
-                        CustomerPackageId = balance.CustomerPackageId,
-                        PackageRemainingSessions = balance.Remaining
+                        return item;
                     }
-                    : item).ToList()
+
+                    if (reservationLookup.TryGetValue((booking.Id, item.PackageId), out var reserved))
+                    {
+                        return EnrichPackageItem(item, reserved) with { PackageSessionLinked = true };
+                    }
+
+                    if (ownedLookup.TryGetValue((booking.CustomerId, item.PackageId), out var owned))
+                    {
+                        return EnrichPackageItem(item, owned) with { PackageSessionLinked = false };
+                    }
+
+                    return item;
+                }).ToList()
             };
         }).ToList();
 
@@ -154,4 +199,28 @@ public sealed class GetCalendarBookingsHandler(
 
         return new CalendarBookingsResult(bookings, holds, clock.UtcNow);
     }
+
+    private static CalendarBookingItemDto EnrichPackageItem(CalendarBookingItemDto item, PackageBalanceRow balance) =>
+        item with
+        {
+            CustomerPackageId = balance.CustomerPackageId,
+            PackageRemainingSessions = CustomerPackageBalance.Remaining(
+                balance.Total,
+                balance.Used,
+                balance.ReservedSessions,
+                balance.OfferType,
+                balance.PulseCount),
+            PackagePulseCount = balance.PulseCount
+        };
+
+    private sealed record PackageBalanceRow(
+        string? BookingId,
+        string CustomerId,
+        string PackageId,
+        string CustomerPackageId,
+        int Total,
+        int Used,
+        int? ReservedSessions,
+        OfferType OfferType,
+        int? PulseCount);
 }

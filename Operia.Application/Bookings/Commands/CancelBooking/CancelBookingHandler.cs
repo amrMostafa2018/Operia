@@ -174,13 +174,16 @@ public sealed class CancelBookingHandler(
                      x.Id == reservation.CustomerPackageId &&
                      x.CustomerId == booking.CustomerId,
                 cancellationToken);
-            if (owned is null || owned.ReservedSessionCount < 1)
+            if (owned is null)
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Bookings.Changed);
             }
 
             reservation.CancellationAtUtc = clock.UtcNow;
-            owned.ReservedSessions = owned.ReservedSessionCount - 1;
+            if (owned.ReservedSessionCount > 0)
+            {
+                owned.ReservedSessions = owned.ReservedSessionCount - 1;
+            }
             if (releasedServiceCounts.ContainsKey(owned.PackageId))
             {
                 releasedServiceCounts[owned.PackageId] += 1;

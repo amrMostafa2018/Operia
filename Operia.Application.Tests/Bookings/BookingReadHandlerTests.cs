@@ -188,6 +188,21 @@ public sealed class BookingReadHandlerTests
         db.Employees.AddRange(
             Employee("employee-allowed", "tenant-1"),
             Employee("employee-denied", "tenant-1"));
+        db.Packages.Add(new Package
+        {
+            Id = "package-1",
+            TenantId = "tenant-1",
+            BusinessId = "business-1",
+            Name = "Owned package",
+            Description = "Package",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = "category-1",
+            SessionDurationMinutes = 60,
+            SessionCount = 11,
+            PulseCount = null,
+            Price = 1000,
+            Status = PackageStatus.Active
+        });
         db.Bookings.AddRange(
             Booking("booking-allowed", "tenant-1", "branch-allowed", "employee-allowed"),
             Booking("booking-denied", "tenant-1", "branch-denied", "employee-denied"));
