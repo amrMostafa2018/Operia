@@ -236,7 +236,9 @@ public sealed class CreateBookingHandler(
                     var newUnits = BookingItemPricing.PackageNewPurchaseUnits(item, ownedCatalogPackageIds);
                     for (var unit = 0; unit < newUnits; unit++)
                     {
-                        newPurchases.Add(BookingItemPricing.CreatePackagePurchase(product, tenantId, customerId, today));
+                        var purchase = BookingItemPricing.CreatePackagePurchase(product, tenantId, customerId, today);
+                        newPurchases.Add(purchase);
+                        reservations.Add(NewReservation(tenantId, bookingId, purchase.Id));
                     }
 
                     continue;

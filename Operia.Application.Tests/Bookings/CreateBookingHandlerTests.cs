@@ -448,6 +448,53 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
+    public async Task Update_AddsOwnedSingleSessionWithoutCreatingDuplicateCustomerPackage()
+    {
+        await SeedAsync();
+        _db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "owned-service",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "service-1",
+            Total = 1,
+            Used = 0,
+            ReservedSessions = 0,
+            IsActive = true
+        });
+        await _db.SaveChangesAsync();
+
+        var created = await CreateHandler().Handle(Command("owned-service-booking", 600, 660), CancellationToken.None);
+        var booking = await _db.Bookings.SingleAsync(x => x.Id == created.Id);
+
+        await new UpdateBookingHandler(
+                _db,
+                _user.Object,
+                _branchScope.Object,
+                new AuditWriter(_db, _user.Object),
+                _clock.Object)
+            .Handle(
+                new UpdateBookingCommand(
+                    booking.Id,
+                    Convert.ToBase64String(booking.Version),
+                    [
+                        new CreateBookingItemInput("package-1", "owned-1", 1),
+                        new CreateBookingItemInput("service-1", "owned-service", 1)
+                    ]),
+                CancellationToken.None);
+
+        (await _db.CustomerPackages.CountAsync(x => x.CustomerId == "customer-1" && x.PackageId == "service-1"))
+            .Should().Be(1);
+        var owned = await _db.CustomerPackages.SingleAsync(x => x.Id == "owned-service");
+        owned.ReservedSessions.Should().Be(1);
+        (await _db.BookingPackageReservations.CountAsync(
+                x => x.BookingId == booking.Id &&
+                     x.CustomerPackageId == "owned-service" &&
+                     x.CancellationAtUtc == null))
+            .Should().Be(1);
+    }
+
+    [Fact]
     public async Task Update_AddsStandaloneServiceWithoutChangingPackageReservation()
     {
         await SeedAsync();

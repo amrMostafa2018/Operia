@@ -89,6 +89,8 @@ public sealed class GetCalendarBookingsHandler(
                         bookingIds.Contains(x.BookingId) &&
                         x.CancellationAtUtc == null &&
                         x.CustomerPackage != null)
+            .OrderBy(x => x.CreatedAt)
+            .ThenBy(x => x.CustomerPackageId)
             .Select(x => new PackageBalanceRow(
                 x.BookingId,
                 x.CustomerPackage!.CustomerId,
@@ -101,9 +103,11 @@ public sealed class GetCalendarBookingsHandler(
                 x.CustomerPackage.Package != null ? x.CustomerPackage.Package.PulseCount : null))
             .ToListAsync(cancellationToken);
 
-        var reservationLookup = reservationBalances.ToDictionary(
-            x => (x.BookingId!, x.PackageId),
-            x => x);
+        var reservationLookup = reservationBalances
+            .GroupBy(x => (x.BookingId!, x.PackageId))
+            .ToDictionary(
+                group => group.Key,
+                group => new Queue<PackageBalanceRow>(group));
 
         var customerIds = bookings.Select(x => x.CustomerId).Distinct().ToList();
         var packageIds = bookings
@@ -150,7 +154,8 @@ public sealed class GetCalendarBookingsHandler(
                         return item;
                     }
 
-                    if (reservationLookup.TryGetValue((booking.Id, item.PackageId), out var reserved))
+                    if (reservationLookup.TryGetValue((booking.Id, item.PackageId), out var reservedBalances) &&
+                        reservedBalances.TryDequeue(out var reserved))
                     {
                         var enriched = EnrichPackageItem(item, reserved);
                         return item.Type switch

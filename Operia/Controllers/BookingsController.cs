@@ -48,8 +48,11 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
     /// <summary>Finds a registered customer and eligible owned purchases by mobile number.</summary>
     [HttpGet("customers/by-mobile")]
     [Authorize(Policy = Policies.BookingsManage)]
-    public Task<BookingCustomerDto?> FindCustomer([FromQuery] string mobile, CancellationToken cancellationToken) =>
-        mediator.Send(new FindBookingCustomerQuery(mobile), cancellationToken);
+    public Task<BookingCustomerDto?> FindCustomer(
+        [FromQuery] string mobile,
+        [FromQuery] string? bookingId,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new FindBookingCustomerQuery(mobile, bookingId), cancellationToken);
 
     /// <summary>Lists enabled payment identifiers without exposing account settings.</summary>
     [HttpGet("payment-methods")]

@@ -34,10 +34,12 @@ public sealed class FindBookingCustomerHandler(
                                     (owned.ExpiresOn == null || owned.ExpiresOn >= today) &&
                                     owned.Package != null &&
                                     owned.Package.Status == PackageStatus.Active &&
-                                    ((owned.Package.OfferType == OfferType.Package &&
-                                      (owned.Package.PulseCount ?? 0) > 0)
+                                    (((owned.Package.OfferType == OfferType.Package &&
+                                       (owned.Package.PulseCount ?? 0) > 0)
                                         ? owned.Total > owned.Used
-                                        : owned.Total > owned.Used + (owned.ReservedSessions ?? 0)))
+                                        : owned.Total > owned.Used + (owned.ReservedSessions ?? 0)) ||
+                                     (request.BookingId != null &&
+                                      owned.Reservations.Any(r => r.BookingId == request.BookingId))))
                     .OrderBy(owned => owned.ExpiresOn)
                     .Select(owned => new BookingCustomerPackageDto(
                         owned.Id,
