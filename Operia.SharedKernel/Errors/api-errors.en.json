@@ -88,6 +88,18 @@
     "Value": "Choose at least one service before saving changes."
   },
   {
+    "Name": "BookingNotBookedStatus",
+    "Value": "Booking is not in Booked status."
+  },
+  {
+    "Name": "PulsesExceedRemaining",
+    "Value": "Pulses used cannot exceed remaining balance."
+  },
+  {
+    "Name": "CloseItemsIncomplete",
+    "Value": "Close request must include every booking line item."
+  },
+  {
     "Name": "GalleryPhotoLimitExceeded",
     "Value": "A maximum of six business photos is allowed."
   },

@@ -78,6 +78,8 @@ public sealed class GetCalendarBookingsHandler(
                         null,
                         null,
                         null,
+                        null,
+                        null,
                         false))
                     .ToList()))
             .ToListAsync(cancellationToken);
@@ -173,7 +175,11 @@ public sealed class GetCalendarBookingsHandler(
 
                     if (ownedLookup.TryGetValue((booking.CustomerId, item.PackageId), out var owned))
                     {
-                        return EnrichPackageItem(item, owned) with { PackageSessionLinked = false };
+                        // Zero-price lines are usage of the owned balance, not a billed repurchase.
+                        return EnrichPackageItem(item, owned) with
+                        {
+                            PackageSessionLinked = item.UnitPrice == 0
+                        };
                     }
 
                     return item;
@@ -226,7 +232,9 @@ public sealed class GetCalendarBookingsHandler(
                 balance.ReservedSessions,
                 balance.OfferType,
                 balance.PulseCount),
-            PackagePulseCount = balance.PulseCount
+            PackagePulseCount = balance.PulseCount,
+            PackageTotal = balance.Total,
+            PackageUsed = balance.Used
         };
 
     private sealed record PackageBalanceRow(

@@ -88,6 +88,18 @@
     "Value": "اختر خدمة واحدة على الأقل قبل حفظ التعديلات."
   },
   {
+    "Name": "BookingNotBookedStatus",
+    "Value": "الحجز ليس في حالة محجوز."
+  },
+  {
+    "Name": "PulsesExceedRemaining",
+    "Value": "النبضات المستخدمة لا يمكن أن تتجاوز الرصيد المتبقي."
+  },
+  {
+    "Name": "CloseItemsIncomplete",
+    "Value": "يجب تضمين جميع بنود الحجز في طلب الإقفال."
+  },
+  {
     "Name": "GalleryPhotoLimitExceeded",
     "Value": "الحد الأقصى لصور النشاط هو ست صور."
   },

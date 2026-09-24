@@ -218,6 +218,85 @@ public sealed class BookingReadHandlerTests
         items[1].PackageRemainingSessions.Should().Be(10);
     }
 
+    [Fact]
+    public async Task Calendar_ZeroPriceOwnedPackageWithoutReservation_IsLinkedAsUsage()
+    {
+        var fixture = await CreateFixtureAsync();
+        fixture.Db.Bookings.Add(Booking("booking-owned-fallback", "tenant-1", "branch-allowed", "employee-allowed"));
+        fixture.Db.BookingItems.Add(new BookingItem
+        {
+            Id = "item-owned-fallback",
+            TenantId = "tenant-1",
+            BookingId = "booking-owned-fallback",
+            Type = BookingItemType.PackageSession,
+            PackageId = "package-1",
+            Name = "Owned package",
+            Quantity = 1,
+            DurationMinutes = 60,
+            UnitPrice = 0,
+            CreatedAt = new DateTime(2026, 9, 18, 8, 2, 0, DateTimeKind.Utc)
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await new GetCalendarBookingsHandler(
+                fixture.Db,
+                fixture.User.Object,
+                fixture.Scope.Object,
+                fixture.Clock.Object)
+            .Handle(
+                new GetCalendarBookingsQuery(
+                    "branch-allowed",
+                    new DateOnly(2026, 9, 18),
+                    new DateOnly(2026, 9, 18),
+                    null),
+                CancellationToken.None);
+
+        var item = result.Bookings.Single(x => x.Id == "booking-owned-fallback").Items.Should().ContainSingle().Which;
+        item.PackageSessionLinked.Should().BeTrue();
+        item.CustomerPackageId.Should().Be("customer-package-1");
+        item.PackageRemainingSessions.Should().Be(6);
+        item.UnitPrice.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Calendar_PaidPackageWithMatchingOwnedBalance_StaysUnlinkedPurchase()
+    {
+        var fixture = await CreateFixtureAsync();
+        fixture.Db.Bookings.Add(Booking("booking-paid-package", "tenant-1", "branch-allowed", "employee-allowed"));
+        fixture.Db.BookingItems.Add(new BookingItem
+        {
+            Id = "item-paid-package",
+            TenantId = "tenant-1",
+            BookingId = "booking-paid-package",
+            Type = BookingItemType.PackageSession,
+            PackageId = "package-1",
+            Name = "Owned package",
+            Quantity = 1,
+            DurationMinutes = 60,
+            UnitPrice = 1000,
+            CreatedAt = new DateTime(2026, 9, 18, 8, 3, 0, DateTimeKind.Utc)
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await new GetCalendarBookingsHandler(
+                fixture.Db,
+                fixture.User.Object,
+                fixture.Scope.Object,
+                fixture.Clock.Object)
+            .Handle(
+                new GetCalendarBookingsQuery(
+                    "branch-allowed",
+                    new DateOnly(2026, 9, 18),
+                    new DateOnly(2026, 9, 18),
+                    null),
+                CancellationToken.None);
+
+        var item = result.Bookings.Single(x => x.Id == "booking-paid-package").Items.Should().ContainSingle().Which;
+        item.PackageSessionLinked.Should().BeFalse();
+        item.CustomerPackageId.Should().Be("customer-package-1");
+        item.UnitPrice.Should().Be(1000);
+    }
+
     private static async Task<Fixture> CreateFixtureAsync()
     {
         var user = new Mock<ICurrentUserService>();

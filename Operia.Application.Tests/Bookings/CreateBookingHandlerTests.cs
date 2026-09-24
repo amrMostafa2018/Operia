@@ -1007,7 +1007,22 @@ public sealed class CreateBookingHandlerTests
         booking.TotalAmount.Should().Be(0);
         booking.Items.Single().UnitPrice.Should().Be(0);
         (await _db.CustomerPackages.CountAsync(x => x.PackageId == "pulse-1")).Should().Be(1);
-        (await _db.BookingPackageReservations.CountAsync(x => x.BookingId == created.Id)).Should().Be(0);
+        var reservation = await _db.BookingPackageReservations.SingleAsync(x => x.BookingId == created.Id);
+        reservation.CustomerPackageId.Should().Be("owned-pulse");
+        (await _db.CustomerPackages.SingleAsync(x => x.Id == "owned-pulse")).ReservedSessions.Should().Be(1);
+
+        var calendar = await new GetCalendarBookingsHandler(
+                _db,
+                _user.Object,
+                _branchScope.Object,
+                _clock.Object)
+            .Handle(
+                new GetCalendarBookingsQuery("branch-1", _scheduledDate, _scheduledDate, "employee-1"),
+                CancellationToken.None);
+        var item = calendar.Bookings.Single().Items.Should().ContainSingle().Which;
+        item.UnitPrice.Should().Be(0);
+        item.PackageSessionLinked.Should().BeTrue();
+        item.CustomerPackageId.Should().Be("owned-pulse");
     }
 
     [Fact]

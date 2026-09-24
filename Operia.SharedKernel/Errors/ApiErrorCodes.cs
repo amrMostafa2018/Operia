@@ -103,5 +103,8 @@ public static class ApiErrorCodes
         public const string PackageEditNotAllowed = "BookingPackageEditNotAllowed";
         public const string PaymentMethodUnavailable = "BookingPaymentMethodUnavailable";
         public const string ItemsRequired = "BookingItemsRequired";
+        public const string NotBookedStatus = "BookingNotBookedStatus";
+        public const string PulsesExceedRemaining = "PulsesExceedRemaining";
+        public const string CloseItemsIncomplete = "CloseItemsIncomplete";
     }
 }

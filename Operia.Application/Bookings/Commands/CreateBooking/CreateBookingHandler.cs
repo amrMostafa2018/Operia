@@ -241,6 +241,17 @@ public sealed class CreateBookingHandler(
                         reservations.Add(NewReservation(tenantId, bookingId, purchase.Id));
                     }
 
+                    await AddOwnedPackageReservationForPurchaseOnlyAsync(
+                        tenantId,
+                        customerId,
+                        bookingId,
+                        item,
+                        product,
+                        newUnits,
+                        reservations,
+                        today,
+                        cancellationToken);
+
                     continue;
                 }
 
@@ -275,6 +286,63 @@ public sealed class CreateBookingHandler(
         }
 
         return (reservations, newPurchases);
+    }
+
+    /// <summary>
+    /// Reserves the existing customer balance when a catalog package add is not a new billed purchase.
+    /// </summary>
+    private async Task AddOwnedPackageReservationForPurchaseOnlyAsync(
+        string tenantId,
+        string customerId,
+        string bookingId,
+        CreateBookingItemInput item,
+        Package product,
+        int newUnits,
+        List<BookingPackageReservation> reservations,
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        var ownedUnits = item.Quantity - newUnits;
+        if (ownedUnits <= 0)
+        {
+            return;
+        }
+
+        var alreadyReserved = reservations
+            .Select(x => x.CustomerPackageId)
+            .ToHashSet(StringComparer.Ordinal);
+        var ownedBalances = await db.CustomerPackages.AsNoTracking()
+            .Where(x => x.TenantId == tenantId &&
+                        x.CustomerId == customerId &&
+                        x.PackageId == item.PackageId &&
+                        x.IsActive &&
+                        (x.ExpiresOn == null || x.ExpiresOn >= today))
+            .OrderBy(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        var reservedCount = 0;
+        foreach (var owned in ownedBalances)
+        {
+            if (reservedCount >= ownedUnits)
+            {
+                break;
+            }
+
+            if (alreadyReserved.Contains(owned.Id) ||
+                !CustomerPackageBalance.HasAvailable(
+                    owned.Total,
+                    owned.Used,
+                    owned.ReservedSessions,
+                    product.OfferType,
+                    product.PulseCount))
+            {
+                continue;
+            }
+
+            reservations.Add(NewReservation(tenantId, bookingId, owned.Id));
+            alreadyReserved.Add(owned.Id);
+            reservedCount++;
+        }
     }
 
     /// <summary>Creates an unsaved reservation for a customer purchase.</summary>

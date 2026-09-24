@@ -36,6 +36,8 @@ public sealed record CalendarBookingItemDto(
     string? CustomerPackageId,
     int? PackageRemainingSessions,
     int? PackagePulseCount,
+    int? PackageTotal,
+    int? PackageUsed,
     bool PackageSessionLinked);
 
 /// <summary>Carries calendar booking dto data across the operation boundary.</summary>
