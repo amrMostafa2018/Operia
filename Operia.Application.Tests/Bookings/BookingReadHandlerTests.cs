@@ -59,7 +59,10 @@ public sealed class BookingReadHandlerTests
                     null),
                 CancellationToken.None);
 
-        result.Items.Should().ContainSingle().Which.Id.Should().Be("booking-allowed");
+        var item = result.Items.Should().ContainSingle().Subject;
+        item.Id.Should().Be("booking-allowed");
+        var stored = await fixture.Db.Bookings.AsNoTracking().SingleAsync(x => x.Id == "booking-allowed");
+        item.ConfirmedAt.Should().Be(stored.CreatedAt);
         result.Summary.Should().Be(new BookingSummaryDto(1, 1, 0, 0));
     }
 
@@ -104,6 +107,7 @@ public sealed class BookingReadHandlerTests
                 CancellationToken.None);
 
         csv.Should().Contain("OP-booking-allowed");
+        csv.Should().Contain("Confirmation Date");
         csv.Should().NotContain("OP-booking-denied");
     }
 

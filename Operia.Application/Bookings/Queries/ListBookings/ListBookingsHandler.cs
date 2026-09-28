@@ -82,7 +82,8 @@ public sealed class ListBookingsHandler(
                 x.Booking.PaymentMethod,
                 x.Booking.TotalAmount,
                 x.Booking.PaidAmount,
-                x.Booking.DiscountAmount))
+                x.Booking.DiscountAmount,
+                x.Booking.CreatedAt))
             .ToList();
 
         var totalPages = counts.Total == 0

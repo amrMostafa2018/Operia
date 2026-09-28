@@ -45,11 +45,12 @@ public sealed class ExportBookingsHandler(
                 x.ScheduledDate,
                 x.StartMinutes,
                 x.EndMinutes,
-                Status = x.Status.ToString()
+                Status = x.Status.ToString(),
+                x.CreatedAt
             })
             .ToListAsync(cancellationToken);
 
-        var csv = new StringBuilder("Booking Number,Customer Mobile,Customer Name,Service,Branch,Employee,Scheduled Date,From,To,Status\r\n");
+        var csv = new StringBuilder("Booking Number,Customer Mobile,Customer Name,Service,Branch,Employee,Scheduled Date,From,To,Status,Confirmation Date\r\n");
         foreach (var row in rows)
         {
             csv.AppendJoin(',',
@@ -62,7 +63,8 @@ public sealed class ExportBookingsHandler(
                 row.ScheduledDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 FormatMinutes(row.StartMinutes),
                 FormatMinutes(row.EndMinutes),
-                row.Status);
+                row.Status,
+                row.CreatedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));
             csv.Append("\r\n");
         }
         return csv.ToString();
