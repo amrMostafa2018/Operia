@@ -22,6 +22,8 @@ public sealed class GetWorkingDaysHandler : IRequestHandler<GetWorkingDaysQuery,
         var tenantId = SettingsHandlerHelpers.RequireTenant(_currentUserService);
         var settings = await SettingsHandlerHelpers.GetBusinessSettingsAsync(_db, tenantId, cancellationToken);
         var days = SettingsHandlerHelpers.Deserialize(settings.WorkingDaysJson, WorkingDayDto.DefaultWeek);
-        return new WorkingDaysSettingsDto(days.Count == 0 ? WorkingDayDto.DefaultWeek : days, settings.AllowBookingOutsideWorkingHours);
+        return new WorkingDaysSettingsDto(
+            days.Count == 0 ? WorkingDayDto.DefaultWeek : days,
+            settings.AllowBookingOutsideWorkingHours);
     }
 }

@@ -13,10 +13,12 @@ public sealed class EmployeeWorkingDayConfiguration : IEntityTypeConfiguration<E
         builder.Property(x => x.Id).HasMaxLength(36);
         builder.Property(x => x.TenantId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.EmployeeId).IsRequired().HasMaxLength(36);
+        builder.Property(x => x.BranchId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.Day).IsRequired().HasMaxLength(3);
         builder.Property(x => x.CreatedBy).HasMaxLength(450);
-        builder.HasIndex(x => new { x.TenantId, x.EmployeeId, x.Day }).IsUnique();
+        builder.HasIndex(x => new { x.TenantId, x.EmployeeId, x.BranchId, x.Day }).IsUnique();
         builder.HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -1,6 +1,7 @@
 using System.Globalization;
-using System.Text.Json;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Common.Exceptions;
+using Operia.SharedKernel.Errors;
 using Operia.Application.Common.PhoneNumbers;
 using Operia.Domain.Entities;
 
@@ -11,10 +12,11 @@ internal static class BranchMapper
 {
     public static string RequireTenant(ICurrentUserService currentUser) =>
         currentUser.TenantId
-        ?? throw new UnauthorizedAccessException("The current user does not have a tenant.");
+        ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
 
     public static Branch CreateEntity(
         string tenantId,
+        string businessId,
         string name,
         string address,
         string phoneNumber,
@@ -22,6 +24,7 @@ internal static class BranchMapper
         decimal longitude) => new()
         {
             TenantId = tenantId,
+            BusinessId = businessId,
             Name = name,
             Address = address.Trim(),
             PhoneNumber = PhoneNumberHelper.ToE164(phoneNumber),
@@ -42,24 +45,4 @@ internal static class BranchMapper
         branch.Longitude,
         branch.GoogleMapsUrl);
 
-    public static void AddAudit(
-        IApplicationDbContext db,
-        ICurrentUserService currentUser,
-        string tenantId,
-        string action,
-        Branch branch,
-        object? details)
-    {
-        db.AuditLogs.Add(new AuditLog
-        {
-            TenantId = tenantId,
-            UserId = currentUser.UserId,
-            UserDisplayName = currentUser.DisplayName,
-            Action = action,
-            EntityType = nameof(Branch),
-            EntityId = branch.Id,
-            EntityName = branch.Name,
-            DetailsJson = details is null ? null : JsonSerializer.Serialize(details)
-        });
-    }
 }

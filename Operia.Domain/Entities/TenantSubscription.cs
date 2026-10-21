@@ -1,9 +1,10 @@
 using Operia.Domain.Common;
 using Operia.Domain.Enums;
+using Operia.Domain.Interfaces;
 
 namespace Operia.Domain.Entities;
 
-public sealed class TenantSubscription : Entity
+public sealed class TenantSubscription : Entity, ITenantScoped
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string TenantId { get; set; } = string.Empty;

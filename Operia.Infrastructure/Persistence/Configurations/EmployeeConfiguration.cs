@@ -13,6 +13,7 @@ public sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasMaxLength(36);
         builder.Property(x => x.TenantId).IsRequired().HasMaxLength(36);
+        builder.Property(x => x.BusinessId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.IdentityUserId).IsRequired().HasMaxLength(450);
         builder.Property(x => x.Code).IsRequired().HasMaxLength(8);
         builder.Property(x => x.FullName).IsRequired().HasMaxLength(200);
@@ -25,6 +26,7 @@ public sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.HasIndex(x => x.IdentityUserId).IsUnique();
         builder.HasOne<ApplicationUser>().WithOne().HasForeignKey<Employee>(x => x.IdentityUserId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Business).WithMany(x => x.Employees).HasForeignKey(x => x.BusinessId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

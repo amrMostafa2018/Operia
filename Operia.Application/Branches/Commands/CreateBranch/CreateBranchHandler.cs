@@ -1,23 +1,28 @@
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Branches;
+using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Settings.Common;
+using Operia.Domain.Entities;
 
 namespace Operia.Application.Branches.Commands.CreateBranch;
 
 public sealed class CreateBranchHandler(
     IApplicationDbContext db,
-    ICurrentUserService currentUser) : MediatR.IRequestHandler<CreateBranchCommand, BranchDto>
+    ICurrentUserService currentUser,
+    IAuditWriter auditWriter) : MediatR.IRequestHandler<CreateBranchCommand, BranchDto>
 {
     public async Task<BranchDto> Handle(
         CreateBranchCommand request,
         CancellationToken cancellationToken)
     {
         var tenantId = BranchMapper.RequireTenant(currentUser);
+        var business = await SettingsHandlerHelpers.GetBusinessAsync(db, tenantId, cancellationToken);
         var name = request.Name.Trim();
 
         var nameExists = await db.Branches.AnyAsync(
-            branch => branch.TenantId == tenantId && branch.Name == name,
+            branch => branch.BusinessId == business.Id && branch.Name == name,
             cancellationToken);
 
         if (nameExists)
@@ -27,6 +32,7 @@ public sealed class CreateBranchHandler(
 
         var branch = BranchMapper.CreateEntity(
             tenantId,
+            business.Id,
             name,
             request.Address,
             request.PhoneNumber,
@@ -34,7 +40,12 @@ public sealed class CreateBranchHandler(
             request.Longitude);
 
         db.Branches.Add(branch);
-        BranchMapper.AddAudit(db, currentUser, tenantId, "BranchCreated", branch, null);
+        auditWriter.Write(
+            tenantId,
+            AuditActions.BranchCreated,
+            nameof(Branch),
+            branch.Id,
+            branch.Name);
         await db.SaveChangesAsync(cancellationToken);
 
         return BranchMapper.ToDto(branch);

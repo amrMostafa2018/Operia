@@ -23,6 +23,26 @@ public sealed class TenantSubscriptionRepository : ITenantSubscriptionRepository
             .Include(s => s.Plan)
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
+    public Task<TenantSubscription?> GetByIdForPlatformAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+        => _context.TenantSubscriptions
+            .IgnoreQueryFilters()
+            .Include(s => s.Tenant)
+            .Include(s => s.Plan)
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+
+    public Task<TenantSubscription?> GetLastByTenantIdAsync(
+        string tenantId,
+        CancellationToken cancellationToken = default)
+        => _context.TenantSubscriptions
+            .AsNoTracking()
+            .Include(s => s.Tenant)
+            .Include(s => s.Plan)
+            .Where(s => s.TenantId == tenantId)
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task<IReadOnlyList<TenantSubscription>> GetFilteredByTenantAsync(
         string tenantId,
         DateOnly? dateFrom,

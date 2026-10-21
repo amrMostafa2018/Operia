@@ -1,4 +1,5 @@
 using FluentValidation;
+using Operia.Application.Employees;
 
 namespace Operia.Application.Employees.Commands.UpdateEmployeeSchedule;
 
@@ -9,12 +10,19 @@ public sealed class UpdateEmployeeScheduleValidator : AbstractValidator<UpdateEm
     public UpdateEmployeeScheduleValidator()
     {
         RuleFor(x => x.EmployeeId).NotEmpty();
-        RuleFor(x => x.Days)
-            .Must(HaveExactlyOneOfEachWeekDay)
-            .WithMessage("Schedule must contain each business weekday exactly once.");
-        RuleForEach(x => x.Days)
-            .Must(HaveValidTimes)
-            .WithMessage("Working days require a start time before the end time; days off must not include times.");
+        RuleFor(x => x.Branches)
+            .NotEmpty()
+            .WithMessage("At least one branch schedule is required.");
+        RuleForEach(x => x.Branches).ChildRules(branch =>
+        {
+            branch.RuleFor(x => x.BranchId).NotEmpty();
+            branch.RuleFor(x => x.Days)
+                .Must(HaveExactlyOneOfEachWeekDay)
+                .WithMessage("Schedule must contain each business weekday exactly once.");
+            branch.RuleForEach(x => x.Days)
+                .Must(HaveValidTimes)
+                .WithMessage("Working days require a start time before the end time; days off must not include times.");
+        });
     }
 
     private static bool HaveExactlyOneOfEachWeekDay(IReadOnlyList<EmployeeWorkingDayDto> days)

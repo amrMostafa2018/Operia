@@ -37,7 +37,7 @@ try
     builder.Services.AddApplicationServices();
     builder.Services.AddInfrastructureServices(builder.Configuration);
     builder.Services.AddJwtAuthentication(builder.Configuration);
-    builder.Services.AddCorsPolicy(builder.Configuration, builder.Environment);
+    builder.Services.AddCorsPolicy();
 
     const long multipartRequestBodyOverheadBytes = 1024 * 1024;
 
@@ -58,7 +58,7 @@ try
 
     app.UseSwaggerDocumentation();
 
-    app.UseCorsPolicy(builder.Configuration, app.Environment);
+    app.UseCorsPolicy();
 
     app.UseMiddleware<ExceptionHandlingMiddleware>();
 

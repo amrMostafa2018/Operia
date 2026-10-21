@@ -1,7 +1,119 @@
 [
   {
+    "Name": "AuthenticationRequired",
+    "Value": "Authentication is required."
+  },
+  {
+    "Name": "TenantContextRequired",
+    "Value": "Your account is not associated with an activity."
+  },
+  {
+    "Name": "TenantAccessDenied",
+    "Value": "You cannot access records outside your activity."
+  },
+  {
+    "Name": "BookingBranchRequired",
+    "Value": "Select a branch to view bookable employees."
+  },
+  {
+    "Name": "BookingDateRangeInvalid",
+    "Value": "The end date must be on or after the start date."
+  },
+  {
+    "Name": "BookingDateRangeTooLarge",
+    "Value": "The calendar can show at most 31 days at a time."
+  },
+  {
+    "Name": "BookingNotFound",
+    "Value": "The selected booking was not found."
+  },
+  {
+    "Name": "BookingSlotUnavailable",
+    "Value": "This appointment is no longer available. Please choose another time."
+  },
+  {
+    "Name": "BookingChanged",
+    "Value": "This booking was changed by another user. Refresh and try again."
+  },
+  {
+    "Name": "BookingStatusInvalid",
+    "Value": "Select a valid booking status."
+  },
+  {
+    "Name": "BookingCustomerNotFound",
+    "Value": "Select a registered customer."
+  },
+  {
+    "Name": "BookingEmployeeNotFound",
+    "Value": "The selected employee was not found."
+  },
+  {
+    "Name": "BookingEmployeeNotInBranch",
+    "Value": "The selected employee is not assigned to this branch."
+  },
+  {
+    "Name": "BookingOutsideWorkingHours",
+    "Value": "The selected time is outside the employee's working hours."
+  },
+  {
+    "Name": "BookingOnePackageSessionRequired",
+    "Value": "A booking can reserve only one owned package session."
+  },
+  {
+    "Name": "BookingReusedServiceQuantityOne",
+    "Value": "Book a returned standalone service one session at a time."
+  },
+  {
+    "Name": "BookingOwnedPackageRequired",
+    "Value": "Select an eligible package owned by this customer."
+  },
+  {
+    "Name": "BookingPackageSessionUnavailable",
+    "Value": "The selected package has no session available to reserve."
+  },
+  {
+    "Name": "BookingTerminalReadOnly",
+    "Value": "Completed and cancelled bookings are read-only."
+  },
+  {
+    "Name": "BookingPackageEditNotAllowed",
+    "Value": "The reserved package session cannot be added, removed or replaced while editing this booking."
+  },
+  {
+    "Name": "BookingPaymentMethodUnavailable",
+    "Value": "The selected payment method is no longer enabled. Choose another method."
+  },
+  {
+    "Name": "BookingItemsRequired",
+    "Value": "Choose at least one service before saving changes."
+  },
+  {
+    "Name": "BookingNotBookedStatus",
+    "Value": "Booking is not in Booked status."
+  },
+  {
+    "Name": "PulsesExceedRemaining",
+    "Value": "Pulses used cannot exceed remaining balance."
+  },
+  {
+    "Name": "CloseItemsIncomplete",
+    "Value": "Close request must include every booking line item."
+  },
+  {
+    "Name": "GalleryPhotoLimitExceeded",
+    "Value": "A maximum of six business photos is allowed."
+  },
+  {
+    "Name": "BusinessProfileRequired",
+    "Value": "Complete the business profile before changing activity settings."
+  },
+  {
     "Name": "EmailAlreadyRegistered",
     "Value": "Email is already registered."
+  },
+  {
+    "Name": "UserNameAlreadyRegistered",
+    "Value": "Username is already registered."
   },
   {
     "Name": "EmailRequired",
@@ -74,5 +186,113 @@
   {
     "Name": "EmployeeScheduleOutsideBusinessHours",
     "Value": "Employee working hours must be within the enabled business working hours for that day."
+  },
+  {
+    "Name": "EmployeeScheduleBranchNotAssigned",
+    "Value": "Employee schedule branch is not assigned to this employee."
+  },
+  {
+    "Name": "EmployeeScheduleOverlappingBranchHours",
+    "Value": "An employee cannot work in multiple branches at the same time on the same day."
+  },
+  {
+    "Name": "CATEGORY_NAME_REQUIRED",
+    "Value": "Service category name is required."
+  },
+  {
+    "Name": "CATEGORY_NAME_MAX",
+    "Value": "Service category name must not exceed 200 characters."
+  },
+  {
+    "Name": "CATEGORY_ICON_REQUIRED",
+    "Value": "Service category icon is required."
+  },
+  {
+    "Name": "CATEGORY_NAME_TAKEN",
+    "Value": "A service category with this name already exists."
+  },
+  {
+    "Name": "SUB_CATEGORY_NAME_REQUIRED",
+    "Value": "Sub-service category name is required."
+  },
+  {
+    "Name": "SUB_CATEGORY_NAME_MAX",
+    "Value": "Sub-service category name must not exceed 200 characters."
+  },
+  {
+    "Name": "SUB_CATEGORY_PARENT_REQUIRED",
+    "Value": "A parent service category is required."
+  },
+  {
+    "Name": "SUB_CATEGORY_PARENT_NOT_FOUND",
+    "Value": "The selected service category was not found."
+  },
+  {
+    "Name": "SUB_CATEGORY_NAME_TAKEN",
+    "Value": "A sub-service category with this name already exists for the selected category."
+  },
+  {
+    "Name": "PACKAGE_NAME_REQUIRED",
+    "Value": "Service or offer name is required."
+  },
+  {
+    "Name": "PACKAGE_NAME_MAX",
+    "Value": "Service or offer name must not exceed 200 characters."
+  },
+  {
+    "Name": "PACKAGE_DESCRIPTION_MAX",
+    "Value": "Description must not exceed 250 characters."
+  },
+  {
+    "Name": "PACKAGE_CATEGORY_REQUIRED",
+    "Value": "Service category is required."
+  },
+  {
+    "Name": "PACKAGE_DURATION_REQUIRED",
+    "Value": "Session duration is required."
+  },
+  {
+    "Name": "PACKAGE_DURATION_MIN",
+    "Value": "Session duration must be at least 1 minute."
+  },
+  {
+    "Name": "PACKAGE_SESSION_COUNT_REQUIRED",
+    "Value": "Session count is required for packages."
+  },
+  {
+    "Name": "PACKAGE_SESSION_COUNT_MIN",
+    "Value": "Session count must be at least 1."
+  },
+  {
+    "Name": "PACKAGE_SESSION_OR_PULSE_REQUIRED",
+    "Value": "Number of sessions or number of pulses is required."
+  },
+  {
+    "Name": "PACKAGE_SESSION_AND_PULSE_BOTH_FILLED",
+    "Value": "Please enter either the number of sessions or the number of pulses, not both."
+  },
+  {
+    "Name": "PACKAGE_PULSE_COUNT_MIN",
+    "Value": "Pulse count cannot be negative."
+  },
+  {
+    "Name": "PACKAGE_PRICE_REQUIRED",
+    "Value": "Price is required."
+  },
+  {
+    "Name": "PACKAGE_PRICE_MIN",
+    "Value": "Price cannot be negative."
+  },
+  {
+    "Name": "PACKAGE_DISCOUNT_PERCENT_RANGE",
+    "Value": "Discount percent must be between 0 and 100."
+  },
+  {
+    "Name": "PACKAGE_NOT_FOUND",
+    "Value": "Service or offer was not found."
+  },
+  {
+    "Name": "PACKAGE_ALREADY_CANCELLED",
+    "Value": "This service or offer is already cancelled."
   }
 ]
