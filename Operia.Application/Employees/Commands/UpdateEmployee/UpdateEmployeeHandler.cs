@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Common.PhoneNumbers;
@@ -16,32 +17,41 @@ public sealed class UpdateEmployeeHandler : IRequestHandler<UpdateEmployeeComman
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly IFileStorageService _files;
+    private readonly IAuditWriter _auditWriter;
 
     public UpdateEmployeeHandler(
         IApplicationDbContext db,
         IIdentityService identityService,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
-        IFileStorageService files)
+        IFileStorageService files,
+        IAuditWriter auditWriter)
     {
         _db = db;
         _identityService = identityService;
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _files = files;
+        _auditWriter = auditWriter;
     }
 
     public async Task<EmployeeDto> Handle(UpdateEmployeeCommand request, CancellationToken cancellationToken)
     {
         var tenantId = EmployeeHandlerHelpers.RequireTenant(_currentUserService);
         EmployeeHandlerHelpers.ValidateRole(request.Role);
-        await EmployeeHandlerHelpers.ValidateBranchesAsync(_db, tenantId, request.BranchIds, cancellationToken);
 
         var employee = await _db.Employees.Include(x => x.UserBranches)
             .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.Id, cancellationToken)
             ?? throw new NotFoundException(nameof(Employee), request.Id);
 
-        await _identityService.EnsureIdentityUniqueAsync(employee.IdentityUserId, request.UserName, request.Email, request.MobileNumber, cancellationToken);
+        await EmployeeHandlerHelpers.ValidateBranchesAsync(_db, employee.BusinessId, request.BranchIds, cancellationToken);
+        await EmployeeIdentityUniquenessHelper.EnsureUniqueAsync(
+            _identityService,
+            employee.IdentityUserId,
+            request.UserName,
+            request.Email,
+            request.MobileNumber,
+            cancellationToken);
 
         var oldPhoto = employee.PhotoUrl;
         string? newPhoto = null;
@@ -83,7 +93,7 @@ public sealed class UpdateEmployeeHandler : IRequestHandler<UpdateEmployeeComman
             {
                 await EmployeeHandlerHelpers.ProtectLastSuperAdminAsync(_db, _identityService, tenantId, employee, oldRole, false, cancellationToken);
                 await _identityService.ChangeRoleAsync(employee.IdentityUserId, request.Role, cancellationToken);
-                EmployeeHandlerHelpers.AddAudit(_db, _currentUserService, tenantId, "RoleChanged", employee, new { oldRole, newRole = request.Role });
+                EmployeeHandlerHelpers.AddAudit(_auditWriter, tenantId, AuditActions.EmployeeRoleChanged, employee, new { oldRole, newRole = request.Role });
             }
 
             if (employee.IsActive != request.IsActive)
@@ -95,10 +105,10 @@ public sealed class UpdateEmployeeHandler : IRequestHandler<UpdateEmployeeComman
                 var oldStatus = employee.IsActive;
                 employee.IsActive = request.IsActive;
                 await _identityService.SetStatusAsync(employee.IdentityUserId, request.IsActive, cancellationToken);
-                EmployeeHandlerHelpers.AddAudit(_db, _currentUserService, tenantId, "StatusChanged", employee, new { oldStatus, newStatus = request.IsActive });
+                EmployeeHandlerHelpers.AddAudit(_auditWriter, tenantId, AuditActions.EmployeeStatusChanged, employee, new { oldStatus, newStatus = request.IsActive });
             }
 
-            EmployeeHandlerHelpers.AddAudit(_db, _currentUserService, tenantId, "EmployeeUpdated", employee, new { oldBranchIds, newBranchIds, branchIds = newBranchIds, photoChanged = newPhoto is not null || request.RemovePhoto });
+            EmployeeHandlerHelpers.AddAudit(_auditWriter, tenantId, AuditActions.EmployeeUpdated, employee, new { oldBranchIds, newBranchIds, branchIds = newBranchIds, photoChanged = newPhoto is not null || request.RemovePhoto });
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
             if (oldPhoto is not null && oldPhoto != employee.PhotoUrl)

@@ -67,7 +67,7 @@ public static class DatabaseInitializer
                 await roleManager.CreateAsync(new IdentityRole(role));
         }
 
-        await AdminPermissionClaimHelper.AddAdminPermissionClaimsAsync(roleManager);
+        await PermissionClaimBootstrapper.EnsureBaselinePermissionsAsync(roleManager);
     }
 
     private static async Task SeedAdminUserAsync(

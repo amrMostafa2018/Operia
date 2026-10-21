@@ -44,10 +44,22 @@ public sealed class IdentityService : IIdentityService
 
     public async Task<bool> IsPhoneRegisteredAsync(
         string phoneNumber,
+        string? ignoreUserId = null,
         CancellationToken cancellationToken = default)
     {
         return await _userManager.Users
-            .AnyAsync(u => u.PhoneNumber == phoneNumber, cancellationToken);
+            .AnyAsync(u => u.Id != ignoreUserId && u.PhoneNumber == phoneNumber, cancellationToken);
+    }
+
+    public async Task<bool> IsUserNameRegisteredAsync(
+        string userName,
+        string? ignoreUserId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedName = _userManager.NormalizeName(userName.Trim());
+        return await _userManager.Users.AnyAsync(
+            x => x.Id != ignoreUserId && x.NormalizedUserName == normalizedName,
+            cancellationToken);
     }
 
     public async Task LogoutAsync(string userId, CancellationToken cancellationToken = default)
@@ -124,11 +136,12 @@ public sealed class IdentityService : IIdentityService
 
     public async Task<bool> IsEmailRegisteredAsync(
         string email,
+        string? ignoreUserId = null,
         CancellationToken cancellationToken = default)
     {
         var normalizedEmail = _userManager.NormalizeEmail(email.Trim());
         return await _userManager.Users.AnyAsync(
-            user => user.NormalizedEmail == normalizedEmail,
+            user => user.Id != ignoreUserId && user.NormalizedEmail == normalizedEmail,
             cancellationToken);
     }
 
@@ -200,15 +213,6 @@ public sealed class IdentityService : IIdentityService
         await _tokenService.RevokeAllRefreshTokensAsync(user.Id, cancellationToken);
     }
 
-    public async Task EnsureIdentityUniqueAsync(string? ignoreUserId, string userName, string email, string mobileNumber, CancellationToken cancellationToken = default)
-    {
-        var normalizedName = _userManager.NormalizeName(userName.Trim());
-        var normalizedEmail = _userManager.NormalizeEmail(email.Trim());
-        var mobile = PhoneNumberHelper.ToE164(mobileNumber);
-        if (await _userManager.Users.AnyAsync(x => x.Id != ignoreUserId && (x.NormalizedUserName == normalizedName || x.NormalizedEmail == normalizedEmail || x.PhoneNumber == mobile), cancellationToken))
-            throw new ConflictException("Username, email, or mobile number is already registered.");
-    }
-
     public async Task<Dictionary<string, string>> GetRolesAsync(IEnumerable<string> userIds, CancellationToken cancellationToken = default)
     {
         var result = new Dictionary<string, string>();
@@ -264,12 +268,28 @@ public sealed class IdentityService : IIdentityService
         return new SecurityUserSettingsDto(user.Id, user.TwoFactorEnabled, user.LoginAlertsEnabled, user.PhoneNumber);
     }
 
-    public async Task<IReadOnlyList<UserSummaryDto>> GetTenantUsersAsync(string tenantId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<UserSummaryDto>> GetTenantUsersAsync(
+        string tenantId,
+        string? excludeUserId = null,
+        CancellationToken cancellationToken = default)
     {
-        var list = await _userManager.Users.AsNoTracking()
-            .Where(x => x.TenantId == tenantId)
+        var query = _userManager.Users.AsNoTracking()
+            .Where(x => x.TenantId == tenantId);
+
+        if (!string.IsNullOrWhiteSpace(excludeUserId))
+        {
+            query = query.Where(x => x.Id != excludeUserId);
+        }
+
+        var list = await query
             .OrderBy(x => x.UserName)
-            .Select(x => new UserSummaryDto(x.Id, x.UserName ?? x.Email ?? x.PhoneNumber ?? "User", x.Email ?? string.Empty, x.PhoneNumber ?? string.Empty, x.LockoutEnd.HasValue && x.LockoutEnd > DateTimeOffset.UtcNow))
+            .Select(x => new UserSummaryDto(
+                x.Id,
+                x.UserName ?? string.Empty,
+                x.Email ?? string.Empty,
+                string.Empty,
+                x.LockoutEnd.HasValue && x.LockoutEnd > DateTimeOffset.UtcNow,
+                x.FullName ?? string.Empty))
             .ToListAsync(cancellationToken);
         return list;
     }

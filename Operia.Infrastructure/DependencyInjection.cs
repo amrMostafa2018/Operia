@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Common.Authorization;
 using Operia.Domain.Interfaces;
 using Operia.Infrastructure.Authorization;
 using Operia.Infrastructure.Identity;
@@ -14,9 +15,14 @@ using Operia.Infrastructure.Repositories;
 using Operia.Infrastructure.Services;
 using Operia.SharedKernel.Interfaces;
 using Operia.Application.Employees;
+using Operia.Application.Employees.Commands.CreateEmployee;
+using Operia.Application.Onboarding.Commands.SetupBusiness;
+using Operia.Application.Bookings.Commands.CreateBooking;
+using Operia.Application.Bookings.Commands.CancelBooking;
 
 namespace Operia.Infrastructure;
 
+/// <summary>Registers Infrastructure persistence and integration services with Application contracts.</summary>
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(
@@ -51,17 +57,19 @@ public static class DependencyInjection
             .AddDefaultTokenProviders();
 
         services.AddAuthorization(options => PolicyDefinitions.RegisterPolicies(options));
+        services.AddScoped<IPermissionGrantStore, IdentityPermissionGrantStore>();
+        services.AddScoped<IAuthorizationHandler, DatabasePermissionAuthorizationHandler>();
 
         services.AddScoped<IApplicationDbContext>(sp =>
             sp.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<IEmployeeCodeGenerator, EmployeeCodeGenerator>();
+        // Both booking interfaces use the same scoped context and lock implementation.
+        services.AddScoped<IBookingConcurrencyStore, BookingConcurrencyStore>();
+        services.AddScoped<IBookingCancellationStore, BookingConcurrencyStore>();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-        services.AddScoped<IRegistrationRequestRepository, RegistrationRequestRepository>();
         services.AddScoped<ITenantRepository, TenantRepository>();
-        services.AddScoped<IBusinessRepository, BusinessRepository>();
-        services.AddScoped<IBusinessGalleryRepository, BusinessGalleryRepository>();
-        services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
+        services.AddScoped<IOnboardingBusinessGalleryStore, OnboardingBusinessGalleryStore>();
         services.AddScoped<ITenantSubscriptionRepository, TenantSubscriptionRepository>();
         services.AddScoped<IPlatformRevenueRepository, PlatformRevenueRepository>();
 

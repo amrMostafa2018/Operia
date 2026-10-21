@@ -1,19 +1,23 @@
-using System.Data;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Common.Exceptions;
 using Operia.Domain.Common;
 using Operia.Domain.Entities;
+using Operia.Domain.Interfaces;
 using Operia.Infrastructure.Identity;
 using Operia.SharedKernel.Interfaces;
+using Operia.SharedKernel.Errors;
 
 namespace Operia.Infrastructure.Persistence;
 
+/// <summary>Configures tenant-filtered persistence and rejects cross-tenant writes.</summary>
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplicationDbContext
 {
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ICurrentUserService _currentUserService;
+
+    private string? CurrentTenantId => _currentUserService.TenantId;
 
     public ApplicationDbContext(
         DbContextOptions<ApplicationDbContext> options,
@@ -23,31 +27,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     {
         _dateTimeProvider = dateTimeProvider;
         _currentUserService = currentUserService;
-    }
-
-    public virtual async Task<string> GetNextEmployeeCodeAsync(string tenantId, CancellationToken cancellationToken = default)
-    {
-        var connection = Database.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
-            await connection.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.Transaction = Database.CurrentTransaction?.GetDbTransaction();
-        command.CommandText = """
-            IF NOT EXISTS (SELECT 1 FROM TenantNumberCounters WITH (UPDLOCK, HOLDLOCK) WHERE TenantId = @tenantId)
-                INSERT INTO TenantNumberCounters (TenantId, LastEmployeeNumber, CreatedAt) VALUES (@tenantId, 0, SYSUTCDATETIME());
-            UPDATE TenantNumberCounters WITH (UPDLOCK, ROWLOCK)
-            SET LastEmployeeNumber = LastEmployeeNumber + 1, LastModifiedAt = SYSUTCDATETIME()
-            OUTPUT INSERTED.LastEmployeeNumber
-            WHERE TenantId = @tenantId AND LastEmployeeNumber < 9999;
-            """;
-        var parameter = command.CreateParameter();
-        parameter.ParameterName = "@tenantId";
-        parameter.Value = tenantId;
-        command.Parameters.Add(parameter);
-        var value = await command.ExecuteScalarAsync(cancellationToken);
-        if (value is null or DBNull)
-            throw new Operia.Application.Common.Exceptions.ConflictException("Employee code range EMP-0001 through EMP-9999 is exhausted.");
-        return $"EMP-{Convert.ToInt32(value):0000}";
     }
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -65,15 +44,30 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<EmployeeWorkingDay> EmployeeWorkingDays => Set<EmployeeWorkingDay>();
     public DbSet<UserBranch> UserBranches => Set<UserBranch>();
     public DbSet<TenantNumberCounter> TenantNumberCounters => Set<TenantNumberCounter>();
+    public DbSet<ServiceCategory> ServiceCategories => Set<ServiceCategory>();
+    public DbSet<SubServiceCategory> SubServiceCategories => Set<SubServiceCategory>();
+    public DbSet<Package> Packages => Set<Package>();
+    public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<BookingItem> BookingItems => Set<BookingItem>();
+    public DbSet<BookingHistory> BookingHistory => Set<BookingHistory>();
+    public DbSet<BookingHold> BookingHolds => Set<BookingHold>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<CustomerPackage> CustomerPackages => Set<CustomerPackage>();
+    public DbSet<BookingPackageReservation> BookingPackageReservations => Set<BookingPackageReservation>();
 
+    /// <summary>Applies entity configuration and global tenant query filters.</summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+        ApplyTenantQueryFilters(modelBuilder);
     }
 
+    /// <summary>Rejects cross-tenant writes before persisting tracked changes.</summary>
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        EnforceTenantWriteScope();
+
         var now = _dateTimeProvider.UtcNow;
         var userId = _currentUserService.UserId;
 
@@ -92,5 +86,54 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
         }
 
         return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ApplyTenantQueryFilters(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Business>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<TenantSubscription>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<PlatformRevenue>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<Branch>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AuditLog>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<Employee>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<EmployeeWorkingDay>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<UserBranch>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<TenantNumberCounter>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<BusinessGallery>().HasQueryFilter(
+            x => x.Business != null && x.Business.TenantId == CurrentTenantId);
+        modelBuilder.Entity<BusinessSettings>().HasQueryFilter(
+            x => x.Business != null && x.Business.TenantId == CurrentTenantId);
+        modelBuilder.Entity<ServiceCategory>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<SubServiceCategory>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<Package>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<Booking>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<BookingItem>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<BookingHistory>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<BookingHold>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<Customer>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<CustomerPackage>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<BookingPackageReservation>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+    }
+
+    private void EnforceTenantWriteScope()
+    {
+        var tenantId = CurrentTenantId;
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            return;
+        }
+
+        foreach (var entry in ChangeTracker.Entries<ITenantScoped>())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted))
+            {
+                continue;
+            }
+
+            if (!string.Equals(entry.Entity.TenantId, tenantId, StringComparison.Ordinal))
+            {
+                throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantAccessDenied);
+            }
+        }
     }
 }

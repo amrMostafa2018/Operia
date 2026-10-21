@@ -17,7 +17,7 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
             .NotEmpty().WithErrorCode(ApiErrorCodes.Auth.EmailRequired)
             .EmailAddress().WithErrorCode(ApiErrorCodes.Auth.EmailInvalid)
             .MustAsync(async (email, cancellationToken) =>
-                !await identityService.IsEmailRegisteredAsync(email, cancellationToken))
+                !await identityService.IsEmailRegisteredAsync(email, cancellationToken: cancellationToken))
             .WithErrorCode(ApiErrorCodes.Auth.EmailAlreadyRegistered);
 
         RuleFor(x => x.Password)
@@ -35,7 +35,7 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
             .MustAsync(async (phoneNumber, cancellationToken) =>
                 !await identityService.IsPhoneRegisteredAsync(
                     PhoneNumberHelper.ToE164(phoneNumber),
-                    cancellationToken))
+                    cancellationToken: cancellationToken))
             .WithErrorCode(ApiErrorCodes.Auth.PhoneAlreadyRegistered);
     }
 }

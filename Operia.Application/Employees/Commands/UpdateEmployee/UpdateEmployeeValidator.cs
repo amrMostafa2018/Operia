@@ -6,8 +6,11 @@ public sealed class UpdateEmployeeValidator : AbstractValidator<UpdateEmployeeCo
 {
     public UpdateEmployeeValidator()
     {
-        RuleFor(x => x.Id).NotEmpty(); RuleFor(x => x.FullName).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Email).NotEmpty().EmailAddress(); RuleFor(x => x.MobileNumber).NotEmpty();
-        RuleFor(x => x.UserName).NotEmpty(); RuleFor(x => x.BranchIds).NotEmpty();
+        RuleFor(x => x.Id).NotEmpty();
+        RuleFor(x => x.FullName).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Email).NotEmpty().EmailAddress();
+        RuleFor(x => x.MobileNumber).NotEmpty();
+        RuleFor(x => x.UserName).NotEmpty();
+        RuleFor(x => x.BranchIds).NotEmpty();
     }
 }

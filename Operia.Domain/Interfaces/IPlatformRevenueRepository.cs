@@ -12,5 +12,9 @@ public interface IPlatformRevenueRepository
         string id,
         CancellationToken cancellationToken = default);
 
+    Task<PlatformRevenue?> GetByIdForPlatformAsync(
+        string id,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(PlatformRevenue revenue, CancellationToken cancellationToken = default);
 }

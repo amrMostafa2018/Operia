@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Employees.Common;
@@ -14,17 +15,20 @@ public sealed class ChangeEmployeeStatusHandler : IRequestHandler<ChangeEmployee
     private readonly IIdentityService _identityService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IAuditWriter _auditWriter;
 
     public ChangeEmployeeStatusHandler(
         IApplicationDbContext db,
         IIdentityService identityService,
         IUnitOfWork unitOfWork,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IAuditWriter auditWriter)
     {
         _db = db;
         _identityService = identityService;
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
+        _auditWriter = auditWriter;
     }
 
     public async Task Handle(ChangeEmployeeStatusCommand request, CancellationToken cancellationToken)
@@ -50,7 +54,7 @@ public sealed class ChangeEmployeeStatusHandler : IRequestHandler<ChangeEmployee
             var oldStatus = employee.IsActive;
             employee.IsActive = request.IsActive;
             await _identityService.SetStatusAsync(employee.IdentityUserId, request.IsActive, cancellationToken);
-            EmployeeHandlerHelpers.AddAudit(_db, _currentUserService, tenantId, "StatusChanged", employee, new { oldStatus, newStatus = request.IsActive });
+            EmployeeHandlerHelpers.AddAudit(_auditWriter, tenantId, AuditActions.EmployeeStatusChanged, employee, new { oldStatus, newStatus = request.IsActive });
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
         catch

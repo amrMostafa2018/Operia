@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Employees.Common;
@@ -14,17 +15,20 @@ public sealed class ChangeEmployeeRoleHandler : IRequestHandler<ChangeEmployeeRo
     private readonly IIdentityService _identityService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IAuditWriter _auditWriter;
 
     public ChangeEmployeeRoleHandler(
         IApplicationDbContext db,
         IIdentityService identityService,
         IUnitOfWork unitOfWork,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IAuditWriter auditWriter)
     {
         _db = db;
         _identityService = identityService;
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
+        _auditWriter = auditWriter;
     }
 
     public async Task Handle(ChangeEmployeeRoleCommand request, CancellationToken cancellationToken)
@@ -47,7 +51,7 @@ public sealed class ChangeEmployeeRoleHandler : IRequestHandler<ChangeEmployeeRo
         try
         {
             await _identityService.ChangeRoleAsync(employee.IdentityUserId, request.Role, cancellationToken);
-            EmployeeHandlerHelpers.AddAudit(_db, _currentUserService, tenantId, "RoleChanged", employee, new { oldRole, newRole = request.Role });
+            EmployeeHandlerHelpers.AddAudit(_auditWriter, tenantId, AuditActions.EmployeeRoleChanged, employee, new { oldRole, newRole = request.Role });
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
         catch

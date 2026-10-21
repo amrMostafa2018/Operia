@@ -39,10 +39,8 @@ public sealed class ListEmployeesHandler : IRequestHandler<ListEmployeesQuery, E
             query = query.Where(x => x.IsActive == request.IsActive);
         if (!string.IsNullOrWhiteSpace(request.BranchId))
             query = query.Where(x => x.UserBranches.Any(b => b.BranchId == request.BranchId));
-        if (request.CreatedFrom is not null)
-            query = query.Where(x => x.JoiningDate >= request.CreatedFrom);
-        if (request.CreatedTo is not null)
-            query = query.Where(x => x.JoiningDate <= request.CreatedTo);
+        if (request.JoiningDate is not null)
+            query = query.Where(x => x.JoiningDate == request.JoiningDate);
 
         var allEmployees = await query.OrderBy(x => x.Code).ToListAsync(cancellationToken);
         var userIds = allEmployees.Select(x => x.IdentityUserId).ToList();

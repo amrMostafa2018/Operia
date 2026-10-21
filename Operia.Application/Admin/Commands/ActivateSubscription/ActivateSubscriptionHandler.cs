@@ -1,0 +1,90 @@
+using FluentValidation.Results;
+using MediatR;
+using Operia.Application.Common.Exceptions;
+using Operia.Application.Common.Interfaces;
+using Operia.Domain.Entities;
+using Operia.Domain.Enums;
+using Operia.Domain.Exceptions;
+using Operia.Domain.Interfaces;
+using Operia.SharedKernel.Interfaces;
+
+namespace Operia.Application.Admin.Commands.ActivateSubscription;
+
+public sealed class ActivateSubscriptionHandler : IRequestHandler<ActivateSubscriptionCommand>
+{
+    private readonly ITenantSubscriptionRepository _tenantSubscriptionRepository;
+    private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IApplicationDbContext _dbContext;
+
+    public ActivateSubscriptionHandler(
+        ITenantSubscriptionRepository tenantSubscriptionRepository,
+        IDateTimeProvider dateTimeProvider,
+        IApplicationDbContext dbContext)
+    {
+        _tenantSubscriptionRepository = tenantSubscriptionRepository;
+        _dateTimeProvider = dateTimeProvider;
+        _dbContext = dbContext;
+    }
+
+    public async Task Handle(ActivateSubscriptionCommand request, CancellationToken cancellationToken)
+    {
+        var subscription = await _tenantSubscriptionRepository.GetByIdForPlatformAsync(
+            request.SubscriptionId,
+            cancellationToken)
+            ?? throw new NotFoundException(nameof(TenantSubscription), request.SubscriptionId);
+
+        if (subscription.Status == SubscriptionStatus.Active)
+            return;
+
+        var tenant = subscription.Tenant
+            ?? throw new NotFoundException(nameof(Tenant), subscription.TenantId);
+
+        if (tenant.Balance < subscription.Amount)
+        {
+            throw new ValidationException(
+            [
+                new ValidationFailure(
+                    "balance",
+                    "Insufficient tenant balance to activate subscription.")
+            ]);
+        }
+
+        tenant.Balance -= subscription.Amount;
+
+        var today = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
+        var startDate = today;
+        var endDate = subscription.BillingType == BillingType.Monthly
+            ? today.AddMonths(1)
+            : today.AddYears(1);
+
+        if (subscription.Plan?.TrialDays > 0 && subscription.Amount == 0)
+        {
+            endDate = today.AddDays(subscription.Plan.TrialDays);
+        }
+
+        if (subscription.Status == SubscriptionStatus.Expired)
+        {
+            var renewedSubscription = new TenantSubscription
+            {
+                TenantId = subscription.TenantId,
+                PlanId = subscription.PlanId,
+                Amount = subscription.Amount,
+                Currency = subscription.Currency,
+                BillingType = subscription.BillingType,
+                Status = SubscriptionStatus.Active,
+                StartDate = startDate,
+                EndDate = endDate
+            };
+
+            await _tenantSubscriptionRepository.AddAsync(renewedSubscription, cancellationToken);
+        }
+        else
+        {
+            subscription.Status = SubscriptionStatus.Active;
+            subscription.StartDate = startDate;
+            subscription.EndDate = endDate;
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+}
