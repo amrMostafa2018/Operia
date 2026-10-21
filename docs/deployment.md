@@ -5,7 +5,7 @@ The workflow in `.github/workflows/deploy.yml` runs on every push to `main` and 
 ## One-time setup
 
 1. In the MonsterASP.NET control panel, open the API website's **Deploy** page and enable **WebDeploy** on the Visual Studio access card.
-2. In the `amrMostafa2018/Operia` GitHub repository, create a `production` environment. Restrict it to the `main` branch. Add these environment secrets using the values on the MonsterASP.NET card:
+2. In the `amrMostafa2018/Operia` GitHub repository, add these Actions repository secrets using the values on the MonsterASP.NET card. The deployment job names its environment `production`; a repository administrator can later add branch restrictions and move the secrets to that environment:
 
    | Secret | Value |
    | --- | --- |
