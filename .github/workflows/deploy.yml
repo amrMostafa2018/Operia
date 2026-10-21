@@ -1,0 +1,86 @@
+name: Build and deploy API
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: operia-api-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Run application tests
+        run: dotnet test Operia.Application.Tests/Operia.Application.Tests.csproj --configuration Release
+
+      - name: Publish API
+        if: github.event_name != 'pull_request'
+        run: dotnet publish Operia/Operia.csproj --configuration Release --output publish
+
+      - name: Keep server configuration out of the deployment artifact
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          Remove-Item publish/appsettings.json -ErrorAction SilentlyContinue
+          Remove-Item publish/appsettings.Production.json -ErrorAction SilentlyContinue
+
+      - name: Upload published API
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: operia-api
+          path: publish/
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build-and-test
+    runs-on: windows-latest
+    environment: production
+    steps:
+      - name: Download published API
+        uses: actions/download-artifact@v4
+        with:
+          name: operia-api
+          path: publish/
+
+      - name: Check Web Deploy configuration
+        shell: pwsh
+        env:
+          WEBSITE_NAME: ${{ secrets.MONSTERASP_WEBSITE_NAME }}
+          SERVER_COMPUTER_NAME: ${{ secrets.MONSTERASP_SERVER_COMPUTER_NAME }}
+          SERVER_USERNAME: ${{ secrets.MONSTERASP_SERVER_USERNAME }}
+          SERVER_PASSWORD: ${{ secrets.MONSTERASP_SERVER_PASSWORD }}
+        run: |
+          foreach ($name in @('WEBSITE_NAME', 'SERVER_COMPUTER_NAME', 'SERVER_USERNAME', 'SERVER_PASSWORD')) {
+            if (-not [Environment]::GetEnvironmentVariable($name)) {
+              throw "Missing GitHub Actions secret for $name"
+            }
+          }
+
+      - name: Deploy to MonsterASP.NET
+        uses: rasmusbuchholdt/simply-web-deploy@2.2.0
+        with:
+          website-name: ${{ secrets.MONSTERASP_WEBSITE_NAME }}
+          server-computer-name: ${{ secrets.MONSTERASP_SERVER_COMPUTER_NAME }}
+          server-username: ${{ secrets.MONSTERASP_SERVER_USERNAME }}
+          server-password: ${{ secrets.MONSTERASP_SERVER_PASSWORD }}
+          source-path: \publish\
+          target-delete: false
+          skip-files: appsettings.json,appsettings.Production.json
