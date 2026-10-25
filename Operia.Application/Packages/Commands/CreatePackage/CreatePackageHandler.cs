@@ -44,6 +44,9 @@ public sealed class CreatePackageHandler(
             PulseCount = offerType == OfferType.Package ? request.PulseCount : null,
             PackageExpiryMonths = offerType == OfferType.Package ? request.PackageExpiryMonths : null,
             Price = request.Price,
+            CashEnabled = request.CashEnabled,
+            InstallmentEnabled = request.InstallmentEnabled,
+            InstallmentPrice = request.InstallmentEnabled ? request.InstallmentPrice : null,
             DiscountCode = request.DiscountCode.Trim(),
             DiscountPercent = request.DiscountPercent,
             Status = PackageMapper.FromIsActive(request.IsActive)

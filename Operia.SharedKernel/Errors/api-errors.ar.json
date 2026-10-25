@@ -276,8 +276,28 @@
     "Value": "لا يمكن أن يكون السعر سالبًا."
   },
   {
+    "Name": "PACKAGE_CASH_PRICE_POSITIVE",
+    "Value": "يجب أن يكون السعر النقدي أكبر من صفر عند تفعيل الدفع النقدي."
+  },
+  {
     "Name": "PACKAGE_DISCOUNT_PERCENT_RANGE",
     "Value": "يجب أن تكون نسبة الخصم بين 0 و 100."
+  },
+  {
+    "Name": "PACKAGE_PAYMENT_OPTION_REQUIRED",
+    "Value": "فعّل الدفع النقدي أو التقسيط لبيع هذا العرض."
+  },
+  {
+    "Name": "PACKAGE_INSTALLMENT_PRICE_REQUIRED",
+    "Value": "سعر التقسيط مطلوب عند تفعيل التقسيط."
+  },
+  {
+    "Name": "PACKAGE_INSTALLMENT_PRICE_MIN",
+    "Value": "يجب أن يكون سعر التقسيط أكبر من صفر عند تفعيله، ولا يمكن أن يكون سالبًا."
+  },
+  {
+    "Name": "PACKAGE_CASH_UNAVAILABLE",
+    "Value": "الشراء النقدي غير متاح لهذا العرض."
   },
   {
     "Name": "PACKAGE_NOT_FOUND",

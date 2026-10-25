@@ -1,6 +1,7 @@
 using FluentValidation.Results;
 using Operia.Application.Bookings.Commands.CreateBooking;
 using Operia.Application.Common.Exceptions;
+using Operia.Application.Packages;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
 using Operia.SharedKernel.Errors;
@@ -36,10 +37,11 @@ public static class BookingItemPricing
     {
         if (product.OfferType == OfferType.SingleSession)
         {
-            return item.CustomerPackageId is not null ? 0 : product.Price * item.Quantity;
+            return item.CustomerPackageId is not null ? 0 : CashPrice(product) * item.Quantity;
         }
 
-        return product.Price * PackageNewPurchaseUnits(item, ownedCatalogPackageIds);
+        var units = PackageNewPurchaseUnits(item, ownedCatalogPackageIds);
+        return units > 0 ? CashPrice(product) * units : 0;
     }
 
     public static decimal CalculateUnitPrice(
@@ -49,10 +51,20 @@ public static class BookingItemPricing
     {
         if (product.OfferType == OfferType.SingleSession)
         {
-            return item.CustomerPackageId is not null ? 0 : product.Price;
+            return item.CustomerPackageId is not null ? 0 : CashPrice(product);
         }
 
-        return PackageNewPurchaseUnits(item, ownedCatalogPackageIds) > 0 ? product.Price : 0;
+        return PackageNewPurchaseUnits(item, ownedCatalogPackageIds) > 0 ? CashPrice(product) : 0;
+    }
+
+    public static decimal CashPrice(Package product)
+    {
+        if (!product.CashEnabled)
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageCashUnavailable, "items");
+        }
+
+        return PackageCashPricing.FinalPrice(product);
     }
 
     /// <summary>Allows zero or one booking-session package plus optional purchase-only package lines.</summary>
@@ -96,6 +108,8 @@ public static class BookingItemPricing
             TenantId = tenantId,
             CustomerId = customerId,
             PackageId = product.Id,
+            PurchasePrice = CashPrice(product),
+            AmountDue = CashPrice(product),
             Total = total,
             ReservedSessions = 0,
             ExpiresOn = expiresOn,

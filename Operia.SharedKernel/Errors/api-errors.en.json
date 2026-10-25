@@ -284,8 +284,28 @@
     "Value": "Price cannot be negative."
   },
   {
+    "Name": "PACKAGE_CASH_PRICE_POSITIVE",
+    "Value": "Cash price must be greater than zero when cash is enabled."
+  },
+  {
     "Name": "PACKAGE_DISCOUNT_PERCENT_RANGE",
     "Value": "Discount percent must be between 0 and 100."
+  },
+  {
+    "Name": "PACKAGE_PAYMENT_OPTION_REQUIRED",
+    "Value": "Enable cash or installments to sell this offer."
+  },
+  {
+    "Name": "PACKAGE_INSTALLMENT_PRICE_REQUIRED",
+    "Value": "Installment price is required when installments are enabled."
+  },
+  {
+    "Name": "PACKAGE_INSTALLMENT_PRICE_MIN",
+    "Value": "Installment price must be greater than zero when installments are enabled and cannot be negative."
+  },
+  {
+    "Name": "PACKAGE_CASH_UNAVAILABLE",
+    "Value": "Cash purchase is not available for this offer."
   },
   {
     "Name": "PACKAGE_NOT_FOUND",

@@ -13,4 +13,7 @@ public sealed record UpdatePackageRequest(
     int? PackageExpiryMonths,
     decimal Price,
     string DiscountCode,
-    decimal? DiscountPercent);
+    decimal? DiscountPercent,
+    bool CashEnabled = true,
+    bool InstallmentEnabled = false,
+    decimal? InstallmentPrice = null);

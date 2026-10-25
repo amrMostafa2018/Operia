@@ -152,6 +152,53 @@ public sealed class CreatePackageValidatorTests
         exception.Which.ErrorCodes["discountPercent"].Should().Contain(ApiErrorCodes.Packages.PackageDiscountPercentRange);
     }
 
+    [Fact]
+    public async Task CreatePackage_WithOnlyInstallments_StoresSeparatePrice()
+    {
+        _db.Businesses.Add(BranchTestData.Business("tenant-1"));
+        _db.ServiceCategories.Add(PackageTestData.ServiceCategory("cat-1", "tenant-1", "Body Laser"));
+        await _db.SaveChangesAsync();
+
+        await HandleAsync(ValidCommand() with
+        {
+            CashEnabled = false,
+            InstallmentEnabled = true,
+            InstallmentPrice = 20000m,
+            Price = 18000m
+        });
+
+        var package = await _db.Packages.SingleAsync();
+        package.Price.Should().Be(18000m);
+        package.InstallmentPrice.Should().Be(20000m);
+        package.CashEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CreatePackage_WithoutPaymentOption_IsRejected()
+    {
+        var result = await _validator.ValidateAsync(ValidCommand() with
+        {
+            CashEnabled = false,
+            InstallmentEnabled = false
+        });
+
+        result.Errors.Should().Contain(error =>
+            error.ErrorCode == ApiErrorCodes.Packages.PackagePaymentOptionRequired);
+    }
+
+    [Fact]
+    public async Task CreatePackage_EnabledInstallmentsRequirePositivePrice()
+    {
+        var result = await _validator.ValidateAsync(ValidCommand() with
+        {
+            InstallmentEnabled = true,
+            InstallmentPrice = 0m
+        });
+
+        result.Errors.Should().Contain(error =>
+            error.ErrorCode == ApiErrorCodes.Packages.PackageInstallmentPriceMin);
+    }
+
     private async Task HandleAsync(CreatePackageCommand command)
     {
         var validationResult = await _validator.ValidateAsync(command);

@@ -19,6 +19,21 @@ public sealed class CreatePackageValidator : AbstractValidator<CreatePackageComm
             .GreaterThan(0).WithErrorCode(ApiErrorCodes.Packages.PackageDurationMin);
         RuleFor(command => command.Price)
             .GreaterThanOrEqualTo(0).WithErrorCode(ApiErrorCodes.Packages.PackagePriceMin);
+        RuleFor(command => command.Price)
+            .GreaterThan(0).When(command => command.CashEnabled)
+            .WithErrorCode(ApiErrorCodes.Packages.PackageCashPricePositive);
+        RuleFor(command => command.CashEnabled)
+            .Must((command, cashEnabled) => cashEnabled || command.InstallmentEnabled)
+            .WithErrorCode(ApiErrorCodes.Packages.PackagePaymentOptionRequired);
+        RuleFor(command => command.InstallmentPrice)
+            .NotNull().When(command => command.InstallmentEnabled)
+            .WithErrorCode(ApiErrorCodes.Packages.PackageInstallmentPriceRequired);
+        RuleFor(command => command.InstallmentPrice)
+            .GreaterThan(0).When(command => command.InstallmentEnabled && command.InstallmentPrice.HasValue)
+            .WithErrorCode(ApiErrorCodes.Packages.PackageInstallmentPriceMin);
+        RuleFor(command => command.InstallmentPrice)
+            .GreaterThanOrEqualTo(0).When(command => !command.InstallmentEnabled && command.InstallmentPrice.HasValue)
+            .WithErrorCode(ApiErrorCodes.Packages.PackageInstallmentPriceMin);
         RuleFor(command => command.DiscountCode)
             .MaximumLength(50);
         RuleFor(command => command.DiscountPercent)

@@ -17,4 +17,7 @@ public sealed record UpdatePackageCommand(
     int? PackageExpiryMonths,
     decimal Price,
     string DiscountCode,
-    decimal? DiscountPercent) : IRequest<PackageDetailDto>;
+    decimal? DiscountPercent,
+    bool CashEnabled = true,
+    bool InstallmentEnabled = false,
+    decimal? InstallmentPrice = null) : IRequest<PackageDetailDto>;

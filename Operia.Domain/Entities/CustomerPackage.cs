@@ -10,6 +10,8 @@ public sealed class CustomerPackage : Entity, ITenantScoped
     public string TenantId { get; set; } = string.Empty;
     public string CustomerId { get; set; } = string.Empty;
     public string PackageId { get; set; } = string.Empty;
+    public decimal? PurchasePrice { get; set; }
+    public decimal? AmountDue { get; set; }
 
     /// <summary>Total sessions or pulses purchased for this package or standalone service unit.</summary>
     public int Total { get; set; }

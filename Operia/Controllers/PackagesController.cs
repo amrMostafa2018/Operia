@@ -91,7 +91,10 @@ public sealed class PackagesController(IMediator mediator) : ControllerBase
                 request.PackageExpiryMonths,
                 request.Price,
                 request.DiscountCode,
-                request.DiscountPercent),
+                request.DiscountPercent,
+                request.CashEnabled,
+                request.InstallmentEnabled,
+                request.InstallmentPrice),
             cancellationToken);
 
     [HttpDelete("{id}")]

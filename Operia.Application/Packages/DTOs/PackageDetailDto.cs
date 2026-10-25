@@ -17,4 +17,8 @@ public sealed record PackageDetailDto(
     int? PulseCount,
     int? PackageExpiryMonths,
     string DiscountCode,
-    decimal? DiscountPercent);
+    decimal? DiscountPercent,
+    bool CashEnabled,
+    bool InstallmentEnabled,
+    decimal? InstallmentPrice,
+    decimal CashPriceAfterDiscount);

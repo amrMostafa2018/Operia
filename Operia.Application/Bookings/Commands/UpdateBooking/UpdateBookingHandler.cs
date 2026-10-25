@@ -223,7 +223,7 @@ public sealed class UpdateBookingHandler(
         }
 
         var addedUnits = Math.Max(0, input.Quantity - existingItem.Quantity);
-        return input.Quantity == 0 ? 0 : addedUnits * product.Price / input.Quantity;
+        return input.Quantity == 0 ? 0 : addedUnits * BookingItemPricing.CashPrice(product) / input.Quantity;
     }
 
     /// <summary>Loads active owned catalog package ids for purchase-only pricing.</summary>
@@ -364,7 +364,7 @@ public sealed class UpdateBookingHandler(
         {
             for (var unit = 0; unit < count; unit++)
             {
-                AddNewStandalonePurchaseReservation(booking, tenantId, packageId);
+                AddNewStandalonePurchaseReservation(booking, tenantId, catalog[packageId]);
             }
         }
     }
@@ -436,13 +436,18 @@ public sealed class UpdateBookingHandler(
     }
 
     /// <summary>Creates a one-session customer purchase and reserves it on the booking.</summary>
-    private void AddNewStandalonePurchaseReservation(Booking booking, string tenantId, string packageId)
+    private void AddNewStandalonePurchaseReservation(Booking booking, string tenantId, Package product)
     {
+        var currentCashPrice = BookingItemPricing.CashPrice(product);
+        var existingPrice = booking.Items.FirstOrDefault(item => item.PackageId == product.Id)?.UnitPrice;
+        var purchasePrice = existingPrice is > 0 ? existingPrice.Value : currentCashPrice;
         var purchase = new CustomerPackage
         {
             TenantId = tenantId,
             CustomerId = booking.CustomerId,
-            PackageId = packageId,
+            PackageId = product.Id,
+            PurchasePrice = purchasePrice,
+            AmountDue = purchasePrice,
             Total = 1,
             ReservedSessions = 1,
             IsActive = true

@@ -19,6 +19,9 @@ public sealed class Package : Entity, ITenantScoped
     public int? PulseCount { get; set; }
     public int? PackageExpiryMonths { get; set; }
     public decimal Price { get; set; }
+    public bool CashEnabled { get; set; } = true;
+    public bool InstallmentEnabled { get; set; }
+    public decimal? InstallmentPrice { get; set; }
     public string DiscountCode { get; set; } = string.Empty;
     public decimal? DiscountPercent { get; set; }
     public PackageStatus Status { get; set; } = PackageStatus.Active;

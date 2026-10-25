@@ -276,6 +276,8 @@ public sealed class CreateBookingHandler(
                     TenantId = tenantId,
                     CustomerId = customerId,
                     PackageId = product.Id,
+                    PurchasePrice = BookingItemPricing.CashPrice(product),
+                    AmountDue = BookingItemPricing.CashPrice(product),
                     Total = 1,
                     ReservedSessions = 0,
                     IsActive = true

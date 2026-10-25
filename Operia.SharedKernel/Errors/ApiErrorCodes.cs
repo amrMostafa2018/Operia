@@ -76,7 +76,12 @@ public static class ApiErrorCodes
         public const string PackagePulseCountMin = "PACKAGE_PULSE_COUNT_MIN";
         public const string PackagePriceRequired = "PACKAGE_PRICE_REQUIRED";
         public const string PackagePriceMin = "PACKAGE_PRICE_MIN";
+        public const string PackageCashPricePositive = "PACKAGE_CASH_PRICE_POSITIVE";
         public const string PackageDiscountPercentRange = "PACKAGE_DISCOUNT_PERCENT_RANGE";
+        public const string PackagePaymentOptionRequired = "PACKAGE_PAYMENT_OPTION_REQUIRED";
+        public const string PackageInstallmentPriceRequired = "PACKAGE_INSTALLMENT_PRICE_REQUIRED";
+        public const string PackageInstallmentPriceMin = "PACKAGE_INSTALLMENT_PRICE_MIN";
+        public const string PackageCashUnavailable = "PACKAGE_CASH_UNAVAILABLE";
         public const string PackageNotFound = "PACKAGE_NOT_FOUND";
         public const string PackageAlreadyCancelled = "PACKAGE_ALREADY_CANCELLED";
     }

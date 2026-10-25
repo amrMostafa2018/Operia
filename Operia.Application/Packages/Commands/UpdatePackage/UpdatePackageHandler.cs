@@ -50,6 +50,9 @@ public sealed class UpdatePackageHandler(
         package.PulseCount = offerType == OfferType.Package ? request.PulseCount : null;
         package.PackageExpiryMonths = offerType == OfferType.Package ? request.PackageExpiryMonths : null;
         package.Price = request.Price;
+        package.CashEnabled = request.CashEnabled;
+        package.InstallmentEnabled = request.InstallmentEnabled;
+        package.InstallmentPrice = request.InstallmentEnabled ? request.InstallmentPrice : null;
         package.DiscountCode = request.DiscountCode.Trim();
         package.DiscountPercent = request.DiscountPercent;
         package.Status = PackageMapper.FromIsActive(request.IsActive);
