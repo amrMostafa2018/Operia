@@ -21,7 +21,7 @@ public sealed class UpdatePackageHandler(
         CancellationToken cancellationToken)
     {
         var tenantId = PackageMapper.RequireTenant(currentUser);
-        var package = await db.Packages.SingleOrDefaultAsync(
+        var package = await db.Packages.Include(item => item.Installments).SingleOrDefaultAsync(
             item => item.Id == request.Id && item.TenantId == tenantId,
             cancellationToken) ?? throw new NotFoundException(nameof(Package), request.Id);
 
@@ -53,6 +53,12 @@ public sealed class UpdatePackageHandler(
         package.CashEnabled = request.CashEnabled;
         package.InstallmentEnabled = request.InstallmentEnabled;
         package.InstallmentPrice = request.InstallmentEnabled ? request.InstallmentPrice : null;
+        package.FirstPayment = request.InstallmentEnabled ? request.FirstPayment : null;
+        package.InstallmentCount = request.InstallmentEnabled ? request.InstallmentCount : null;
+        InstallmentPlanRules.ReplaceRows(
+            package,
+            tenantId,
+            request.InstallmentEnabled ? request.Installments : null);
         package.DiscountCode = request.DiscountCode.Trim();
         package.DiscountPercent = request.DiscountPercent;
         package.Status = PackageMapper.FromIsActive(request.IsActive);
@@ -69,6 +75,7 @@ public sealed class UpdatePackageHandler(
         var updated = await db.Packages
             .AsNoTracking()
             .Include(item => item.ServiceCategory)
+            .Include(item => item.Installments)
             .SingleAsync(item => item.Id == package.Id, cancellationToken);
 
         return PackageMapper.ToDetailDto(updated);

@@ -46,5 +46,14 @@ public sealed class UpdatePackageValidator : AbstractValidator<UpdatePackageComm
             command => command.OfferType,
             command => command.SessionCount,
             command => command.PulseCount);
+        InstallmentPlanRules.Apply(
+            this,
+            command => command.InstallmentEnabled,
+            command => command.OfferType,
+            command => command.InstallmentPrice,
+            command => command.FirstPayment,
+            command => command.InstallmentCount,
+            command => command.SessionCount,
+            command => command.Installments);
     }
 }

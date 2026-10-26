@@ -26,6 +26,7 @@ public interface IApplicationDbContext
     DbSet<ServiceCategory> ServiceCategories { get; }
     DbSet<SubServiceCategory> SubServiceCategories { get; }
     DbSet<Package> Packages { get; }
+    DbSet<PackageInstallment> PackageInstallments { get; }
     DbSet<Booking> Bookings { get; }
     DbSet<BookingItem> BookingItems { get; }
     DbSet<BookingHistory> BookingHistory { get; }

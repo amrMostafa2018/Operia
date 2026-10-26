@@ -307,6 +307,16 @@
     "Name": "PACKAGE_CASH_UNAVAILABLE",
     "Value": "Cash purchase is not available for this offer."
   },
+  { "Name": "PACKAGE_INSTALLMENT_ONLY_PACKAGE", "Value": "Installments are available only for package offers." },
+  { "Name": "PACKAGE_INSTALLMENT_PAYLOAD_NOT_ALLOWED", "Value": "Remove installment plan details when installments are disabled." },
+  { "Name": "PACKAGE_FIRST_PAYMENT_REQUIRED", "Value": "First payment is required." },
+  { "Name": "PACKAGE_FIRST_PAYMENT_RANGE", "Value": "First payment must be between zero and the installment price, with at most two decimal places." },
+  { "Name": "PACKAGE_INSTALLMENT_COUNT_RANGE", "Value": "Enter at least one installment." },
+  { "Name": "PACKAGE_INSTALLMENT_ROWS_COUNT", "Value": "The number of installment rows must match the installment count." },
+  { "Name": "PACKAGE_INSTALLMENT_AMOUNT_INVALID", "Value": "Each installment amount must be nonnegative with at most two decimal places." },
+  { "Name": "PACKAGE_INSTALLMENT_TOTAL_MISMATCH", "Value": "Installments must total the installment price minus the first payment." },
+  { "Name": "PACKAGE_INSTALLMENT_SESSIONS_INVALID", "Value": "Released sessions cannot be negative or exceed the package session count." },
+  { "Name": "PACKAGE_INSTALLMENT_RELEASE_CAP", "Value": "Before full payment, released sessions cannot exceed 70% of package sessions, rounded to the nearest whole session with halves down." },
   {
     "Name": "PACKAGE_NOT_FOUND",
     "Value": "Service or offer was not found."

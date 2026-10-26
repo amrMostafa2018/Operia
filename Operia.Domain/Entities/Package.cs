@@ -22,6 +22,8 @@ public sealed class Package : Entity, ITenantScoped
     public bool CashEnabled { get; set; } = true;
     public bool InstallmentEnabled { get; set; }
     public decimal? InstallmentPrice { get; set; }
+    public decimal? FirstPayment { get; set; }
+    public int? InstallmentCount { get; set; }
     public string DiscountCode { get; set; } = string.Empty;
     public decimal? DiscountPercent { get; set; }
     public PackageStatus Status { get; set; } = PackageStatus.Active;
@@ -30,4 +32,5 @@ public sealed class Package : Entity, ITenantScoped
     public Business? Business { get; set; }
     public ServiceCategory? ServiceCategory { get; set; }
     public SubServiceCategory? SubServiceCategory { get; set; }
+    public ICollection<PackageInstallment> Installments { get; set; } = [];
 }

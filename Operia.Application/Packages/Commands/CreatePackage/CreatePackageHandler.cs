@@ -47,10 +47,17 @@ public sealed class CreatePackageHandler(
             CashEnabled = request.CashEnabled,
             InstallmentEnabled = request.InstallmentEnabled,
             InstallmentPrice = request.InstallmentEnabled ? request.InstallmentPrice : null,
+            FirstPayment = request.InstallmentEnabled ? request.FirstPayment : null,
+            InstallmentCount = request.InstallmentEnabled ? request.InstallmentCount : null,
             DiscountCode = request.DiscountCode.Trim(),
             DiscountPercent = request.DiscountPercent,
             Status = PackageMapper.FromIsActive(request.IsActive)
         };
+
+        if (request.InstallmentEnabled)
+        {
+            InstallmentPlanRules.ReplaceRows(package, tenantId, request.Installments);
+        }
 
         db.Packages.Add(package);
         auditWriter.Write(
@@ -65,6 +72,7 @@ public sealed class CreatePackageHandler(
         var created = await db.Packages
             .AsNoTracking()
             .Include(item => item.ServiceCategory)
+            .Include(item => item.Installments)
             .SingleAsync(item => item.Id == package.Id, cancellationToken);
 
         return PackageMapper.ToDetailDto(created);

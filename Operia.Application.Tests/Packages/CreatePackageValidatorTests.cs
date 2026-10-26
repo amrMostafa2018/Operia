@@ -5,6 +5,7 @@ using Moq;
 using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Packages.Commands.CreatePackage;
+using Operia.Application.Packages.DTOs;
 using Operia.Application.Tests.Helpers;
 using Operia.Infrastructure.Persistence;
 using Operia.SharedKernel.Errors;
@@ -161,9 +162,18 @@ public sealed class CreatePackageValidatorTests
 
         await HandleAsync(ValidCommand() with
         {
+            OfferType = "package",
+            SessionCount = 10,
             CashEnabled = false,
             InstallmentEnabled = true,
             InstallmentPrice = 20000m,
+            FirstPayment = 5000m,
+            InstallmentCount = 3,
+            Installments = [
+                new PackageInstallmentInput(5000m, 3),
+                new PackageInstallmentInput(5000m, 4),
+                new PackageInstallmentInput(5000m, 3)
+            ],
             Price = 18000m
         });
 

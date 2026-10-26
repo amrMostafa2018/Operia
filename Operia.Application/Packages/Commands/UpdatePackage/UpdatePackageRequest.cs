@@ -1,3 +1,5 @@
+using Operia.Application.Packages.DTOs;
+
 namespace Operia.Application.Packages.Commands.UpdatePackage;
 
 public sealed record UpdatePackageRequest(
@@ -16,4 +18,7 @@ public sealed record UpdatePackageRequest(
     decimal? DiscountPercent,
     bool CashEnabled = true,
     bool InstallmentEnabled = false,
-    decimal? InstallmentPrice = null);
+    decimal? InstallmentPrice = null,
+    decimal? FirstPayment = null,
+    int? InstallmentCount = null,
+    IReadOnlyList<PackageInstallmentInput>? Installments = null);

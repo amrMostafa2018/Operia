@@ -1043,6 +1043,13 @@ namespace Operia.Infrastructure.Migrations
                     b.Property<DateOnly?>("EndsAt")
                         .HasColumnType("date");
 
+                    b.Property<decimal?>("FirstPayment")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("InstallmentCount")
+                        .HasColumnType("int");
+
                     b.Property<bool>("InstallmentEnabled")
                         .HasColumnType("bit");
 
@@ -1103,6 +1110,54 @@ namespace Operia.Infrastructure.Migrations
                     b.HasIndex("SubServiceCategoryId");
 
                     b.ToTable("Packages", (string)null);
+                });
+
+            modelBuilder.Entity("Operia.Domain.Entities.PackageInstallment", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CumulativeAvailableSessions")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PackageId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<int>("SessionsUnlocked")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PackageId");
+
+                    b.HasIndex("TenantId", "PackageId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("PackageInstallments", (string)null);
                 });
 
             modelBuilder.Entity("Operia.Domain.Entities.PlatformRevenue", b =>
@@ -1939,6 +1994,17 @@ namespace Operia.Infrastructure.Migrations
                     b.Navigation("SubServiceCategory");
                 });
 
+            modelBuilder.Entity("Operia.Domain.Entities.PackageInstallment", b =>
+                {
+                    b.HasOne("Operia.Domain.Entities.Package", "Package")
+                        .WithMany("Installments")
+                        .HasForeignKey("PackageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Package");
+                });
+
             modelBuilder.Entity("Operia.Domain.Entities.PlatformRevenue", b =>
                 {
                     b.HasOne("Operia.Domain.Entities.Tenant", "Tenant")
@@ -2069,6 +2135,11 @@ namespace Operia.Infrastructure.Migrations
             modelBuilder.Entity("Operia.Domain.Entities.Employee", b =>
                 {
                     b.Navigation("UserBranches");
+                });
+
+            modelBuilder.Entity("Operia.Domain.Entities.Package", b =>
+                {
+                    b.Navigation("Installments");
                 });
 
             modelBuilder.Entity("Operia.Domain.Entities.ServiceCategory", b =>
