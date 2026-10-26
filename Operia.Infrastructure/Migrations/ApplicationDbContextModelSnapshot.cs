@@ -834,6 +834,9 @@ namespace Operia.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("PurchaseSnapshotJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int?>("ReservedSessions")
                         .HasColumnType("int");
 
@@ -1009,6 +1012,11 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
 
+                    b.Property<bool>("AllStaff")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("BusinessId")
                         .IsRequired()
                         .HasMaxLength(36)
@@ -1158,6 +1166,49 @@ namespace Operia.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("PackageInstallments", (string)null);
+                });
+
+            modelBuilder.Entity("Operia.Domain.Entities.PackageStaff", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("EmployeeId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PackageId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("PackageId");
+
+                    b.HasIndex("TenantId", "PackageId", "EmployeeId")
+                        .IsUnique();
+
+                    b.ToTable("PackageStaff", (string)null);
                 });
 
             modelBuilder.Entity("Operia.Domain.Entities.PlatformRevenue", b =>
@@ -2005,6 +2056,25 @@ namespace Operia.Infrastructure.Migrations
                     b.Navigation("Package");
                 });
 
+            modelBuilder.Entity("Operia.Domain.Entities.PackageStaff", b =>
+                {
+                    b.HasOne("Operia.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Operia.Domain.Entities.Package", "Package")
+                        .WithMany("AvailableStaff")
+                        .HasForeignKey("PackageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Package");
+                });
+
             modelBuilder.Entity("Operia.Domain.Entities.PlatformRevenue", b =>
                 {
                     b.HasOne("Operia.Domain.Entities.Tenant", "Tenant")
@@ -2139,6 +2209,8 @@ namespace Operia.Infrastructure.Migrations
 
             modelBuilder.Entity("Operia.Domain.Entities.Package", b =>
                 {
+                    b.Navigation("AvailableStaff");
+
                     b.Navigation("Installments");
                 });
 

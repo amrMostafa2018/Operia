@@ -9,6 +9,7 @@ using Operia.Application.Bookings.Queries.FindBookingCustomer;
 using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Packages;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
@@ -24,12 +25,15 @@ public sealed class CreateBookingHandlerTests
 {
     private readonly Mock<ICurrentUserService> _user = new();
     private readonly Mock<IBranchScope> _branchScope = new();
+    private readonly Mock<IIdentityService> _identity = new();
     private readonly Mock<IDateTimeProvider> _clock = new();
     private readonly TestApplicationDbContext _db;
     private readonly DateOnly _scheduledDate = new(2026, 9, 18);
 
     public CreateBookingHandlerTests()
     {
+        _identity.Setup(x => x.GetRolesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["employee-user"] = "Staff" });
         _user.SetupGet(x => x.UserId).Returns("operator-1");
         _user.SetupGet(x => x.TenantId).Returns("tenant-1");
         _user.SetupGet(x => x.DisplayName).Returns("Mona");
@@ -58,6 +62,51 @@ public sealed class CreateBookingHandlerTests
         (await _db.AuditLogs.CountAsync()).Should().Be(1);
         (await _db.BookingPackageReservations.CountAsync()).Should().Be(1);
         (await _db.CustomerPackages.SingleAsync()).ReservedSessions.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_CapturesPurchaseTermsBeforeOfferChanges()
+    {
+        await SeedAsync();
+        await CreateHandler().Handle(new CreateBookingCommand(
+            "sale-snapshot", "customer-1", "branch-1", "employee-1",
+            _scheduledDate, 600, 630,
+            [new CreateBookingItemInput("service-1", null, 1)]), CancellationToken.None);
+        var purchase = await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1");
+        var original = PackagePurchaseSnapshot.FromJson(purchase.PurchaseSnapshotJson);
+        var offer = await _db.Packages.SingleAsync(x => x.Id == purchase.PackageId);
+        offer.Name = "Updated Offer";
+        offer.Price = 9000m;
+        offer.SessionDurationMinutes = 90;
+        await _db.SaveChangesAsync();
+
+        var stored = PackagePurchaseSnapshot.FromJson(
+            (await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1")).PurchaseSnapshotJson);
+        stored.Should().BeEquivalentTo(original);
+        stored!.OfferName.Should().Be("Standalone Service");
+        stored.SessionDurationMinutes.Should().Be(30);
+        stored.PurchasePrice.Should().Be(purchase.PurchasePrice);
+    }
+
+    [Fact]
+    public async Task Handle_RejectsEmployeeNotSelectedForOffer()
+    {
+        await SeedAsync();
+        var offer = await _db.Packages.SingleAsync(x => x.Id == "package-1");
+        offer.AllStaff = false;
+        offer.AvailableStaff.Add(new PackageStaff
+        {
+            TenantId = "tenant-1",
+            PackageId = offer.Id,
+            EmployeeId = "different-staff"
+        });
+        await _db.SaveChangesAsync();
+
+        var act = () => CreateHandler().Handle(Command("wrong-staff", 600, 660), CancellationToken.None);
+
+        var failure = await act.Should().ThrowAsync<ConflictException>();
+        failure.Which.ErrorCode.Should().Be(ApiErrorCodes.Packages.PackageStaffUnavailable);
+        (await _db.Bookings.CountAsync()).Should().Be(0);
     }
 
     [Fact]
@@ -429,7 +478,7 @@ public sealed class CreateBookingHandlerTests
             CancellationToken.None);
 
         await new UpdateBookingHandler(
-                _db, _user.Object, _branchScope.Object, new AuditWriter(_db, _user.Object), _clock.Object)
+                _db, _user.Object, _branchScope.Object, new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object)
             .Handle(
                 new UpdateBookingCommand(
                     reused.Id,
@@ -471,7 +520,7 @@ public sealed class CreateBookingHandlerTests
                 _db,
                 _user.Object,
                 _branchScope.Object,
-                new AuditWriter(_db, _user.Object),
+                new AuditWriter(_db, _user.Object), _identity.Object,
                 _clock.Object)
             .Handle(
                 new UpdateBookingCommand(
@@ -505,7 +554,7 @@ public sealed class CreateBookingHandlerTests
                 _db,
                 _user.Object,
                 _branchScope.Object,
-                new AuditWriter(_db, _user.Object),
+                new AuditWriter(_db, _user.Object), _identity.Object,
                 _clock.Object)
             .Handle(
                 new UpdateBookingCommand(
@@ -546,7 +595,7 @@ public sealed class CreateBookingHandlerTests
                 _db,
                 _user.Object,
                 _branchScope.Object,
-                new AuditWriter(_db, _user.Object),
+                new AuditWriter(_db, _user.Object), _identity.Object,
                 _clock.Object)
             .Handle(
                 new UpdateBookingCommand(
@@ -572,7 +621,7 @@ public sealed class CreateBookingHandlerTests
                 _db,
                 _user.Object,
                 _branchScope.Object,
-                new AuditWriter(_db, _user.Object),
+                new AuditWriter(_db, _user.Object), _identity.Object,
                 _clock.Object)
             .Handle(
                 new UpdateBookingCommand(
@@ -601,7 +650,7 @@ public sealed class CreateBookingHandlerTests
                 _db,
                 _user.Object,
                 _branchScope.Object,
-                new AuditWriter(_db, _user.Object),
+                new AuditWriter(_db, _user.Object), _identity.Object,
                 _clock.Object)
             .Handle(
                 new UpdateBookingCommand(
@@ -643,7 +692,7 @@ public sealed class CreateBookingHandlerTests
                 _db,
                 _user.Object,
                 _branchScope.Object,
-                new AuditWriter(_db, _user.Object),
+                new AuditWriter(_db, _user.Object), _identity.Object,
                 _clock.Object)
             .Handle(
                 new UpdateBookingCommand(
@@ -693,7 +742,7 @@ public sealed class CreateBookingHandlerTests
                 _db,
                 _user.Object,
                 _branchScope.Object,
-                new AuditWriter(_db, _user.Object),
+                new AuditWriter(_db, _user.Object), _identity.Object,
                 _clock.Object)
             .Handle(
                 new UpdateBookingCommand(
@@ -714,6 +763,7 @@ public sealed class CreateBookingHandlerTests
             _branchScope.Object,
             new AuditWriter(_db, _user.Object),
             new BookingConcurrencyStore(_db),
+            _identity.Object,
             _clock.Object);
 
     private CreateBookingCommand Command(string key, int start, int end) =>
@@ -942,7 +992,7 @@ public sealed class CreateBookingHandlerTests
                 _db,
                 _user.Object,
                 _branchScope.Object,
-                new AuditWriter(_db, _user.Object),
+                new AuditWriter(_db, _user.Object), _identity.Object,
                 _clock.Object)
             .Handle(
                 new UpdateBookingCommand(
@@ -1077,7 +1127,7 @@ public sealed class CreateBookingHandlerTests
                 _db,
                 _user.Object,
                 _branchScope.Object,
-                new AuditWriter(_db, _user.Object),
+                new AuditWriter(_db, _user.Object), _identity.Object,
                 _clock.Object)
             .Handle(
                 new UpdateBookingCommand(

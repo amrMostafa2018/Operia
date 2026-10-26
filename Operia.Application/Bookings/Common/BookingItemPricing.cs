@@ -110,6 +110,8 @@ public static class BookingItemPricing
             PackageId = product.Id,
             PurchasePrice = CashPrice(product),
             AmountDue = CashPrice(product),
+            PurchaseSnapshotJson = PackagePurchaseSnapshot.Capture(
+                product, "cash", CashPrice(product)).ToJson(),
             Total = total,
             ReservedSessions = 0,
             ExpiresOn = expiresOn,

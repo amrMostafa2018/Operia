@@ -43,7 +43,7 @@ public sealed class UpdatePackageHandlerTests
         _db.ServiceCategories.Add(PackageTestData.ServiceCategory("cat-2", "tenant-1", "Face Laser"));
         await _db.SaveChangesAsync();
 
-        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         var command = new UpdatePackageCommand(
             "pkg-1",
             "Updated Offer",
@@ -79,7 +79,7 @@ public sealed class UpdatePackageHandlerTests
     [Fact]
     public async Task UpdatePackage_PackageNotFound_ThrowsNotFoundException()
     {
-        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         var act = () => handler.Handle(ValidUpdateCommand("missing-pkg", "cat-1"), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
@@ -90,7 +90,7 @@ public sealed class UpdatePackageHandlerTests
     {
         await SeedPackageAsync("pkg-1", "cat-1", PackageStatus.Cancelled);
 
-        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         var act = () => handler.Handle(ValidUpdateCommand("pkg-1", "cat-1"), default);
 
         var exception = await act.Should().ThrowAsync<ConflictException>();
@@ -106,7 +106,7 @@ public sealed class UpdatePackageHandlerTests
         await _db.SaveChangesAsync();
         _tenantId = "tenant-1";
 
-        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         var act = () => handler.Handle(ValidUpdateCommand("pkg-2", "cat-1"), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
@@ -117,7 +117,7 @@ public sealed class UpdatePackageHandlerTests
     {
         await SeedPackageAsync("pkg-1", "cat-1", PackageStatus.Active);
 
-        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         await handler.Handle(ValidUpdateCommand("pkg-1", "cat-1"), default);
 
         var audit = await _db.AuditLogs.SingleAsync(x => x.Action == AuditActions.PackageUpdated);
@@ -131,7 +131,7 @@ public sealed class UpdatePackageHandlerTests
     public async Task UpdatePackage_ReplacesPlanRowsWithoutKeepingObsoleteRows()
     {
         await SeedPackageAsync("pkg-1", "cat-1", PackageStatus.Active);
-        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         var first = ValidUpdateCommand("pkg-1", "cat-1") with
         {
             OfferType = "package",

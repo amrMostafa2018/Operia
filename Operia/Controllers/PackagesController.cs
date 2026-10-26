@@ -12,6 +12,8 @@ using Operia.Application.Packages.Queries.GetPackageById;
 using Operia.Application.Packages.Queries.GetPackages;
 using Operia.Application.Packages.Queries.GetServiceCategories;
 using Operia.Application.Packages.Queries.GetSubServiceCategories;
+using Operia.Application.Packages.Queries.GetAvailablePackageStaff;
+using Operia.Application.Packages;
 
 namespace Operia.Controllers;
 
@@ -53,6 +55,12 @@ public sealed class PackagesController(IMediator mediator) : ControllerBase
         [FromQuery] string? serviceCategoryId = null,
         CancellationToken cancellationToken = default) =>
         mediator.Send(new GetSubServiceCategoriesQuery(serviceCategoryId), cancellationToken);
+
+    [HttpGet("available-staff")]
+    [Authorize(Policy = Policies.PackagesRead)]
+    public Task<IReadOnlyList<AvailablePackageStaffDto>> ListAvailableStaff(
+        CancellationToken cancellationToken) =>
+        mediator.Send(new GetAvailablePackageStaffQuery(), cancellationToken);
 
     [HttpGet("{id}")]
     [Authorize(Policy = Policies.PackagesRead)]
@@ -97,7 +105,9 @@ public sealed class PackagesController(IMediator mediator) : ControllerBase
                 request.InstallmentPrice,
                 request.FirstPayment,
                 request.InstallmentCount,
-                request.Installments),
+                request.Installments,
+                request.AllStaff,
+                request.StaffIds),
             cancellationToken);
 
     [HttpDelete("{id}")]

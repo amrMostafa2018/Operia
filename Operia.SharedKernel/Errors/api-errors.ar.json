@@ -309,6 +309,8 @@
   { "Name": "PACKAGE_INSTALLMENT_TOTAL_MISMATCH", "Value": "يجب أن يساوي مجموع الأقساط سعر التقسيط بعد طرح الدفعة الأولى." },
   { "Name": "PACKAGE_INSTALLMENT_SESSIONS_INVALID", "Value": "لا يمكن أن تكون الجلسات المحررة سالبة أو تتجاوز عدد جلسات الباقة." },
   { "Name": "PACKAGE_INSTALLMENT_RELEASE_CAP", "Value": "قبل السداد الكامل، لا يجوز تحرير أكثر من 70٪ من جلسات الباقة بعد التقريب لأقرب جلسة مع تقريب النصف للأسفل." },
+  { "Name": "PACKAGE_STAFF_INVALID", "Value": "اختر موظفين نشطين تابعين لفرع مسموح، أو اختر جميع الموظفين." },
+  { "Name": "PACKAGE_STAFF_UNAVAILABLE", "Value": "الموظف المختار غير متاح لهذه الخدمة أو العرض." },
   {
     "Name": "PACKAGE_NOT_FOUND",
     "Value": "الخدمة أو العرض غير موجود."

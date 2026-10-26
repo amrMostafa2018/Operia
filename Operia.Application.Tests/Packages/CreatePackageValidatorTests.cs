@@ -217,7 +217,7 @@ public sealed class CreatePackageValidatorTests
             throw new ValidationException(validationResult.Errors);
         }
 
-        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         await handler.Handle(command, default);
     }
 

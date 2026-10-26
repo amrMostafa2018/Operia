@@ -212,7 +212,16 @@ public sealed class CloseBookingHandlerTests
             _branchScope.Object,
             new AuditWriter(_db, _user.Object),
             new BookingConcurrencyStore(_db),
+            StaffIdentity(),
             _clock.Object);
+
+    private static IIdentityService StaffIdentity()
+    {
+        var identity = new Mock<IIdentityService>();
+        identity.Setup(x => x.GetRolesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["employee-user"] = "Staff" });
+        return identity.Object;
+    }
 
     private async Task SeedAsync()
     {

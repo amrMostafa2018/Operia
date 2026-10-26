@@ -68,6 +68,7 @@ public sealed class EndpointAuthorizationContractTests
             ["PackagesController.Get"] = Policies.PackagesRead,
             ["PackagesController.ListServiceCategories"] = Policies.PackagesRead,
             ["PackagesController.ListSubServiceCategories"] = Policies.PackagesRead,
+            ["PackagesController.ListAvailableStaff"] = Policies.PackagesRead,
             ["PackagesController.Create"] = Policies.PackagesManage,
             ["PackagesController.Update"] = Policies.PackagesManage,
             ["PackagesController.Delete"] = Policies.PackagesManage,

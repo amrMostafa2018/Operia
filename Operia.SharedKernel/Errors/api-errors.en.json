@@ -317,6 +317,8 @@
   { "Name": "PACKAGE_INSTALLMENT_TOTAL_MISMATCH", "Value": "Installments must total the installment price minus the first payment." },
   { "Name": "PACKAGE_INSTALLMENT_SESSIONS_INVALID", "Value": "Released sessions cannot be negative or exceed the package session count." },
   { "Name": "PACKAGE_INSTALLMENT_RELEASE_CAP", "Value": "Before full payment, released sessions cannot exceed 70% of package sessions, rounded to the nearest whole session with halves down." },
+  { "Name": "PACKAGE_STAFF_INVALID", "Value": "Choose active staff assigned to an accessible branch, or select All Staff." },
+  { "Name": "PACKAGE_STAFF_UNAVAILABLE", "Value": "The selected employee is not available for this service or offer." },
   {
     "Name": "PACKAGE_NOT_FOUND",
     "Value": "Service or offer was not found."

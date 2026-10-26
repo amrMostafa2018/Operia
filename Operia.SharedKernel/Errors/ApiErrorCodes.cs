@@ -92,6 +92,8 @@ public static class ApiErrorCodes
         public const string PackageInstallmentSessionsInvalid = "PACKAGE_INSTALLMENT_SESSIONS_INVALID";
         public const string PackageInstallmentReleaseCap = "PACKAGE_INSTALLMENT_RELEASE_CAP";
         public const string PackageCashUnavailable = "PACKAGE_CASH_UNAVAILABLE";
+        public const string PackageStaffInvalid = "PACKAGE_STAFF_INVALID";
+        public const string PackageStaffUnavailable = "PACKAGE_STAFF_UNAVAILABLE";
         public const string PackageNotFound = "PACKAGE_NOT_FOUND";
         public const string PackageAlreadyCancelled = "PACKAGE_ALREADY_CANCELLED";
     }

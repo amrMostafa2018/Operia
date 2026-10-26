@@ -12,6 +12,8 @@ public sealed class CustomerPackage : Entity, ITenantScoped
     public string PackageId { get; set; } = string.Empty;
     public decimal? PurchasePrice { get; set; }
     public decimal? AmountDue { get; set; }
+    /// <summary>Immutable sale terms captured when this purchase was created.</summary>
+    public string? PurchaseSnapshotJson { get; set; }
 
     /// <summary>Total sessions or pulses purchased for this package or standalone service unit.</summary>
     public int Total { get; set; }

@@ -92,5 +92,7 @@ internal static class PackageMapper
                     row.Amount,
                     row.SessionsUnlocked,
                     row.CumulativeAvailableSessions))
-                .ToArray());
+                .ToArray(),
+            package.AllStaff,
+            package.AvailableStaff.Select(staff => staff.EmployeeId).OrderBy(id => id).ToArray());
 }

@@ -40,6 +40,8 @@ internal static class PackageAuditDetails
             package.InstallmentPrice,
             package.FirstPayment,
             package.InstallmentCount,
+            package.AllStaff,
+            staffIds = package.AvailableStaff.Select(staff => staff.EmployeeId).OrderBy(id => id).ToArray(),
             installments = package.Installments
                 .OrderBy(row => row.Number)
                 .Select(row => new

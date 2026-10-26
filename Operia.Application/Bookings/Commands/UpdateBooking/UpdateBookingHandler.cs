@@ -3,9 +3,11 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Bookings.Commands.CreateBooking;
 using Operia.Application.Bookings.Common;
+using Operia.Application.Common.Authorization;
 using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Packages;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
 using Operia.SharedKernel.Errors;
@@ -21,6 +23,7 @@ public sealed class UpdateBookingHandler(
     ICurrentUserService currentUser,
     IBranchScope branchScope,
     IAuditWriter auditWriter,
+    IIdentityService identity,
     IDateTimeProvider clock) : IRequestHandler<UpdateBookingCommand, UpdateBookingResult>
 {
     /// <summary>Checks the version, reconciles edited services, and saves the booking with its history.</summary>
@@ -32,6 +35,38 @@ public sealed class UpdateBookingHandler(
         BookingItemPricing.ValidatePackageSelection(request.Items, catalog);
 
         var itemsChanged = HasItemsChanged(booking.Items, request.Items);
+        var addedProductIds = request.Items
+            .GroupBy(item => item.PackageId)
+            .Where(group => group.Sum(item => item.Quantity) >
+                            booking.Items.Where(line => line.PackageId == group.Key).Sum(line => line.Quantity))
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        if (addedProductIds.Count > 0)
+        {
+            var employee = await db.Employees.AsNoTracking().SingleOrDefaultAsync(
+                item => item.TenantId == tenantId && item.Id == booking.EmployeeId && item.IsActive,
+                cancellationToken);
+            var assigned = employee is not null && await db.UserBranches.AsNoTracking().AnyAsync(
+                item => item.TenantId == tenantId && item.EmployeeId == employee.Id &&
+                        item.BranchId == booking.BranchId,
+                cancellationToken);
+            if (!assigned)
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageStaffUnavailable, "items");
+            }
+            var roles = await identity.GetRolesAsync([employee!.IdentityUserId], cancellationToken);
+            if (!string.Equals(roles.GetValueOrDefault(employee.IdentityUserId), Roles.Staff,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageStaffUnavailable, "items");
+            }
+        }
+        if (addedProductIds.Any(id =>
+                catalog.TryGetValue(id, out var product) &&
+                !product.AllStaff && product.AvailableStaff.All(staff => staff.EmployeeId != booking.EmployeeId)))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageStaffUnavailable, "items");
+        }
         var paymentMethodChanged = !string.Equals(booking.PaymentMethod, request.PaymentMethod, StringComparison.Ordinal);
         if (!itemsChanged && !paymentMethodChanged)
         {
@@ -107,6 +142,7 @@ public sealed class UpdateBookingHandler(
     {
         var ids = items.Select(x => x.PackageId).Distinct().ToList();
         var catalog = await db.Packages.AsNoTracking()
+            .Include(x => x.AvailableStaff)
             .Where(x => x.TenantId == tenantId && ids.Contains(x.Id) && x.Status == PackageStatus.Active)
             .ToDictionaryAsync(x => x.Id, cancellationToken);
         if (catalog.Count != ids.Count)
@@ -441,6 +477,12 @@ public sealed class UpdateBookingHandler(
         var currentCashPrice = BookingItemPricing.CashPrice(product);
         var existingPrice = booking.Items.FirstOrDefault(item => item.PackageId == product.Id)?.UnitPrice;
         var purchasePrice = existingPrice is > 0 ? existingPrice.Value : currentCashPrice;
+        var priorLine = booking.Items.FirstOrDefault(item => item.PackageId == product.Id);
+        var snapshot = PackagePurchaseSnapshot.Capture(product, "cash", purchasePrice) with
+        {
+            OfferName = priorLine?.Name ?? product.Name,
+            SessionDurationMinutes = priorLine?.DurationMinutes ?? product.SessionDurationMinutes
+        };
         var purchase = new CustomerPackage
         {
             TenantId = tenantId,
@@ -448,6 +490,7 @@ public sealed class UpdateBookingHandler(
             PackageId = product.Id,
             PurchasePrice = purchasePrice,
             AmountDue = purchasePrice,
+            PurchaseSnapshotJson = snapshot.ToJson(),
             Total = 1,
             ReservedSessions = 1,
             IsActive = true

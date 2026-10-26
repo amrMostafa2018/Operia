@@ -21,4 +21,6 @@ public sealed record UpdatePackageRequest(
     decimal? InstallmentPrice = null,
     decimal? FirstPayment = null,
     int? InstallmentCount = null,
-    IReadOnlyList<PackageInstallmentInput>? Installments = null);
+    IReadOnlyList<PackageInstallmentInput>? Installments = null,
+    bool AllStaff = true,
+    IReadOnlyList<string>? StaffIds = null);
