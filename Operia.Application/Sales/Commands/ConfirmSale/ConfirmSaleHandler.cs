@@ -39,7 +39,8 @@ public sealed class ConfirmSaleHandler(
                 request.Items,
                 request.PaymentMethod,
                 request.ExpectedGrandTotal,
-                request.ExpectedDueNow
+                request.ExpectedDueNow,
+                request.Disposition
             }))));
 
         var prior = await db.Sales.AsNoTracking().SingleOrDefaultAsync(sale =>
@@ -126,6 +127,7 @@ public sealed class ConfirmSaleHandler(
             GrandTotal = quote.GrandTotal,
             DueNow = quote.DueNow,
             ItemsSnapshotJson = JsonSerializer.Serialize(snapshots),
+            Disposition = request.Disposition,
             Status = quote.DueNow > 0 ? "PendingCollection" : "ReadyToBook"
         };
         db.Sales.Add(sale);

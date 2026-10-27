@@ -28,6 +28,8 @@ public static class AuditActions
     public const string PackageUpdated = "PackageUpdated";
     public const string PackageDeleted = "PackageDeleted";
     public const string SaleConfirmed = "SaleConfirmed";
+    public const string SaleCollectionAttempted = "SaleCollectionAttempted";
+    public const string SaleBooked = "SaleBooked";
 
     /// <summary>Booking creation committed with its reservations.</summary>
     public const string BookingCreated = "BookingCreated";

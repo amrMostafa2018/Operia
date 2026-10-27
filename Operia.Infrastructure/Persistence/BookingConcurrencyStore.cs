@@ -144,14 +144,15 @@ public sealed class BookingConcurrencyStore(ApplicationDbContext db) : IBookingC
                     }
                 }
             }
+            var snapshot = PackagePurchaseSnapshot.FromJson(owned?.PurchaseSnapshotJson);
             if (owned is null || !owned.IsActive ||
                 (owned.ExpiresOn is { } expiresOn && expiresOn < DateOnly.FromDateTime(utcNow)) ||
                 !CustomerPackageBalance.HasAvailable(
                     owned.Total,
                     owned.Used,
                     owned.ReservedSessions,
-                    owned.Package?.OfferType ?? OfferType.SingleSession,
-                    owned.Package?.PulseCount,
+                    snapshot?.OfferType ?? owned.Package?.OfferType ?? OfferType.SingleSession,
+                    snapshot?.PulseCount ?? owned.Package?.PulseCount,
                     PurchaseSessionEntitlement.Released(owned)))
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");

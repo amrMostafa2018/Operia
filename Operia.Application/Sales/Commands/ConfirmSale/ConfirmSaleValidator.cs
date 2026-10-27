@@ -16,6 +16,9 @@ public sealed class ConfirmSaleValidator : AbstractValidator<ConfirmSaleCommand>
             .WithErrorCode(ApiErrorCodes.Sales.BranchUnavailable);
         RuleFor(command => command.IdempotencyKey).NotEmpty().MaximumLength(100)
             .WithErrorCode(ApiErrorCodes.Sales.IdempotencyKeyInvalid);
+        RuleFor(command => command.Disposition)
+            .Must(value => value is "Close" or "Later" or "BookNow")
+            .WithErrorCode(ApiErrorCodes.Sales.DispositionInvalid);
         RuleFor(command => command.Items).NotEmpty()
             .WithErrorCode(ApiErrorCodes.Sales.ItemsRequired);
         RuleFor(command => command.Items).Must(items => items is null || items.Count(item =>

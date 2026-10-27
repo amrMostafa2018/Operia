@@ -18,6 +18,7 @@ public sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
         builder.Property(sale => sale.RequestHash).IsRequired().HasMaxLength(64);
         builder.Property(sale => sale.PaymentMethod).IsRequired().HasMaxLength(30);
         builder.Property(sale => sale.Status).IsRequired().HasMaxLength(40);
+        builder.Property(sale => sale.Disposition).IsRequired().HasMaxLength(20);
         builder.Property(sale => sale.GrandTotal).HasPrecision(18, 2);
         builder.Property(sale => sale.DueNow).HasPrecision(18, 2);
         builder.Property(sale => sale.ItemsSnapshotJson).IsRequired().HasColumnType("nvarchar(max)");

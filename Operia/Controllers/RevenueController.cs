@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Operia.Application.Auth;
 using Operia.Application.Revenue.Queries.ListInstallmentRevenue;
+using Operia.Application.Revenue.Queries.ListActivityRevenue;
 
 namespace Operia.Controllers;
 
@@ -17,4 +18,12 @@ public sealed class RevenueController(IMediator mediator) : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20) =>
         mediator.Send(new ListInstallmentRevenueQuery(page, pageSize), cancellationToken);
+
+    [HttpGet("collections")]
+    [Authorize(Policy = Policies.RevenueRead)]
+    public Task<ActivityRevenuePage> Collections(
+        CancellationToken cancellationToken,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20) =>
+        mediator.Send(new ListActivityRevenueQuery(page, pageSize), cancellationToken);
 }

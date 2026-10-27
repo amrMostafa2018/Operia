@@ -131,6 +131,18 @@ public static class ApiErrorCodes
         public const string QuoteChanged = "SaleQuoteChanged";
         public const string IdempotencyKeyInvalid = "SaleIdempotencyKeyInvalid";
         public const string IdempotencyConflict = "SaleIdempotencyConflict";
+        public const string DispositionInvalid = "SaleDispositionInvalid";
+        public const string NotFound = "SaleNotFound";
+        public const string CollectionUnavailable = "SaleCollectionUnavailable";
+        public const string CollectionAttemptConflict = "SaleCollectionAttemptConflict";
+        public const string BookingUnavailable = "SaleBookingUnavailable";
+        public const string DurationMismatch = "SaleDurationMismatch";
+        public const string BookingDateInvalid = "SaleBookingDateInvalid";
+    }
+
+    public static class Dashboard
+    {
+        public const string RevenueRangeInvalid = "DashboardRevenueRangeInvalid";
     }
 
     /// <summary>Booking access, availability, state, and reservation failures.</summary>
