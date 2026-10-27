@@ -44,6 +44,7 @@ public static class PermissionClaimBootstrapper
         Policies.CustomersActivatePackage,
         Policies.CustomersCancelPackage,
         Policies.CustomersAddPackage,
+        Policies.CustomersCollectInstallment,
         Policies.PackagesRead,
         Policies.PackagesSell,
         Policies.OffersRead,
@@ -82,6 +83,12 @@ public static class PermissionClaimBootstrapper
                 ?? throw new InvalidOperationException($"Role '{roleName}' was not found.");
             var claims = await roleManager.GetClaimsAsync(role);
 
+            // Once initialized, database role claims may have been customized.
+            if (claims.Any(claim => claim.Type == BaselineVersionClaimType))
+            {
+                continue;
+            }
+
             foreach (var permission in permissions)
             {
                 if (claims.Any(claim =>
@@ -96,14 +103,9 @@ public static class PermissionClaimBootstrapper
                     new Claim(Policies.PermissionClaimType, permission));
             }
 
-            if (!claims.Any(claim =>
-                    claim.Type == BaselineVersionClaimType
-                    && claim.Value == BaselineVersion))
-            {
-                await roleManager.AddClaimAsync(
-                    role,
-                    new Claim(BaselineVersionClaimType, BaselineVersion));
-            }
+            await roleManager.AddClaimAsync(
+                role,
+                new Claim(BaselineVersionClaimType, BaselineVersion));
         }
     }
 
