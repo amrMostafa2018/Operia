@@ -6,7 +6,7 @@ using Operia.Application.Settings.Common;
 namespace Operia.Application.Bookings.Common;
 
 /// <summary>Reads the enabled payment method identifiers for the authenticated tenant.</summary>
-internal static class BookingPaymentMethods
+public static class BookingPaymentMethods
 {
     /// <summary>Returns enabled payment identifiers without exposing configured account details.</summary>
     public static async Task<IReadOnlyList<string>> GetEnabledAsync(

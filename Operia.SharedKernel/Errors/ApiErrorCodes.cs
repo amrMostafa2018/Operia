@@ -39,6 +39,12 @@ public static class ApiErrorCodes
     public static class Customers
     {
         public const string PurchaseNotFound = "CustomerPurchaseNotFound";
+        public const string InstallmentUnavailable = "CustomerInstallmentUnavailable";
+        public const string InstallmentNotEligible = "CustomerInstallmentNotEligible";
+        public const string InstallmentAlreadyCollected = "CustomerInstallmentAlreadyCollected";
+        public const string InstallmentPaymentMethodUnavailable = "CustomerInstallmentPaymentMethodUnavailable";
+        public const string InstallmentIdempotencyConflict = "CustomerInstallmentIdempotencyConflict";
+        public const string InstallmentPurchaseInactive = "CustomerInstallmentPurchaseInactive";
     }
 
     /// <summary>Employee working-day and branch schedule failures.</summary>

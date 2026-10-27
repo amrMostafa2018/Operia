@@ -19,10 +19,11 @@ public static class CustomerPackageBalance
         int used,
         int? reservedSessions,
         OfferType offerType,
-        int? pulseCount) =>
+        int? pulseCount,
+        int? releasedSessions = null) =>
         UsesPulses(offerType, pulseCount)
             ? Math.Max(0, total - used)
-            : Math.Max(0, total - used - (reservedSessions ?? 0));
+            : Math.Max(0, Math.Min(total, releasedSessions ?? total) - used - (reservedSessions ?? 0));
 
     /// <summary>True when the purchase still has remaining balance using the offer-type rules.</summary>
     public static bool HasAvailable(
@@ -30,6 +31,7 @@ public static class CustomerPackageBalance
         int used,
         int? reservedSessions,
         OfferType offerType,
-        int? pulseCount) =>
-        Remaining(total, used, reservedSessions, offerType, pulseCount) > 0;
+        int? pulseCount,
+        int? releasedSessions = null) =>
+        Remaining(total, used, reservedSessions, offerType, pulseCount, releasedSessions) > 0;
 }

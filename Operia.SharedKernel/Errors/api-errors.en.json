@@ -16,6 +16,30 @@
     "Value": "This customer purchase could not be found."
   },
   {
+    "Name": "CustomerInstallmentUnavailable",
+    "Value": "There is no open installment on this purchase."
+  },
+  {
+    "Name": "CustomerInstallmentNotEligible",
+    "Value": "Complete the sessions released by the previous installment before collecting the next one."
+  },
+  {
+    "Name": "CustomerInstallmentAlreadyCollected",
+    "Value": "This installment has already been collected. Refresh the purchase before trying again."
+  },
+  {
+    "Name": "CustomerInstallmentPaymentMethodUnavailable",
+    "Value": "Select an enabled payment method."
+  },
+  {
+    "Name": "CustomerInstallmentIdempotencyConflict",
+    "Value": "This payment request is invalid. Refresh the purchase and try again."
+  },
+  {
+    "Name": "CustomerInstallmentPurchaseInactive",
+    "Value": "Installments cannot be collected on an inactive or expired purchase."
+  },
+  {
     "Name": "BookingBranchRequired",
     "Value": "Select a branch to view bookable employees."
   },

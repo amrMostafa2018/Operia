@@ -19,6 +19,7 @@ using Operia.Application.Employees.Commands.CreateEmployee;
 using Operia.Application.Onboarding.Commands.SetupBusiness;
 using Operia.Application.Bookings.Commands.CreateBooking;
 using Operia.Application.Bookings.Commands.CancelBooking;
+using Operia.Application.Customers.Commands.CollectInstallment;
 
 namespace Operia.Infrastructure;
 
@@ -66,6 +67,7 @@ public static class DependencyInjection
         // Both booking interfaces use the same scoped context and lock implementation.
         services.AddScoped<IBookingConcurrencyStore, BookingConcurrencyStore>();
         services.AddScoped<IBookingCancellationStore, BookingConcurrencyStore>();
+        services.AddScoped<IInstallmentCollectionStore, InstallmentCollectionStore>();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ITenantRepository, TenantRepository>();

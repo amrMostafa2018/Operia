@@ -36,4 +36,5 @@ public static class AuditActions
     public const string BookingCancelled = "BookingCancelled";
     /// <summary>Booking closed with per-item usage confirmed.</summary>
     public const string BookingClosed = "BookingClosed";
+    public const string InstallmentCollected = "InstallmentCollected";
 }

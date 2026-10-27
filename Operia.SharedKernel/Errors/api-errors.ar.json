@@ -16,6 +16,30 @@
     "Value": "تعذر العثور على عملية الشراء هذه."
   },
   {
+    "Name": "CustomerInstallmentUnavailable",
+    "Value": "لا يوجد قسط مفتوح لهذه العملية."
+  },
+  {
+    "Name": "CustomerInstallmentNotEligible",
+    "Value": "أكمل الجلسات المتاحة بعد القسط السابق قبل تحصيل القسط التالي."
+  },
+  {
+    "Name": "CustomerInstallmentAlreadyCollected",
+    "Value": "تم تحصيل هذا القسط بالفعل. حدّث بيانات العملية قبل المحاولة مجددًا."
+  },
+  {
+    "Name": "CustomerInstallmentPaymentMethodUnavailable",
+    "Value": "اختر طريقة دفع مفعّلة."
+  },
+  {
+    "Name": "CustomerInstallmentIdempotencyConflict",
+    "Value": "طلب الدفع غير صالح. حدّث بيانات العملية وحاول مجددًا."
+  },
+  {
+    "Name": "CustomerInstallmentPurchaseInactive",
+    "Value": "لا يمكن تحصيل أقساط لعملية شراء غير مفعّلة أو منتهية."
+  },
+  {
     "Name": "BookingBranchRequired",
     "Value": "اختر فرعًا لعرض الموظفين المتاحين للحجز."
   },

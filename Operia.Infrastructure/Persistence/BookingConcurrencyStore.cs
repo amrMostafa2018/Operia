@@ -4,6 +4,7 @@ using Operia.Application.Bookings.Commands.CancelBooking;
 using Operia.Application.Bookings.Commands.CreateBooking;
 using Operia.Application.Bookings.Common;
 using Operia.Application.Common.Exceptions;
+using Operia.Application.Packages;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
 using Operia.SharedKernel.Errors;
@@ -150,7 +151,8 @@ public sealed class BookingConcurrencyStore(ApplicationDbContext db) : IBookingC
                     owned.Used,
                     owned.ReservedSessions,
                     owned.Package?.OfferType ?? OfferType.SingleSession,
-                    owned.Package?.PulseCount))
+                    owned.Package?.PulseCount,
+                    PurchaseSessionEntitlement.Released(owned)))
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");
             }
@@ -165,7 +167,8 @@ public sealed class BookingConcurrencyStore(ApplicationDbContext db) : IBookingC
                 .Where(x => x.CustomerPackageId == owned.Id && x.SessionNumber > 0)
                 .Select(x => x.SessionNumber));
             var taken = occupied.ToHashSet();
-            var next = Enumerable.Range(owned.Used + 1, owned.Total - owned.Used)
+            var releaseLimit = PurchaseSessionEntitlement.Released(owned);
+            var next = Enumerable.Range(owned.Used + 1, Math.Max(0, releaseLimit - owned.Used))
                 .FirstOrDefault(x => !taken.Contains(x));
             if (next == 0)
             {
