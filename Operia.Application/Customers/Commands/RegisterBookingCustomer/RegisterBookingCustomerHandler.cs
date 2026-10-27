@@ -27,7 +27,7 @@ public sealed class RegisterBookingCustomerHandler(
         var alternate = normalized.StartsWith("20", StringComparison.Ordinal) && normalized.Length == 12
             ? "0" + normalized[2..]
             : normalized;
-        if (!PhoneNumberHelper.IsValid(request.MobileNumber))
+        if (!PhoneNumberHelper.IsValidMobile(request.MobileNumber))
         {
             throw new ValidationException([new ValidationFailure("mobileNumber", ApiErrorCodes.Auth.PhoneInvalid)
             {
