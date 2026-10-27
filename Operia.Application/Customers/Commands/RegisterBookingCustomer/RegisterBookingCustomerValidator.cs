@@ -11,7 +11,7 @@ public sealed class RegisterBookingCustomerValidator : AbstractValidator<Registe
         RuleFor(x => x.FullName).NotEmpty().WithErrorCode(ApiErrorCodes.Auth.FullNameRequired)
             .MaximumLength(200).WithErrorCode(ApiErrorCodes.Bookings.CustomerNameTooLong);
         RuleFor(x => x.MobileNumber).NotEmpty().WithErrorCode(ApiErrorCodes.Auth.PhoneRequired)
-            .Must(PhoneNumberHelper.IsValid)
+            .Must(PhoneNumberHelper.IsValidMobile)
             .WithErrorCode(ApiErrorCodes.Auth.PhoneInvalid);
     }
 }

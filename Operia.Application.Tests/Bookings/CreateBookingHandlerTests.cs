@@ -133,12 +133,12 @@ public sealed class CreateBookingHandlerTests
     {
         await SeedAsync();
         var handler = new RegisterBookingCustomerHandler(_db, _user.Object, new AuditWriter(_db, _user.Object));
-        var duplicate = () => handler.Handle(new RegisterBookingCustomerCommand("Another Ahmed", "+201012345678"),
+        var duplicate = () => handler.Handle(new RegisterBookingCustomerCommand("Another Ahmed", "201012345678"),
             CancellationToken.None);
         (await duplicate.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
             .Should().Be(ApiErrorCodes.Bookings.CustomerMobileExists);
 
-        var created = await handler.Handle(new RegisterBookingCustomerCommand("Mona New", "+201098765432"),
+        var created = await handler.Handle(new RegisterBookingCustomerCommand("Mona New", "201098765432"),
             CancellationToken.None);
         created.Id.Should().NotBeNullOrWhiteSpace();
         (await _db.AuditLogs.CountAsync(x => x.Action == AuditActions.CustomerCreated)).Should().Be(1);
@@ -148,6 +148,17 @@ public sealed class CreateBookingHandlerTests
         var byMobile = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
             .Handle(new FindBookingCustomerQuery("01098765432"), CancellationToken.None);
         byMobile!.Id.Should().Be(created.Id);
+    }
+
+    [Fact]
+    public void RegistrationValidator_AcceptsCountryCodeDigitsFromBookingPhoneInput()
+    {
+        var validator = new RegisterBookingCustomerValidator();
+
+        validator.Validate(new RegisterBookingCustomerCommand("Mona New", "201098765432"))
+            .IsValid.Should().BeTrue();
+        validator.Validate(new RegisterBookingCustomerCommand("Mona New", "1234567890"))
+            .IsValid.Should().BeFalse();
     }
 
     [Fact]
