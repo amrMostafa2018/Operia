@@ -11,7 +11,8 @@ public sealed record ConfirmSaleCommand(
     decimal ExpectedGrandTotal,
     decimal ExpectedDueNow,
     string IdempotencyKey,
-    bool DirectCustomer = false) : IRequest<ConfirmSaleResult>;
+    bool DirectCustomer = false,
+    string Disposition = "Later") : IRequest<ConfirmSaleResult>;
 
 public sealed record ConfirmSaleResult(
     string SaleId,

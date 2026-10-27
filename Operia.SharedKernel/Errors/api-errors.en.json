@@ -373,5 +373,13 @@
   { "Name": "SalePaymentMethodUnavailable", "Value": "Choose a currently enabled payment method for the amount due now." },
   { "Name": "SaleQuoteChanged", "Value": "Sale prices or payment terms changed. Review the updated total before confirming." },
   { "Name": "SaleIdempotencyKeyInvalid", "Value": "A confirmation reference is required." },
-  { "Name": "SaleIdempotencyConflict", "Value": "This confirmation reference belongs to another sale request." }
+  { "Name": "SaleIdempotencyConflict", "Value": "This confirmation reference belongs to another sale request." },
+  { "Name": "SaleDispositionInvalid", "Value": "Choose Close, Confirm and Book Later, or Book Now." },
+  { "Name": "SaleNotFound", "Value": "The sale was not found." },
+  { "Name": "SaleCollectionUnavailable", "Value": "This sale cannot accept another collection." },
+  { "Name": "SaleCollectionAttemptConflict", "Value": "This collection reference has a different result." },
+  { "Name": "SaleBookingUnavailable", "Value": "This sale is not ready for booking." },
+  { "Name": "SaleDurationMismatch", "Value": "The appointment duration must match the selected sale items." },
+  { "Name": "SaleBookingDateInvalid", "Value": "Choose an appointment date." },
+  { "Name": "DashboardRevenueRangeInvalid", "Value": "Choose a valid revenue date range." }
 ]

@@ -10,6 +10,9 @@ public sealed class CustomerPackage : Entity, ITenantScoped
     public string TenantId { get; set; } = string.Empty;
     public string CustomerId { get; set; } = string.Empty;
     public string PackageId { get; set; } = string.Empty;
+    public string? SaleId { get; set; }
+    public int? SaleItemIndex { get; set; }
+    public int? SaleUnitIndex { get; set; }
     public decimal? PurchasePrice { get; set; }
     public decimal? AmountDue { get; set; }
     /// <summary>Number of session positions released by confirmed installment collections.</summary>

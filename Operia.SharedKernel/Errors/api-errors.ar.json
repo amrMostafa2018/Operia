@@ -365,5 +365,13 @@
   { "Name": "SalePaymentMethodUnavailable", "Value": "اختر طريقة دفع مفعلة حاليًا للمبلغ المستحق الآن." },
   { "Name": "SaleQuoteChanged", "Value": "تغيرت الأسعار أو شروط الدفع. راجع الإجمالي الجديد قبل التأكيد." },
   { "Name": "SaleIdempotencyKeyInvalid", "Value": "مرجع تأكيد البيع مطلوب." },
-  { "Name": "SaleIdempotencyConflict", "Value": "مرجع التأكيد هذا مستخدم لطلب بيع آخر." }
+  { "Name": "SaleIdempotencyConflict", "Value": "مرجع التأكيد هذا مستخدم لطلب بيع آخر." },
+  { "Name": "SaleDispositionInvalid", "Value": "اختر إقفال أو تأكيد وحجز لاحقًا أو احجز الآن." },
+  { "Name": "SaleNotFound", "Value": "لم يتم العثور على عملية البيع." },
+  { "Name": "SaleCollectionUnavailable", "Value": "لا يمكن تحصيل دفعة أخرى لهذه العملية." },
+  { "Name": "SaleCollectionAttemptConflict", "Value": "مرجع التحصيل هذا له نتيجة مختلفة." },
+  { "Name": "SaleBookingUnavailable", "Value": "عملية البيع هذه غير جاهزة للحجز." },
+  { "Name": "SaleDurationMismatch", "Value": "يجب أن تطابق مدة الموعد مدة عناصر البيع المحددة." },
+  { "Name": "SaleBookingDateInvalid", "Value": "اختر تاريخ الموعد." },
+  { "Name": "DashboardRevenueRangeInvalid", "Value": "اختر فترة صحيحة للإيرادات." }
 ]
