@@ -35,6 +35,12 @@ public sealed class UpdateBookingHandler(
         BookingItemPricing.ValidatePackageSelection(request.Items, catalog);
 
         var itemsChanged = HasItemsChanged(booking.Items, request.Items);
+        if (itemsChanged && await db.Customers.AsNoTracking().AnyAsync(x =>
+                x.TenantId == tenantId && x.Id == booking.CustomerId && x.IsDirect,
+                cancellationToken))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.DirectCustomerItemsReadOnly, "items");
+        }
         var addedProductIds = request.Items
             .GroupBy(item => item.PackageId)
             .Where(group => group.Sum(item => item.Quantity) >

@@ -5,6 +5,7 @@ using Operia.Application.Auth;
 using Operia.Application.Bookings.Queries.GetBookingHistory;
 using Operia.Application.Bookings.Queries.GetCalendarBookings;
 using Operia.Application.Bookings.Queries.FindBookingCustomer;
+using Operia.Application.Bookings.Queries.SearchBookingCustomers;
 using Operia.Application.Bookings.Queries.ListBookings;
 using Operia.Application.Bookings.Commands.CreateBooking;
 using Operia.Application.Bookings.Commands.CancelBooking;
@@ -63,6 +64,13 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
         [FromQuery] string? bookingId,
         CancellationToken cancellationToken) =>
         mediator.Send(new FindBookingCustomerQuery(mobile, bookingId), cancellationToken);
+
+    [HttpGet("customers/search")]
+    [Authorize(Policy = Policies.BookingsManage)]
+    public Task<IReadOnlyList<BookingCustomerSearchResult>> SearchCustomers(
+        [FromQuery] string term,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new SearchBookingCustomersQuery(term), cancellationToken);
 
     /// <summary>Lists enabled payment identifiers without exposing account settings.</summary>
     [HttpGet("payment-methods")]

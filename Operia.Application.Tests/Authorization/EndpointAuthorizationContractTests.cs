@@ -42,6 +42,7 @@ public sealed class EndpointAuthorizationContractTests
 
             ["BookingsController.Create"] = Policies.BookingsManage,
             ["BookingsController.FindCustomer"] = Policies.BookingsManage,
+            ["BookingsController.SearchCustomers"] = Policies.BookingsManage,
             ["BookingsController.Calendar"] = Policies.BookingsRead,
             ["BookingsController.List"] = Policies.BookingsRead,
             ["BookingsController.History"] = Policies.BookingsRead,
@@ -52,6 +53,7 @@ public sealed class EndpointAuthorizationContractTests
             ["BookingsController.Export"] = Policies.BookingsExport,
 
             ["CustomersController.Inquiry"] = Policies.CustomersRead,
+            ["CustomersController.Register"] = Policies.CustomersManage,
             ["CustomersController.DirectSales"] = Policies.CustomersRead,
             ["CustomersController.PurchaseInquiry"] = Policies.CustomersRead,
             ["CustomersController.CollectInstallment"] = Policies.CustomersCollectInstallment,

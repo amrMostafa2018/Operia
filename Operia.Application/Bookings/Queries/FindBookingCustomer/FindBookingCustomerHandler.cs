@@ -20,10 +20,15 @@ public sealed class FindBookingCustomerHandler(
     {
         var tenantId = BookingAccess.RequireTenant(currentUser);
         var normalizedMobile = NormalizeMobile(request.Mobile);
+        var alternateMobile = normalizedMobile.StartsWith("20", StringComparison.Ordinal) &&
+                              normalizedMobile.Length == 12
+            ? "0" + normalizedMobile[2..]
+            : normalizedMobile;
         var today = DateOnly.FromDateTime(clock.UtcNow);
         var customer = await db.Customers.AsNoTracking()
             .Where(x => x.TenantId == tenantId && x.IsActive && !x.IsDirect &&
-                        x.NormalizedMobileNumber == normalizedMobile)
+                        (x.NormalizedMobileNumber == normalizedMobile ||
+                         x.NormalizedMobileNumber == alternateMobile))
             .Select(x => new { x.Id, x.FullName, x.MobileNumber })
             .SingleOrDefaultAsync(cancellationToken);
         if (customer is null)
@@ -77,5 +82,11 @@ public sealed class FindBookingCustomerHandler(
         return new BookingCustomerDto(customer.Id, customer.FullName, customer.MobileNumber, rows);
     }
 
-    internal static string NormalizeMobile(string mobile) => string.Concat(mobile.Where(char.IsDigit));
+    internal static string NormalizeMobile(string mobile)
+    {
+        var digits = string.Concat(mobile.Where(char.IsDigit));
+        return digits.Length == 11 && digits.StartsWith("01", StringComparison.Ordinal)
+            ? "20" + digits[1..]
+            : digits;
+    }
 }

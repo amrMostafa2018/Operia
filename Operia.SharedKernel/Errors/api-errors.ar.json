@@ -373,5 +373,11 @@
   { "Name": "SaleBookingUnavailable", "Value": "عملية البيع هذه غير جاهزة للحجز." },
   { "Name": "SaleDurationMismatch", "Value": "يجب أن تطابق مدة الموعد مدة عناصر البيع المحددة." },
   { "Name": "SaleBookingDateInvalid", "Value": "اختر تاريخ الموعد." },
-  { "Name": "DashboardRevenueRangeInvalid", "Value": "اختر فترة صحيحة للإيرادات." }
+  { "Name": "DashboardRevenueRangeInvalid", "Value": "اختر فترة صحيحة للإيرادات." },
+  { "Name": "BookingCustomerMobileExists", "Value": "رقم الموبايل مسجل لعميل موجود. اختر هذا العميل بدلاً من إنشاء سجل جديد." },
+  { "Name": "BookingDirectCustomerSelectionInvalid", "Value": "اختر عميلاً مسجلاً أو عميلاً مباشراً." },
+  { "Name": "BookingDirectCustomerPackageUnavailable", "Value": "لا يمكن للعميل المباشر استخدام أو شراء باقة في هذا الحجز." },
+  { "Name": "BookingDirectCustomerItemsReadOnly", "Value": "لا يمكن تغيير عناصر حجز العميل المباشر بعد التأكيد." },
+  { "Name": "BookingCustomerNameTooLong", "Value": "لا يمكن أن يتجاوز اسم العميل 200 حرف." },
+  { "Name": "BookingCustomerSearchTermInvalid", "Value": "ابحث عن عميل باستخدام 2 إلى 100 حرف." }
 ]

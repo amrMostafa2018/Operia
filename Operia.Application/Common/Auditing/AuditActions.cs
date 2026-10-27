@@ -33,6 +33,7 @@ public static class AuditActions
 
     /// <summary>Booking creation committed with its reservations.</summary>
     public const string BookingCreated = "BookingCreated";
+    public const string CustomerCreated = "CustomerCreated";
     /// <summary>Booking items or payment choice changed.</summary>
     public const string BookingUpdated = "BookingUpdated";
     /// <summary>Booking cancelled and unused reservations released.</summary>
