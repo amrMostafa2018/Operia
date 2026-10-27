@@ -36,6 +36,11 @@ public static class ApiErrorCodes
         public const string TenantAccessDenied = "TenantAccessDenied";
     }
 
+    public static class Customers
+    {
+        public const string PurchaseNotFound = "CustomerPurchaseNotFound";
+    }
+
     /// <summary>Employee working-day and branch schedule failures.</summary>
     public static class EmployeeSchedule
     {
