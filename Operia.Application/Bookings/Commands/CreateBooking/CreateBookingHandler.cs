@@ -44,7 +44,8 @@ public sealed class CreateBookingHandler(
         }
 
         var customer = await db.Customers.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.CustomerId && x.IsActive, cancellationToken)
+            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.CustomerId &&
+                x.IsActive && !x.IsDirect, cancellationToken)
             ?? throw ApiNotFoundException.FromCode(ApiErrorCodes.Bookings.CustomerNotFound, "customerId");
 
         await ValidateEmployeeAsync(tenantId, request, cancellationToken);

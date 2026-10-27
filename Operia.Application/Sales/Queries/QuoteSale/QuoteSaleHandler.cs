@@ -20,6 +20,11 @@ public sealed class QuoteSaleHandler(
     {
         var tenantId = currentUser.TenantId
             ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
+        if (request.DirectCustomer && !string.IsNullOrWhiteSpace(request.CustomerId))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Sales.DirectCustomerSelectionInvalid,
+                "customerId");
+        }
 
         if (!string.IsNullOrWhiteSpace(request.BranchId))
         {
@@ -36,7 +41,8 @@ public sealed class QuoteSaleHandler(
 
         if (!string.IsNullOrWhiteSpace(request.CustomerId) &&
             !await db.Customers.AsNoTracking().AnyAsync(customer =>
-                customer.TenantId == tenantId && customer.Id == request.CustomerId && customer.IsActive,
+                customer.TenantId == tenantId && customer.Id == request.CustomerId &&
+                customer.IsActive && !customer.IsDirect,
                 cancellationToken))
         {
             throw ApiNotFoundException.FromCode(ApiErrorCodes.Sales.CustomerUnavailable, "customerId");
@@ -58,6 +64,11 @@ public sealed class QuoteSaleHandler(
         var usedOwnedIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var item in request.Items)
         {
+            if (request.DirectCustomer && !string.IsNullOrWhiteSpace(item.OwnedCustomerPackageId))
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Sales.DirectServiceOnly, "items");
+            }
+
             if (!string.IsNullOrWhiteSpace(item.OwnedCustomerPackageId))
             {
                 if (!string.IsNullOrWhiteSpace(item.OfferId) || item.Quantity != 1 ||
@@ -100,6 +111,10 @@ public sealed class QuoteSaleHandler(
                     offer.EndsAt is { } endsAt && endsAt < DateOnly.FromDateTime(DateTime.UtcNow))
                 {
                     throw ConflictException.FromCode(ApiErrorCodes.Sales.OfferUnavailable, "items");
+                }
+                if (request.DirectCustomer && offer.OfferType != OfferType.SingleSession)
+                {
+                    throw ConflictException.FromCode(ApiErrorCodes.Sales.DirectServiceOnly, "items");
                 }
                 lines.Add(PriceOffer(offer, item));
                 continue;

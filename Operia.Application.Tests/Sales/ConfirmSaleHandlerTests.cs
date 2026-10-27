@@ -8,6 +8,7 @@ using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Sales.Commands.ConfirmSale;
 using Operia.Application.Sales.Queries.QuoteSale;
+using Operia.Application.Customers.Queries.ListDirectCustomerSales;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
@@ -20,6 +21,56 @@ namespace Operia.Application.Tests.Sales;
 
 public sealed class ConfirmSaleHandlerTests
 {
+    [Fact]
+    public async Task DirectServiceSales_ReuseOneLedgerWithoutContactDetails()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var items = new[] { Item("service", "cash") };
+        var quote = await fixture.Quote(items, direct: true);
+        await fixture.Confirm(items, quote, "walk-in-1", direct: true);
+        await fixture.Confirm(items, quote, "walk-in-2", direct: true);
+
+        var direct = await fixture.Db.Customers.SingleAsync(customer => customer.IsDirect);
+        direct.MobileNumber.Should().BeEmpty();
+        direct.NormalizedMobileNumber.Should().BeEmpty();
+        (await fixture.Db.Sales.CountAsync(sale => sale.CustomerId == direct.Id)).Should().Be(2);
+        (await fixture.Db.Sales.CountAsync(sale => sale.CustomerId == "customer-1")).Should().Be(0);
+        var ledger = await new ListDirectCustomerSalesHandler(fixture.Db, fixture.User.Object)
+            .Handle(new ListDirectCustomerSalesQuery(), CancellationToken.None);
+        ledger!.TotalSales.Should().Be(2);
+        ledger.Sales.Should().HaveCount(2);
+        ledger.Sales.Should().OnlyContain(sale => sale.Items.Single() == "Service");
+    }
+
+    [Fact]
+    public async Task DirectCustomer_CannotBuyPackageOrUseOwnedSession()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var package = () => fixture.Quote([Item("package", "cash")], direct: true);
+        (await package.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.DirectServiceOnly);
+        var owned = () => fixture.Quote(
+            [new QuoteSaleItem(null, "owned-1", null, null, null, "owned")], direct: true);
+        (await owned.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.DirectServiceOnly);
+        (await fixture.Db.Customers.CountAsync(customer => customer.IsDirect)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DirectCustomerLedger_DoesNotExposeAnotherTenantsSales()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        await fixture.AddForeignDirectSaleAsync();
+        var items = new[] { Item("service", "cash") };
+        var quote = await fixture.Quote(items, direct: true);
+        await fixture.Confirm(items, quote, "tenant-sale", direct: true);
+
+        var ledger = await new ListDirectCustomerSalesHandler(fixture.Db, fixture.User.Object)
+            .Handle(new ListDirectCustomerSalesQuery(), CancellationToken.None);
+        ledger!.TotalSales.Should().Be(1);
+        ledger.Sales.Single().Items.Should().ContainSingle().Which.Should().Be("Service");
+    }
+
     [Fact]
     public async Task MixedOptions_SaveSnapshotAndAudit_WithoutCollectionOrBooking()
     {
@@ -150,6 +201,7 @@ public sealed class ConfirmSaleHandlerTests
     private sealed class Fixture : IAsyncDisposable
     {
         public TestApplicationDbContext Db { get; }
+        public Mock<ICurrentUserService> User => _user;
         public Mock<IBranchScope> BranchScope { get; }
         private readonly string _database;
         private readonly Mock<ICurrentUserService> _user;
@@ -271,19 +323,48 @@ public sealed class ConfirmSaleHandlerTests
             await foreignDb.SaveChangesAsync();
         }
 
-        public Task<SaleQuoteDto> Quote(IReadOnlyList<QuoteSaleItem> items) =>
-            _quoteHandler.Handle(new QuoteSaleQuery("customer-1", "branch-1", items), CancellationToken.None);
+        public async Task AddForeignDirectSaleAsync()
+        {
+            var foreignUser = new Mock<ICurrentUserService>();
+            foreignUser.SetupGet(user => user.TenantId).Returns("tenant-2");
+            var clock = new Mock<IDateTimeProvider>();
+            clock.SetupGet(provider => provider.UtcNow).Returns(DateTime.UtcNow);
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(_database).Options;
+            await using var foreignDb = new TestApplicationDbContext(options, clock.Object,
+                foreignUser.Object);
+            foreignDb.Customers.Add(new Customer
+            {
+                Id = "foreign-direct",
+                TenantId = "tenant-2",
+                FullName = "عميل مباشر",
+                IsDirect = true
+            });
+            foreignDb.Sales.Add(new Sale
+            {
+                TenantId = "tenant-2",
+                BranchId = "foreign-branch",
+                CustomerId = "foreign-direct",
+                IdempotencyKey = "foreign-sale",
+                ItemsSnapshotJson = "[{\"Name\":\"Private service\"}]"
+            });
+            await foreignDb.SaveChangesAsync();
+        }
+
+        public Task<SaleQuoteDto> Quote(IReadOnlyList<QuoteSaleItem> items, bool direct = false) =>
+            _quoteHandler.Handle(new QuoteSaleQuery(direct ? null : "customer-1", "branch-1", items,
+                direct), CancellationToken.None);
 
         public Task<ConfirmSaleResult> Confirm(IReadOnlyList<QuoteSaleItem> items,
-            SaleQuoteDto quote, string key, string? method = "cash")
+            SaleQuoteDto quote, string key, string? method = "cash", bool direct = false)
         {
             var mediator = new Mock<IMediator>();
             mediator.Setup(x => x.Send(It.IsAny<QuoteSaleQuery>(), It.IsAny<CancellationToken>()))
                 .Returns((QuoteSaleQuery query, CancellationToken token) => _quoteHandler.Handle(query, token));
             var handler = new ConfirmSaleHandler(Db, _user.Object, mediator.Object,
                 new AuditWriter(Db, _user.Object));
-            return handler.Handle(new ConfirmSaleCommand("customer-1", "branch-1", items,
-                method, quote.GrandTotal, quote.DueNow, key), CancellationToken.None);
+            return handler.Handle(new ConfirmSaleCommand(direct ? null : "customer-1", "branch-1",
+                items, method, quote.GrandTotal, quote.DueNow, key, direct), CancellationToken.None);
         }
 
         public ValueTask DisposeAsync() => Db.DisposeAsync();

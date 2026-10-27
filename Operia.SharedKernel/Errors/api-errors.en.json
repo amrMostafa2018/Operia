@@ -362,6 +362,8 @@
   { "Name": "SaleOfferUnavailable", "Value": "This service or offer is no longer available for sale." },
   { "Name": "SaleBranchUnavailable", "Value": "This branch is not available to you." },
   { "Name": "SaleCustomerUnavailable", "Value": "The selected customer is no longer available." },
+  { "Name": "SaleDirectCustomerSelectionInvalid", "Value": "Choose either Direct Customer or a registered customer." },
+  { "Name": "SaleDirectServiceOnly", "Value": "Direct Customer can buy services only. Packages and owned sessions need a registered customer." },
   { "Name": "SaleOwnedSessionUnavailable", "Value": "This customer does not have an available session for this item." },
   { "Name": "SaleUnlistedNameInvalid", "Value": "Enter an unlisted service name of at most 200 characters." },
   { "Name": "SaleUnlistedPriceInvalid", "Value": "Enter a price between zero and 999,999,999.99." },
