@@ -12,6 +12,10 @@
     "Value": "لا يمكنك الوصول إلى سجلات خارج نشاطك."
   },
   {
+    "Name": "CustomerPurchaseNotFound",
+    "Value": "تعذر العثور على عملية الشراء هذه."
+  },
+  {
     "Name": "BookingBranchRequired",
     "Value": "اختر فرعًا لعرض الموظفين المتاحين للحجز."
   },
