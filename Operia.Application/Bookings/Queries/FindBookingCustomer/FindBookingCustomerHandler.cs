@@ -22,7 +22,7 @@ public sealed class FindBookingCustomerHandler(
         var normalizedMobile = NormalizeMobile(request.Mobile);
         var today = DateOnly.FromDateTime(clock.UtcNow);
         var customer = await db.Customers.AsNoTracking()
-            .Where(x => x.TenantId == tenantId && x.IsActive &&
+            .Where(x => x.TenantId == tenantId && x.IsActive && !x.IsDirect &&
                         x.NormalizedMobileNumber == normalizedMobile)
             .Select(x => new { x.Id, x.FullName, x.MobileNumber })
             .SingleOrDefaultAsync(cancellationToken);

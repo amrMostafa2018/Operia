@@ -354,6 +354,8 @@
   { "Name": "SaleOfferUnavailable", "Value": "هذه الخدمة أو الباقة لم تعد متاحة للبيع." },
   { "Name": "SaleBranchUnavailable", "Value": "هذا الفرع غير متاح لك." },
   { "Name": "SaleCustomerUnavailable", "Value": "العميل المختار لم يعد متاحًا." },
+  { "Name": "SaleDirectCustomerSelectionInvalid", "Value": "اختر العميل المباشر أو عميلًا مسجلًا فقط." },
+  { "Name": "SaleDirectServiceOnly", "Value": "يمكن للعميل المباشر شراء الخدمات فقط. الباقات والجلسات المملوكة تتطلب عميلًا مسجلًا." },
   { "Name": "SaleOwnedSessionUnavailable", "Value": "لا توجد جلسة متاحة لهذا العنصر لدى العميل." },
   { "Name": "SaleUnlistedNameInvalid", "Value": "أدخل اسم خدمة غير مدرجة لا يزيد عن 200 حرف." },
   { "Name": "SaleUnlistedPriceInvalid", "Value": "أدخل سعرًا بين صفر و999,999,999.99." },

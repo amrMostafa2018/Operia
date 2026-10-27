@@ -26,7 +26,8 @@ public sealed class FindCustomerPurchasesHandler(
 
         var mobile = string.Concat(request.Mobile.Where(char.IsDigit));
         var customer = await db.Customers.AsNoTracking()
-            .Where(x => x.TenantId == tenantId && x.NormalizedMobileNumber == mobile)
+            .Where(x => x.TenantId == tenantId && !x.IsDirect &&
+                x.NormalizedMobileNumber == mobile)
             .Select(x => new { x.Id, x.FullName, x.MobileNumber, x.CreatedAt, x.IsActive })
             .SingleOrDefaultAsync(cancellationToken);
 

@@ -7,6 +7,9 @@ public sealed class QuoteSaleValidator : AbstractValidator<QuoteSaleQuery>
 {
     public QuoteSaleValidator()
     {
+        RuleFor(query => query).Must(query =>
+                !query.DirectCustomer || string.IsNullOrWhiteSpace(query.CustomerId))
+            .WithErrorCode(ApiErrorCodes.Sales.DirectCustomerSelectionInvalid);
         RuleFor(query => query.Items)
             .NotEmpty().WithErrorCode(ApiErrorCodes.Sales.ItemsRequired);
         RuleFor(query => query.Items).Must(items => items is null || items.Count(item =>

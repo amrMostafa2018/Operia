@@ -5,6 +5,7 @@ using Operia.Application.Auth;
 using Operia.Application.Customers.Queries.FindCustomerPurchases;
 using Operia.Application.Customers.Queries.GetCustomerPurchaseDetails;
 using Operia.Application.Customers.Commands.CollectInstallment;
+using Operia.Application.Customers.Queries.ListDirectCustomerSales;
 
 namespace Operia.Controllers;
 
@@ -12,6 +13,12 @@ namespace Operia.Controllers;
 [Route("api/customers")]
 public sealed class CustomersController(IMediator mediator) : ControllerBase
 {
+    [HttpGet("direct-sales")]
+    [Authorize(Policy = Policies.CustomersRead)]
+    public Task<DirectCustomerSalesDto?> DirectSales([FromQuery] int page,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new ListDirectCustomerSalesQuery(page), cancellationToken);
+
     [HttpGet("inquiry")]
     [Authorize(Policy = Policies.CustomersRead)]
     public Task<CustomerPurchasesDto?> Inquiry(
