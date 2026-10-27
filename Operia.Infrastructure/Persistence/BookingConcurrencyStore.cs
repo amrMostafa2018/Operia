@@ -73,6 +73,21 @@ public sealed class BookingConcurrencyStore(ApplicationDbContext db) : IBookingC
             return existing;
         }
 
+        var pendingDirect = db.ChangeTracker.Entries<Customer>()
+            .FirstOrDefault(entry => entry.State == EntityState.Added && entry.Entity.IsDirect &&
+                                     entry.Entity.Id == booking.CustomerId);
+        if (pendingDirect is not null)
+        {
+            await AcquireLockAsync($"booking-direct-customer:{booking.TenantId}", cancellationToken);
+            var savedDirect = await db.Customers.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.TenantId == booking.TenantId && x.IsDirect, cancellationToken);
+            if (savedDirect is not null)
+            {
+                booking.CustomerId = savedDirect.Id;
+                pendingDirect.State = EntityState.Detached;
+            }
+        }
+
         await AcquireLockAsync(
             $"booking-slot:{booking.TenantId}:{booking.EmployeeId}:{booking.ScheduledDate:yyyyMMdd}",
             cancellationToken);

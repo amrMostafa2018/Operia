@@ -156,6 +156,12 @@ public static class ApiErrorCodes
         public const string Changed = "BookingChanged";
         public const string StatusInvalid = "BookingStatusInvalid";
         public const string CustomerNotFound = "BookingCustomerNotFound";
+        public const string CustomerMobileExists = "BookingCustomerMobileExists";
+        public const string CustomerNameTooLong = "BookingCustomerNameTooLong";
+        public const string CustomerSearchTermInvalid = "BookingCustomerSearchTermInvalid";
+        public const string DirectCustomerSelectionInvalid = "BookingDirectCustomerSelectionInvalid";
+        public const string DirectCustomerPackageUnavailable = "BookingDirectCustomerPackageUnavailable";
+        public const string DirectCustomerItemsReadOnly = "BookingDirectCustomerItemsReadOnly";
         public const string EmployeeNotFound = "BookingEmployeeNotFound";
         public const string EmployeeNotInBranch = "BookingEmployeeNotInBranch";
         public const string OutsideWorkingHours = "BookingOutsideWorkingHours";

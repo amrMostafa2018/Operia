@@ -43,10 +43,36 @@ public sealed class CreateBookingHandler(
             return ToResult(existing);
         }
 
-        var customer = await db.Customers.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.CustomerId &&
-                x.IsActive && !x.IsDirect, cancellationToken)
-            ?? throw ApiNotFoundException.FromCode(ApiErrorCodes.Bookings.CustomerNotFound, "customerId");
+        Customer customer;
+        if (request.DirectCustomer)
+        {
+            if (!string.IsNullOrWhiteSpace(request.CustomerId))
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Bookings.DirectCustomerSelectionInvalid, "customerId");
+            }
+
+            var existingDirect = await db.Customers.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.IsDirect,
+                cancellationToken);
+            customer = existingDirect ?? new Customer
+            {
+                TenantId = tenantId,
+                FullName = "عميل مباشر",
+                MobileNumber = string.Empty,
+                NormalizedMobileNumber = string.Empty,
+                IsDirect = true
+            };
+            if (existingDirect is null)
+            {
+                db.Customers.Add(customer);
+            }
+        }
+        else
+        {
+            customer = await db.Customers.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.CustomerId &&
+                    x.IsActive && !x.IsDirect, cancellationToken)
+                ?? throw ApiNotFoundException.FromCode(ApiErrorCodes.Bookings.CustomerNotFound, "customerId");
+        }
 
         await ValidateEmployeeAsync(tenantId, request, cancellationToken);
         await ValidateWorkingHoursAsync(tenantId, request, cancellationToken);
@@ -60,27 +86,37 @@ public sealed class CreateBookingHandler(
             }
         }
         BookingItemPricing.ValidatePackageSelection(request.Items, catalog);
+        if (request.DirectCustomer && request.Items.Any(item =>
+                !string.IsNullOrWhiteSpace(item.CustomerPackageId) ||
+                catalog[item.PackageId].OfferType == OfferType.Package))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.DirectCustomerPackageUnavailable, "items");
+        }
         await ValidatePaymentMethodAsync(tenantId, request.PaymentMethod, cancellationToken);
 
         var today = DateOnly.FromDateTime(clock.UtcNow);
-        var ownedCatalogPackageIds = await db.CustomerPackages.AsNoTracking()
-            .Where(x => x.TenantId == tenantId &&
-                        x.CustomerId == customer.Id &&
-                        x.IsActive &&
-                        (x.ExpiresOn == null || x.ExpiresOn >= today))
-            .Select(x => x.PackageId)
-            .ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
+        IReadOnlySet<string> ownedCatalogPackageIds = request.DirectCustomer
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : await db.CustomerPackages.AsNoTracking()
+                .Where(x => x.TenantId == tenantId &&
+                            x.CustomerId == customer.Id &&
+                            x.IsActive &&
+                            (x.ExpiresOn == null || x.ExpiresOn >= today))
+                .Select(x => x.PackageId)
+                .ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
 
         var booking = BuildBooking(tenantId, customer, request, catalog, ownedCatalogPackageIds);
-        var (reservations, newPurchases) = await BuildReservationsAsync(
-            tenantId,
-            customer.Id,
-            booking.Id,
-            request.Items,
-            catalog,
-            ownedCatalogPackageIds,
-            today,
-            cancellationToken);
+        var (reservations, newPurchases) = request.DirectCustomer
+            ? (new List<BookingPackageReservation>(), new List<CustomerPackage>())
+            : await BuildReservationsAsync(
+                tenantId,
+                customer.Id,
+                booking.Id,
+                request.Items,
+                catalog,
+                ownedCatalogPackageIds,
+                today,
+                cancellationToken);
 
         StageCreation(tenantId, booking, reservations, newPurchases);
 

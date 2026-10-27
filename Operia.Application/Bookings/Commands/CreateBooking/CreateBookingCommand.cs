@@ -8,14 +8,15 @@ public sealed record CreateBookingItemInput(string PackageId, string? CustomerPa
 /// <summary>Requests the create booking state change.</summary>
 public sealed record CreateBookingCommand(
     string IdempotencyKey,
-    string CustomerId,
+    string? CustomerId,
     string BranchId,
     string EmployeeId,
     DateOnly ScheduledDate,
     int StartMinutes,
     int EndMinutes,
     IReadOnlyList<CreateBookingItemInput> Items,
-    string? PaymentMethod = null) : IRequest<CreateBookingResult>;
+    string? PaymentMethod = null,
+    bool DirectCustomer = false) : IRequest<CreateBookingResult>;
 
 /// <summary>Carries create booking result data across the operation boundary.</summary>
 public sealed record CreateBookingResult(string Id, string BookingNumber, string Status, string Version);
