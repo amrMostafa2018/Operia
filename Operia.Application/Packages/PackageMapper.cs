@@ -58,7 +58,12 @@ internal static class PackageMapper
             ToStatusJson(package.Status),
             package.CreatedAt,
             package.EndsAt?.ToString("yyyy-MM-dd"),
-            PackageCashPricing.FinalPrice(package));
+            PackageCashPricing.FinalPrice(package),
+            package.CashEnabled,
+            package.InstallmentEnabled,
+            package.InstallmentPrice,
+            package.FirstPayment,
+            package.SessionCount);
 
     public static PackageDetailDto ToDetailDto(Package package) =>
         new(

@@ -81,6 +81,14 @@ public sealed class EndpointAuthorizationContractTests
             ["PackagesController.CreateServiceCategory"] = Policies.PackagesManage,
             ["PackagesController.CreateSubServiceCategory"] = Policies.PackagesManage,
 
+            ["SalesController.Quote"] = Policies.PackagesSell,
+            ["SalesController.Confirm"] = Policies.PackagesSell,
+            ["SalesController.Catalog"] = Policies.PackagesSell,
+            ["SalesController.Categories"] = Policies.PackagesSell,
+            ["SalesController.Branches"] = Policies.PackagesSell,
+            ["SalesController.Customer"] = Policies.PackagesSell,
+            ["SalesController.PaymentMethods"] = Policies.PackagesSell,
+
             ["OnboardingController.GetStatus"] = Policies.AuthenticatedUser,
             ["OnboardingController.GetPlans"] = null,
             ["OnboardingController.SetupBusiness"] = Policies.OnboardingManage,
