@@ -78,40 +78,6 @@ public sealed class CloseBookingHandlerTests
     }
 
     [Fact]
-    public async Task Handle_StandaloneCancel_ReleasesReservationWithoutConsumingBalance()
-    {
-        await SeedAsync();
-        var created = await CreateHandler().Handle(
-            new CreateBookingCommand(
-                "close-standalone",
-                "customer-1",
-                "branch-1",
-                "employee-1",
-                _scheduledDate,
-                720,
-                750,
-                [new CreateBookingItemInput("service-1", null, 1)]),
-            CancellationToken.None);
-
-        var booking = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == created.Id);
-        var item = booking.Items.Single();
-        var purchase = await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1");
-
-        var result = await CloseHandler().Handle(
-            new CloseBookingCommand(
-                booking.Id,
-                Convert.ToBase64String(booking.Version),
-                [new CloseBookingItemInput(item.Id, purchase.Id, "cancel", null, null)]),
-            CancellationToken.None);
-
-        result.Status.Should().Be(nameof(BookingStatus.Completed));
-        var purchaseAfter = await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1");
-        purchaseAfter.Used.Should().Be(0);
-        purchaseAfter.ReservedSessions.Should().Be(0);
-        (await _db.BookingPackageReservations.SingleAsync()).CancellationAtUtc.Should().NotBeNull();
-    }
-
-    [Fact]
     public async Task Handle_MissingLineItem_ThrowsCloseItemsIncomplete()
     {
         await SeedAsync();

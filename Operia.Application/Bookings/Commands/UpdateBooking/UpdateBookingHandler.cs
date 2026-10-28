@@ -35,6 +35,10 @@ public sealed class UpdateBookingHandler(
         BookingItemPricing.ValidatePackageSelection(request.Items, catalog);
 
         var itemsChanged = HasItemsChanged(booking.Items, request.Items);
+        if (itemsChanged && request.Items.Any(item => string.IsNullOrWhiteSpace(item.CustomerPackageId)))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.PaymentCollectionRequired, "items");
+        }
         if (itemsChanged && await db.Customers.AsNoTracking().AnyAsync(x =>
                 x.TenantId == tenantId && x.Id == booking.CustomerId && x.IsDirect,
                 cancellationToken))

@@ -110,8 +110,9 @@ public sealed class BookSaleHandler(
             throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageStaffUnavailable,
                 "employeeId");
         }
-        var duration = lines.Sum(x => x.DurationMinutes * x.Quantity);
-        if (request.EndMinutes - request.StartMinutes != duration)
+        var duration = lines.Sum(x => x.DurationMinutes *
+            (x.OfferType == "package" ? 1 : x.Quantity));
+        if (request.EndMinutes - request.StartMinutes < duration)
         {
             throw ConflictException.FromCode(ApiErrorCodes.Sales.DurationMismatch,
                 "endMinutes");
@@ -137,7 +138,8 @@ public sealed class BookSaleHandler(
             Source = "Sale",
             PaymentMethod = sale.PaymentMethod,
             TotalAmount = sale.GrandTotal,
-            PaidAmount = sale.DueNow
+            PaidAmount = sale.DueNow,
+            DiscountAmount = lines.Sum(x => x.DiscountAmount)
         };
         for (var index = 0; index < lines.Length; index++)
         {
@@ -154,7 +156,7 @@ public sealed class BookSaleHandler(
                 Name = line.Name,
                 Quantity = line.Quantity,
                 DurationMinutes = line.DurationMinutes,
-                UnitPrice = 0m
+                UnitPrice = line.FinalAmount / line.Quantity
             });
             if (line.OwnedCustomerPackageId is not null)
             {
@@ -169,7 +171,7 @@ public sealed class BookSaleHandler(
                 {
                     throw ConflictException.FromCode(ApiErrorCodes.Sales.BookingUnavailable);
                 }
-                reservations.AddRange(linePurchases.Select(x =>
+                reservations.AddRange((line.OfferType == "package" ? linePurchases.Take(1) : linePurchases).Select(x =>
                     NewReservation(tenantId, booking.Id, x.Id)));
             }
         }

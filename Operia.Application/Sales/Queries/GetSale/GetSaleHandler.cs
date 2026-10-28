@@ -38,7 +38,8 @@ public sealed class GetSaleHandler(
         var lines = JsonSerializer.Deserialize<ConfirmedSaleItemSnapshot[]>(
             sale.ItemsSnapshotJson) ?? [];
         return new SaleStateDto(sale.Id, sale.Status, sale.Disposition,
-            sale.BranchId, lines.Sum(x => x.DurationMinutes * x.Quantity),
+            sale.BranchId, lines.Sum(x => x.DurationMinutes *
+                (x.OfferType == "package" ? 1 : x.Quantity)),
             sale.GrandTotal, sale.DueNow, collection?.Id,
             collection?.Confirmed ?? false, bookingId);
     }

@@ -116,6 +116,10 @@
     "Value": "The selected payment method is no longer enabled. Choose another method."
   },
   {
+    "Name": "BookingPaymentCollectionRequired",
+    "Value": "Collect and verify the amount due before confirming this booking."
+  },
+  {
     "Name": "BookingItemsRequired",
     "Value": "Choose at least one service before saving changes."
   },
