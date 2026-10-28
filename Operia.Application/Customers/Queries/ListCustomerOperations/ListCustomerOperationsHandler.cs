@@ -20,6 +20,7 @@ public sealed class ListCustomerOperationsHandler(CustomerOperationsReader reade
             rows.Sum(x => x.Total),
             rows.Sum(x => x.Collected),
             rows.Sum(x => x.Remaining),
-            skip >= rows.Count ? [] : rows.Skip((int)skip).Take(pageSize).ToArray());
+            skip >= rows.Count ? [] : rows.Skip((int)skip).Take(pageSize).ToArray(),
+            rows.Sum(x => x.Refunded), rows.Sum(x => x.NetCollected));
     }
 }

@@ -72,6 +72,10 @@ public sealed class CreateBookingHandler(
                 .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.CustomerId &&
                     x.IsActive && !x.IsDirect, cancellationToken)
                 ?? throw ApiNotFoundException.FromCode(ApiErrorCodes.Bookings.CustomerNotFound, "customerId");
+            if (customer.IsBlocked)
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Customers.CustomerBlocked, "customerId");
+            }
         }
 
         await ValidateEmployeeAsync(tenantId, request, cancellationToken);

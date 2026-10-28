@@ -58,16 +58,21 @@ public sealed class GetCustomerPurchaseDetailsHandler(
         var sessions = !usesPulses
             ? new PurchaseBalanceDto(purchase.Total, purchase.Used,
                 Math.Max(0, purchase.Total - purchase.Used),
-                Math.Max(0, released - purchase.Used - (purchase.ReservedSessions ?? 0)))
+                purchase.IsActive
+                    ? Math.Max(0, released - purchase.Used - (purchase.ReservedSessions ?? 0))
+                    : 0)
             : null;
         var pulses = usesPulses
             ? new PurchaseBalanceDto(purchase.Total, purchase.Used, Math.Max(0, purchase.Total - purchase.Used))
             : null;
 
         var price = snapshot?.PurchasePrice ?? purchase.PurchasePrice;
-        var due = price is not null ? purchase.AmountDue : null;
-        decimal? paid = price is not null && due is not null ? Math.Max(0, price.Value - due.Value) : null;
-        var paymentStatus = paid is null ? "unknown" : due == 0 ? "fullyPaid" : paid > 0 ? "partial" : "unpaid";
+        var historicalDue = price is not null ? purchase.AmountDue : null;
+        decimal? paid = price is not null && historicalDue is not null
+            ? Math.Max(0, price.Value - historicalDue.Value) : null;
+        var due = purchase.IsActive ? historicalDue : 0m;
+        var paymentStatus = paid is null ? "unknown" : historicalDue == 0
+            ? "fullyPaid" : paid > 0 ? "partial" : "unpaid";
         var today = DateOnly.FromDateTime(clock.UtcNow);
         var packageStatus = !purchase.IsActive ? "cancelled"
             : purchase.ExpiresOn is not null && purchase.ExpiresOn < today ? "expired"
@@ -82,7 +87,8 @@ public sealed class GetCustomerPurchaseDetailsHandler(
                 return new PurchaseInstallmentDto(
                     x.Number,
                     x.Amount,
-                    paid is not null && paid >= cumulativeDue ? "paid" : "due");
+                    paid is not null && paid >= cumulativeDue ? "paid"
+                        : purchase.IsActive ? "due" : "cancelled");
             })
             .ToArray() ?? [];
         var nextNumber = rows.FirstOrDefault(x => x.Status == "due")?.Number;

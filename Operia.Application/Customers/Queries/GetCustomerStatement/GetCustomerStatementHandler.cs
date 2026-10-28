@@ -45,6 +45,7 @@ public sealed class GetCustomerStatementHandler(
                                 customer.FullName,
                                 customer.MobileNumber,
                                 customer.IsActive,
+                                customer.IsBlocked,
                                 sale.ItemsSnapshotJson,
                                 SaleId = sale.Id
                             }).SingleOrDefaultAsync(cancellationToken)
@@ -85,7 +86,9 @@ public sealed class GetCustomerStatementHandler(
             {
                 var collection = collections.FirstOrDefault(x => x.InstallmentNumber == plan.Number);
                 return new StatementPaymentDto(plan.Number, plan.Amount,
-                    collection is null ? "due" : "paid", collection?.ConfirmedAtUtc,
+                    collection is null
+                        ? purchaseDetails.PackageStatus == "cancelled" ? "cancelled" : "due"
+                        : "paid", collection?.ConfirmedAtUtc,
                     collection?.PaymentMethod,
                     collection is null ? null : RecorderName(collection.CollectedByUserId, recorders),
                     null);
@@ -98,11 +101,15 @@ public sealed class GetCustomerStatementHandler(
         var paid = snapshot?.PaymentOption == "installment"
             ? (firstPayment?.Amount ?? 0m) + collections.Sum(x => x.Amount)
             : confirmedSale is null ? 0m : purchaseDetails.PurchasePrice ?? 0m;
+        var refunded = await db.RefundTransactions.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.CustomerPackageId == request.PurchaseId)
+            .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0m;
         purchaseDetails = purchaseDetails with
         {
             AmountPaid = paid,
             AmountRemaining = purchaseDetails.PurchasePrice is { } price
-                ? Math.Max(0m, price - paid) : null,
+                ? purchaseDetails.PackageStatus == "cancelled"
+                    ? 0m : Math.Max(0m, price - paid) : null,
             PaymentStatus = purchaseDetails.PurchasePrice is not { } total
                 ? "unknown" : paid >= total ? "fullyPaid" : paid > 0m ? "partial" : "unpaid"
         };
@@ -114,7 +121,7 @@ public sealed class GetCustomerStatementHandler(
         }
 
         return new CustomerStatementDto(request.CustomerId, source.FullName,
-            source.MobileNumber, source.IsActive, operationCount,
+            source.MobileNumber, source.IsActive && !source.IsBlocked, operationCount,
             snapshot?.OfferName ?? item?.Name ?? string.Empty,
             snapshot?.OfferType == OfferType.Package || item?.OfferType == "package"
                 ? "package" : "session",
@@ -123,8 +130,10 @@ public sealed class GetCustomerStatementHandler(
                 purchaseDetails.PackageStatus, purchaseDetails.PaymentStatus,
                 purchaseDetails.PurchasePrice, purchaseDetails.AmountPaid,
                 purchaseDetails.AmountRemaining, purchaseDetails.Pulses,
-                purchaseDetails.CompletedSessions),
-            sessionBalance, firstPayment, installments);
+                purchaseDetails.CompletedSessions, refunded, paid - refunded,
+                refunded == 0m ? "none" : refunded >= paid ? "full" : "partial"),
+            sessionBalance, firstPayment, installments,
+            source.IsBlocked ? "blocked" : source.IsActive ? "active" : "inactive");
     }
 
     private static string RecorderName(string userId, IReadOnlyDictionary<string, string> names) =>

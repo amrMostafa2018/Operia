@@ -36,7 +36,10 @@ public sealed record CustomerOperationDto(
     string CustomerRestriction,
     string PurchaseStatus,
     string PaymentStatus,
-    string InstallmentDueStatus);
+    string InstallmentDueStatus,
+    decimal Refunded = 0m,
+    decimal NetCollected = 0m,
+    string RefundStatus = "none");
 
 public sealed record CustomerOperationsPageDto(
     int TotalCount,
@@ -45,4 +48,6 @@ public sealed record CustomerOperationsPageDto(
     decimal TotalSales,
     decimal TotalCollected,
     decimal TotalRemaining,
-    IReadOnlyList<CustomerOperationDto> Rows);
+    IReadOnlyList<CustomerOperationDto> Rows,
+    decimal TotalRefunded = 0m,
+    decimal TotalNetCollected = 0m);

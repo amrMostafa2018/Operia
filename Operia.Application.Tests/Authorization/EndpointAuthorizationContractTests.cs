@@ -62,6 +62,10 @@ public sealed class EndpointAuthorizationContractTests
             ["CustomersController.PurchaseInquiry"] = Policies.CustomersRead,
             ["CustomersController.Statement"] = Policies.CustomersRead,
             ["CustomersController.CollectInstallment"] = Policies.CustomersCollectInstallment,
+            ["CustomersController.Action"] = Policies.CustomersRead,
+            ["CustomersController.CancelAndRefund"] = Policies.CustomersRefund,
+            ["CustomersController.SetBlock"] = Policies.CustomersBlock,
+            ["CustomersController.History"] = Policies.CustomersHistory,
 
             ["RevenueController.InstallmentCollections"] = Policies.RevenueRead,
 

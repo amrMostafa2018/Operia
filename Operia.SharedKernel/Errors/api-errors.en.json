@@ -47,6 +47,15 @@
     "Name": "CustomerInstallmentPurchaseInactive",
     "Value": "Installments cannot be collected on an inactive or expired purchase."
   },
+  { "Name": "CustomerRefundAmountInvalid", "Value": "Enter a refund amount greater than zero with at most two decimal places." },
+  { "Name": "CustomerRefundExceedsPaid", "Value": "The refund exceeds the remaining amount actually paid for this purchase. Refresh the action to see the current maximum." },
+  { "Name": "CustomerRefundIdempotencyConflict", "Value": "This refund request key was already used with different details." },
+  { "Name": "CustomerRefundUnavailable", "Value": "This purchase cannot be refunded or was changed by another user. Refresh and try again." },
+  { "Name": "CustomerRefundNoteInvalid", "Value": "The refund note must be 1,000 characters or fewer." },
+  { "Name": "CustomerBlockReasonInvalid", "Value": "The block reason must be 500 characters or fewer." },
+  { "Name": "CustomerChanged", "Value": "This customer was changed by another user. Refresh and try again." },
+  { "Name": "CustomerNotFound", "Value": "This customer could not be found." },
+  { "Name": "CustomerBlocked", "Value": "This customer cannot make a new booking at this center. Contact the center for help." },
   {
     "Name": "BookingBranchRequired",
     "Value": "Select a branch to view bookable employees."

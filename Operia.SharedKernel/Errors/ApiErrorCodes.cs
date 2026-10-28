@@ -47,6 +47,15 @@ public static class ApiErrorCodes
         public const string InstallmentPaymentMethodUnavailable = "CustomerInstallmentPaymentMethodUnavailable";
         public const string InstallmentIdempotencyConflict = "CustomerInstallmentIdempotencyConflict";
         public const string InstallmentPurchaseInactive = "CustomerInstallmentPurchaseInactive";
+        public const string RefundAmountInvalid = "CustomerRefundAmountInvalid";
+        public const string RefundExceedsPaid = "CustomerRefundExceedsPaid";
+        public const string RefundIdempotencyConflict = "CustomerRefundIdempotencyConflict";
+        public const string RefundUnavailable = "CustomerRefundUnavailable";
+        public const string RefundNoteInvalid = "CustomerRefundNoteInvalid";
+        public const string BlockReasonInvalid = "CustomerBlockReasonInvalid";
+        public const string CustomerChanged = "CustomerChanged";
+        public const string CustomerNotFound = "CustomerNotFound";
+        public const string CustomerBlocked = "CustomerBlocked";
     }
 
     /// <summary>Employee working-day and branch schedule failures.</summary>

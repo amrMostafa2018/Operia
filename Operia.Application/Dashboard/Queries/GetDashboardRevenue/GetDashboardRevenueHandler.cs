@@ -20,6 +20,8 @@ public sealed class GetDashboardRevenueHandler(
             .Where(x => x.TenantId == tenantId && x.Confirmed);
         var installments = db.InstallmentCollections.AsNoTracking()
             .Where(x => x.TenantId == tenantId);
+        var refunds = db.RefundTransactions.AsNoTracking()
+            .Where(x => x.TenantId == tenantId);
         var todaySales = await sales.Where(x => x.AttemptedAtUtc >= request.TodayFromUtc &&
             x.AttemptedAtUtc < request.TodayToUtc)
             .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0m;
@@ -34,7 +36,13 @@ public sealed class GetDashboardRevenueHandler(
             x.ConfirmedAtUtc >= request.MonthFromUtc &&
             x.ConfirmedAtUtc < request.MonthToUtc)
             .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0m;
-        return new DashboardRevenueDto(todaySales + todayInstallments,
-            monthSales + monthInstallments);
+        var todayRefunds = await refunds.Where(x => x.RecordedAtUtc >= request.TodayFromUtc &&
+            x.RecordedAtUtc < request.TodayToUtc)
+            .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0m;
+        var monthRefunds = await refunds.Where(x => x.RecordedAtUtc >= request.MonthFromUtc &&
+            x.RecordedAtUtc < request.MonthToUtc)
+            .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0m;
+        return new DashboardRevenueDto(todaySales + todayInstallments - todayRefunds,
+            monthSales + monthInstallments - monthRefunds);
     }
 }

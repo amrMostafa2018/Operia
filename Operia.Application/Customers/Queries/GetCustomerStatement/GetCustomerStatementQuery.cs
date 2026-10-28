@@ -32,7 +32,10 @@ public sealed record StatementPurchaseDto(
     decimal? AmountPaid,
     decimal? AmountRemaining,
     PurchaseBalanceDto? Pulses,
-    IReadOnlyList<CompletedPurchaseSessionDto> CompletedSessions);
+    IReadOnlyList<CompletedPurchaseSessionDto> CompletedSessions,
+    decimal Refunded = 0m,
+    decimal NetCollected = 0m,
+    string RefundStatus = "none");
 
 public sealed record CustomerStatementDto(
     string CustomerId,
@@ -45,4 +48,5 @@ public sealed record CustomerStatementDto(
     StatementPurchaseDto Purchase,
     PurchaseBalanceDto? SessionBalance,
     StatementFirstPaymentDto? FirstPayment,
-    IReadOnlyList<StatementPaymentDto> Installments);
+    IReadOnlyList<StatementPaymentDto> Installments,
+    string CustomerRestriction = "active");

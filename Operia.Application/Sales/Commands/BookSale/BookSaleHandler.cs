@@ -60,6 +60,10 @@ public sealed class BookSaleHandler(
             x.TenantId == tenantId && x.Id == sale.CustomerId && x.IsActive,
             cancellationToken)
             ?? throw ApiNotFoundException.FromCode(ApiErrorCodes.Sales.CustomerUnavailable);
+        if (customer.IsBlocked)
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Customers.CustomerBlocked, "customerId");
+        }
         var employee = await db.Employees.AsNoTracking().SingleOrDefaultAsync(x =>
             x.TenantId == tenantId && x.Id == request.EmployeeId && x.IsActive,
             cancellationToken)
