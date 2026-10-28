@@ -29,6 +29,7 @@ public static class AuditActions
     public const string PackageDeleted = "PackageDeleted";
     public const string SaleConfirmed = "SaleConfirmed";
     public const string SaleCollectionAttempted = "SaleCollectionAttempted";
+    public const string SalePaymentConfirmed = "SalePaymentConfirmed";
     public const string SaleBooked = "SaleBooked";
 
     /// <summary>Booking creation committed with its reservations.</summary>
@@ -45,4 +46,5 @@ public static class AuditActions
     public const string RefundPosted = "RefundPosted";
     public const string CustomerBlocked = "CustomerBlocked";
     public const string CustomerUnblocked = "CustomerUnblocked";
+    public const string CustomerBlockReasonChanged = "CustomerBlockReasonChanged";
 }

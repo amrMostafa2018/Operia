@@ -123,6 +123,7 @@ public sealed class CollectInstallmentHandler(
                     collection.InstallmentNumber,
                     collection.Amount,
                     collection.PaymentMethod,
+                    OldRemaining = purchase.AmountDue.Value + collection.Amount,
                     Remaining = remaining,
                     ReleasedSessions = released
                 });

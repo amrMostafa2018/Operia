@@ -139,6 +139,7 @@ public sealed class ConfirmSaleHandler(
                 sale.GrandTotal,
                 sale.DueNow,
                 sale.PaymentMethod,
+                NewStatus = sale.Status,
                 ItemCount = snapshots.Length
             });
         try
