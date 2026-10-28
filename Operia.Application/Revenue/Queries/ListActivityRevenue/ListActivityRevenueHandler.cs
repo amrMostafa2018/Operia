@@ -11,16 +11,17 @@ namespace Operia.Application.Revenue.Queries.ListActivityRevenue;
 
 public sealed class ListActivityRevenueHandler(
     IApplicationDbContext db,
-    ICurrentUserService currentUser) : IRequestHandler<ListActivityRevenueQuery, ActivityRevenuePage>
+    ICurrentUserService currentUser,
+    IBranchScope branchScope) : IRequestHandler<ListActivityRevenueQuery, ActivityRevenuePage>
 {
     public async Task<ActivityRevenuePage> Handle(
         ListActivityRevenueQuery request, CancellationToken cancellationToken)
     {
         var tenantId = currentUser.TenantId
             ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
-        var installments = db.InstallmentCollections.AsNoTracking()
-            .Where(x => x.TenantId == tenantId && x.CustomerPackage != null &&
-                x.CustomerPackage.TenantId == tenantId)
+        var ledger = await new RevenueLedger(db, currentUser, branchScope)
+            .ScopedAsync(request.BranchId, cancellationToken);
+        var installments = ledger.Installments
             .Select(x => new
             {
                 x.Id,
@@ -34,11 +35,10 @@ public sealed class ListActivityRevenueHandler(
                 x.ConfirmedAtUtc
             });
         var saleCollections =
-            from collection in db.SaleCollections.AsNoTracking()
+            from collection in ledger.Sales
             join sale in db.Sales.AsNoTracking() on collection.SaleId equals sale.Id
             join customer in db.Customers.AsNoTracking() on sale.CustomerId equals customer.Id
-            where collection.TenantId == tenantId && sale.TenantId == tenantId &&
-                customer.TenantId == tenantId && collection.Confirmed && collection.Amount > 0m
+            where sale.TenantId == tenantId && customer.TenantId == tenantId
             select new
             {
                 collection.Id,
@@ -51,12 +51,11 @@ public sealed class ListActivityRevenueHandler(
             };
         var total = await installments.CountAsync(cancellationToken) +
             await saleCollections.CountAsync(cancellationToken);
-        var refunds = from refund in db.RefundTransactions.AsNoTracking()
+        var refunds = from refund in ledger.Refunds
                       join customer in db.Customers.AsNoTracking() on refund.CustomerId equals customer.Id
                       join purchase in db.CustomerPackages.AsNoTracking()
                           on refund.CustomerPackageId equals purchase.Id
-                      where refund.TenantId == tenantId && customer.TenantId == tenantId &&
-                            purchase.TenantId == tenantId
+                      where customer.TenantId == tenantId && purchase.TenantId == tenantId
                       select new
                       {
                           refund.Id,

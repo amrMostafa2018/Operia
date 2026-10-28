@@ -61,7 +61,8 @@ public sealed class ConfirmSaleHandlerTests
             x.Action == AuditActions.SaleCollectionAttempted)).Should().Be(1);
         (await fixture.Db.AuditLogs.CountAsync(x =>
             x.Action == AuditActions.SalePaymentConfirmed)).Should().Be(1);
-        var revenue = await new ListActivityRevenueHandler(fixture.Db, fixture.User.Object)
+        var revenue = await new ListActivityRevenueHandler(fixture.Db, fixture.User.Object,
+            fixture.BranchScope.Object)
             .Handle(new ListActivityRevenueQuery(), CancellationToken.None);
         revenue.ConfirmedTotal.Should().Be(80m);
         revenue.Items.Should().ContainSingle();
@@ -750,7 +751,7 @@ public sealed class ConfirmSaleHandlerTests
         }
 
         public Task<DashboardRevenueDto> DashboardRevenue() =>
-            new GetDashboardRevenueHandler(Db, _user.Object).Handle(
+            new GetDashboardRevenueHandler(Db, _user.Object, BranchScope.Object).Handle(
                 new GetDashboardRevenueQuery(
                     new DateTime(2026, 10, 27, 0, 0, 0, DateTimeKind.Utc),
                     new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),

@@ -48,7 +48,8 @@ public sealed class CustomerRefundAndBlockTests
         (await fixture.Db.AuditLogs.CountAsync(x => x.Action == AuditActions.RefundPosted))
             .Should().Be(2);
 
-        var revenue = await new GetDashboardRevenueHandler(fixture.Db, fixture.User.Object)
+        var revenue = await new GetDashboardRevenueHandler(fixture.Db, fixture.User.Object,
+            fixture.Scope.Object)
             .Handle(new GetDashboardRevenueQuery(
                 new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
                 new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
