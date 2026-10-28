@@ -543,6 +543,7 @@ public sealed class ConfirmSaleHandlerTests
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase(database).Options;
             var db = new TestApplicationDbContext(options, clock.Object, user.Object);
+            db.Tenants.Add(new Tenant { Id = "tenant-1", Timezone = "Africa/Cairo" });
             db.Businesses.Add(new Business { Id = "business-1", TenantId = "tenant-1" });
             db.Branches.Add(new Branch
             {
@@ -751,13 +752,16 @@ public sealed class ConfirmSaleHandlerTests
         }
 
         public Task<DashboardRevenueDto> DashboardRevenue() =>
-            new GetDashboardRevenueHandler(Db, _user.Object, BranchScope.Object).Handle(
-                new GetDashboardRevenueQuery(
-                    new DateTime(2026, 10, 27, 0, 0, 0, DateTimeKind.Utc),
-                    new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
-                    new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
-                    new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc)),
-                CancellationToken.None);
+            new GetDashboardRevenueHandler(Db, _user.Object, BranchScope.Object,
+                RevenueClock()).Handle(new GetDashboardRevenueQuery(), CancellationToken.None);
+
+        private static IDateTimeProvider RevenueClock()
+        {
+            var clock = new Mock<IDateTimeProvider>();
+            clock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 10, 27, 9, 0, 0,
+                DateTimeKind.Utc));
+            return clock.Object;
+        }
 
         public ValueTask DisposeAsync() => Db.DisposeAsync();
     }

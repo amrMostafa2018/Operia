@@ -38,12 +38,7 @@ public sealed class RevenueController(IMediator mediator) : ControllerBase
     [HttpGet("summary")]
     [Authorize(Policy = Policies.RevenueRead)]
     public Task<ActivityRevenueSummaryDto> Summary(
-        [FromQuery] DateTime todayFromUtc,
-        [FromQuery] DateTime todayToUtc,
-        [FromQuery] DateTime monthFromUtc,
-        [FromQuery] DateTime monthToUtc,
         CancellationToken cancellationToken,
         [FromQuery] string? branchId = null) =>
-        mediator.Send(new GetActivityRevenueSummaryQuery(
-            todayFromUtc, todayToUtc, monthFromUtc, monthToUtc, branchId), cancellationToken);
+        mediator.Send(new GetActivityRevenueSummaryQuery(branchId), cancellationToken);
 }

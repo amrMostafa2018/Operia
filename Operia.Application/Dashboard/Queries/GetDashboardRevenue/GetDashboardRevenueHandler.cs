@@ -1,13 +1,15 @@
 using MediatR;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Revenue;
+using Operia.SharedKernel.Interfaces;
 
 namespace Operia.Application.Dashboard.Queries.GetDashboardRevenue;
 
 public sealed class GetDashboardRevenueHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
-    IBranchScope branchScope) : IRequestHandler<GetDashboardRevenueQuery, DashboardRevenueDto>
+    IBranchScope branchScope,
+    IDateTimeProvider clock) : IRequestHandler<GetDashboardRevenueQuery, DashboardRevenueDto>
 {
     public async Task<DashboardRevenueDto> Handle(
         GetDashboardRevenueQuery request,
@@ -15,9 +17,11 @@ public sealed class GetDashboardRevenueHandler(
     {
         var ledger = await new RevenueLedger(db, currentUser, branchScope)
             .ScopedAsync(null, cancellationToken);
-        var today = await ledger.ForPeriodAsync(request.TodayFromUtc, request.TodayToUtc,
+        var periods = await new RevenuePeriods(db, currentUser, clock)
+            .CurrentAsync(cancellationToken);
+        var today = await ledger.ForPeriodAsync(periods.TodayFromUtc, periods.TodayToUtc,
             cancellationToken);
-        var month = await ledger.ForPeriodAsync(request.MonthFromUtc, request.MonthToUtc,
+        var month = await ledger.ForPeriodAsync(periods.MonthFromUtc, periods.MonthToUtc,
             cancellationToken);
         return new DashboardRevenueDto(today.Net, month.Net);
     }

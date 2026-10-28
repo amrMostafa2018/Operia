@@ -49,12 +49,8 @@ public sealed class CustomerRefundAndBlockTests
             .Should().Be(2);
 
         var revenue = await new GetDashboardRevenueHandler(fixture.Db, fixture.User.Object,
-            fixture.Scope.Object)
-            .Handle(new GetDashboardRevenueQuery(
-                new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
-                new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
-                new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
-                new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc)), CancellationToken.None);
+            fixture.Scope.Object, fixture.Clock.Object)
+            .Handle(new GetDashboardRevenueQuery(), CancellationToken.None);
         revenue.Today.Should().Be(0m);
     }
 
@@ -212,6 +208,7 @@ public sealed class CustomerRefundAndBlockTests
         public TestApplicationDbContext Db { get; }
         public Mock<ICurrentUserService> User { get; }
         public Mock<IBranchScope> Scope { get; }
+        public Mock<IDateTimeProvider> Clock => _clock;
         private readonly Mock<IDateTimeProvider> _clock;
 
         private Fixture(TestApplicationDbContext db, Mock<ICurrentUserService> user,
@@ -236,6 +233,7 @@ public sealed class CustomerRefundAndBlockTests
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase($"CustomerRefund_{Guid.NewGuid()}").Options;
             var db = new TestApplicationDbContext(options, clock.Object, user.Object);
+            db.Tenants.Add(new Tenant { Id = "tenant-1", Timezone = "Africa/Cairo" });
             db.Branches.Add(new Branch { Id = "branch-1", TenantId = "tenant-1", Name = "Branch" });
             db.Customers.Add(new Customer
             {

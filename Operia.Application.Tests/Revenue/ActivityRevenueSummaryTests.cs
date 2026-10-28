@@ -32,8 +32,8 @@ public sealed class ActivityRevenueSummaryTests
         summary.Month.Should().BeEquivalentTo(summary.Today);
 
         var dashboard = await new GetDashboardRevenueHandler(fixture.Db,
-            fixture.User.Object, fixture.Scope.Object).Handle(
-                new GetDashboardRevenueQuery(TodayFrom, TodayTo, MonthFrom, MonthTo),
+            fixture.User.Object, fixture.Scope.Object, fixture.Clock.Object).Handle(
+                new GetDashboardRevenueQuery(),
                 CancellationToken.None);
         dashboard.Today.Should().Be(summary.Today.NetCollected);
         dashboard.Month.Should().Be(summary.Month.NetCollected);
@@ -79,10 +79,29 @@ public sealed class ActivityRevenueSummaryTests
     {
         await using var fixture = await Fixture.CreateAsync();
         fixture.User.SetupGet(x => x.TenantId).Returns("tenant-2");
-        var summary = await fixture.Summary("branch-1");
-        summary.Today.TransactionCount.Should().Be(0);
-        summary.Today.GrossCollected.Should().Be(0m);
-        summary.Today.Refunds.Should().Be(0m);
+        var summary = () => fixture.Summary("branch-1");
+        await summary.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async Task TodayUsesSavedBusinessTimezoneAcrossUtcMidnight()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        fixture.Clock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 10, 27, 22, 30, 0,
+            DateTimeKind.Utc));
+        fixture.Db.SaleCollections.Add(new SaleCollection
+        {
+            TenantId = "tenant-1",
+            SaleId = "sale-today",
+            Amount = 1000m,
+            Confirmed = true,
+            AttemptedAtUtc = new DateTime(2026, 10, 27, 22, 15, 0,
+                DateTimeKind.Utc)
+        });
+        await fixture.Db.SaveChangesAsync();
+        var summary = await fixture.Summary();
+        summary.Today.TransactionCount.Should().Be(2);
+        summary.Today.GrossCollected.Should().Be(6000m);
     }
 
     private sealed class Fixture : IAsyncDisposable
@@ -90,13 +109,15 @@ public sealed class ActivityRevenueSummaryTests
         public TestApplicationDbContext Db { get; }
         public Mock<ICurrentUserService> User { get; }
         public Mock<IBranchScope> Scope { get; }
+        public Mock<IDateTimeProvider> Clock { get; }
 
         private Fixture(TestApplicationDbContext db, Mock<ICurrentUserService> user,
-            Mock<IBranchScope> scope)
+            Mock<IBranchScope> scope, Mock<IDateTimeProvider> clock)
         {
             Db = db;
             User = user;
             Scope = scope;
+            Clock = clock;
         }
 
         public static async Task<Fixture> CreateAsync()
@@ -112,6 +133,7 @@ public sealed class ActivityRevenueSummaryTests
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase($"RevenueSummary_{Guid.NewGuid()}").Options;
             var db = new TestApplicationDbContext(options, clock.Object, user.Object);
+            db.Tenants.Add(new Tenant { Id = "tenant-1", Timezone = "Africa/Cairo" });
             db.Branches.Add(new Branch { Id = "branch-1", TenantId = "tenant-1", Name = "Main" });
             db.Branches.Add(new Branch { Id = "branch-2", TenantId = "tenant-1", Name = "Second" });
             db.Customers.Add(new Customer
@@ -197,13 +219,12 @@ public sealed class ActivityRevenueSummaryTests
                 RecordedAtUtc = TodayFrom.AddHours(11)
             });
             await db.SaveChangesAsync();
-            return new Fixture(db, user, scope);
+            return new Fixture(db, user, scope, clock);
         }
 
         public Task<ActivityRevenueSummaryDto> Summary(string? branchId = null) =>
-            new GetActivityRevenueSummaryHandler(Db, User.Object, Scope.Object).Handle(
-                new GetActivityRevenueSummaryQuery(TodayFrom, TodayTo, MonthFrom, MonthTo,
-                    branchId), CancellationToken.None);
+            new GetActivityRevenueSummaryHandler(Db, User.Object, Scope.Object, Clock.Object)
+                .Handle(new GetActivityRevenueSummaryQuery(branchId), CancellationToken.None);
 
         public ValueTask DisposeAsync() => Db.DisposeAsync();
     }

@@ -2,12 +2,8 @@ using MediatR;
 
 namespace Operia.Application.Revenue.Queries.GetActivityRevenueSummary;
 
-public sealed record GetActivityRevenueSummaryQuery(
-    DateTime TodayFromUtc,
-    DateTime TodayToUtc,
-    DateTime MonthFromUtc,
-    DateTime MonthToUtc,
-    string? BranchId) : IRequest<ActivityRevenueSummaryDto>;
+public sealed record GetActivityRevenueSummaryQuery(string? BranchId)
+    : IRequest<ActivityRevenueSummaryDto>;
 
 public sealed record ActivityRevenueSummaryDto(
     RevenueCardDto Today,
