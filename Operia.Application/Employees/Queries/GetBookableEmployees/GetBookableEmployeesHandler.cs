@@ -89,7 +89,7 @@ public sealed class GetBookableEmployeesHandler
             {
                 return [];
             }
-            if (!offer.AllStaff)
+            if (!offer.AllStaff && offer.AvailableStaff.Count > 0)
             {
                 var assignedIds = offer.AvailableStaff.Select(item => item.EmployeeId)
                     .ToHashSet(StringComparer.Ordinal);

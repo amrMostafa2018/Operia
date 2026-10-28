@@ -41,6 +41,7 @@ public sealed class EndpointAuthorizationContractTests
             ["BranchesController.Delete"] = Policies.BranchesManage,
 
             ["BookingsController.Create"] = Policies.BookingsManage,
+            ["BookingsController.EligibleEmployees"] = Policies.BookingsManage,
             ["BookingsController.FindCustomer"] = Policies.BookingsManage,
             ["BookingsController.FindCustomerById"] = Policies.BookingsManage,
             ["BookingsController.SearchCustomers"] = Policies.BookingsManage,
