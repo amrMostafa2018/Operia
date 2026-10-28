@@ -60,6 +60,10 @@
     "Value": "This appointment is no longer available. Please choose another time."
   },
   {
+    "Name": "BookingDurationMismatch",
+    "Value": "The selected items need more time than this appointment. Choose a longer slot."
+  },
+  {
     "Name": "BookingChanged",
     "Value": "This booking was changed by another user. Refresh and try again."
   },

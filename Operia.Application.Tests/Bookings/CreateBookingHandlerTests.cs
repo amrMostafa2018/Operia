@@ -7,6 +7,7 @@ using Operia.Application.Bookings.Commands.UpdateBooking;
 using Operia.Application.Bookings.Queries.GetCalendarBookings;
 using Operia.Application.Bookings.Queries.FindBookingCustomer;
 using Operia.Application.Bookings.Queries.SearchBookingCustomers;
+using Operia.Application.Bookings.Queries.GetEligibleBookingEmployees;
 using Operia.Application.Customers.Commands.RegisterBookingCustomer;
 using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
@@ -64,6 +65,94 @@ public sealed class CreateBookingHandlerTests
         (await _db.AuditLogs.CountAsync()).Should().Be(1);
         (await _db.BookingPackageReservations.CountAsync()).Should().Be(1);
         (await _db.CustomerPackages.SingleAsync()).ReservedSessions.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Create_RejectsItemsLongerThanSelectedSlot()
+    {
+        await SeedAsync();
+        var request = new CreateBookingCommand(
+            "short-slot", "customer-1", "branch-1", "employee-1", _scheduledDate,
+            600, 660,
+            [new CreateBookingItemInput("package-1", "owned-1", 1),
+             new CreateBookingItemInput("service-1", null, 1)]);
+
+        var act = () => CreateHandler().Handle(request, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Bookings.DurationMismatch);
+        (await _db.Bookings.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task EligibleEmployees_IntersectsOfferAssignmentScheduleAndFullAvailability()
+    {
+        await SeedAsync();
+        _db.Employees.Add(new Employee
+        {
+            Id = "employee-2",
+            TenantId = "tenant-1",
+            BusinessId = "business-1",
+            IdentityUserId = "employee-user-2",
+            Code = "EMP-2",
+            FullName = "Dr Mona",
+            JoiningDate = _scheduledDate
+        });
+        _db.UserBranches.Add(new UserBranch
+        {
+            TenantId = "tenant-1",
+            EmployeeId = "employee-2",
+            BranchId = "branch-1"
+        });
+        _db.EmployeeWorkingDays.Add(new EmployeeWorkingDay
+        {
+            TenantId = "tenant-1",
+            EmployeeId = "employee-2",
+            BranchId = "branch-1",
+            Day = _scheduledDate.DayOfWeek.ToString()[..3].ToLowerInvariant(),
+            Enabled = false,
+            FromTime = new TimeOnly(8, 0),
+            ToTime = new TimeOnly(18, 0)
+        });
+        var package = await _db.Packages.SingleAsync(x => x.Id == "package-1");
+        package.AllStaff = false;
+        package.AvailableStaff.Add(new PackageStaff
+        {
+            TenantId = "tenant-1",
+            PackageId = package.Id,
+            EmployeeId = "employee-1"
+        });
+        package.AvailableStaff.Add(new PackageStaff
+        {
+            TenantId = "tenant-1",
+            PackageId = package.Id,
+            EmployeeId = "employee-2"
+        });
+        await _db.SaveChangesAsync();
+        _identity.Setup(x => x.GetRolesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, string>
+            {
+                ["employee-user"] = "Staff",
+                ["employee-user-2"] = "Staff"
+            });
+        var query = new GetEligibleBookingEmployeesQuery("branch-1", _scheduledDate, 600, 690,
+            [new CreateBookingItemInput("package-1", "owned-1", 1),
+             new CreateBookingItemInput("service-1", null, 1)]);
+        var handler = new GetEligibleBookingEmployeesHandler(
+            _db, _user.Object, _branchScope.Object, _identity.Object, _clock.Object);
+
+        var available = await handler.Handle(query, CancellationToken.None);
+        available.Select(x => x.Id).Should().ContainSingle().Which.Should().Be("employee-1");
+
+        package.AvailableStaff.Clear();
+        await _db.SaveChangesAsync();
+        (await handler.Handle(query, CancellationToken.None)).Select(x => x.Id)
+            .Should().ContainSingle().Which.Should().Be("employee-1");
+
+        await CreateHandler().Handle(new CreateBookingCommand(
+            "first-user", "customer-1", "branch-1", "employee-1", _scheduledDate,
+            600, 690, query.Items), CancellationToken.None);
+        (await handler.Handle(query, CancellationToken.None)).Should().BeEmpty();
     }
 
     [Fact]
@@ -663,7 +752,7 @@ public sealed class CreateBookingHandlerTests
         });
         await _db.SaveChangesAsync();
 
-        var created = await CreateHandler().Handle(Command("owned-service-booking", 600, 660), CancellationToken.None);
+        var created = await CreateHandler().Handle(Command("owned-service-booking", 600, 690), CancellationToken.None);
         var booking = await _db.Bookings.SingleAsync(x => x.Id == created.Id);
 
         await new UpdateBookingHandler(
@@ -697,7 +786,7 @@ public sealed class CreateBookingHandlerTests
     public async Task Update_AddsStandaloneServiceWithoutChangingPackageReservation()
     {
         await SeedAsync();
-        var created = await CreateHandler().Handle(Command("request-1", 600, 660), CancellationToken.None);
+        var created = await CreateHandler().Handle(Command("request-1", 600, 690), CancellationToken.None);
         var booking = await _db.Bookings.SingleAsync(x => x.Id == created.Id);
 
         await new UpdateBookingHandler(
@@ -829,7 +918,7 @@ public sealed class CreateBookingHandlerTests
                 "employee-1",
                 _scheduledDate,
                 720,
-                750,
+                780,
                 [new CreateBookingItemInput("service-1", null, 1)]),
             CancellationToken.None);
         var booking = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == first.Id);
@@ -1129,7 +1218,7 @@ public sealed class CreateBookingHandlerTests
                 "employee-1",
                 _scheduledDate,
                 600,
-                630,
+                690,
                 [
                     new CreateBookingItemInput("package-1", "owned-1", 1),
                     new CreateBookingItemInput("pulse-1", null, 1, "packagePurchase")

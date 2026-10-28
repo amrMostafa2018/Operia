@@ -104,7 +104,8 @@ public sealed class BookSaleHandler(
             .Where(x => x.TenantId == tenantId && offerIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
         if (offers.Count != offerIds.Length || offers.Values.Any(x =>
-                !x.AllStaff && x.AvailableStaff.All(staff => staff.EmployeeId != employee.Id)))
+                !x.AllStaff && x.AvailableStaff.Count > 0 &&
+                x.AvailableStaff.All(staff => staff.EmployeeId != employee.Id)))
         {
             throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageStaffUnavailable,
                 "employeeId");
@@ -195,8 +196,15 @@ public sealed class BookSaleHandler(
         sale.Status = "Booked";
         auditWriter.Write(tenantId, AuditActions.BookingCreated, nameof(Booking),
             booking.Id, booking.BookingNumber,
-            new { sale.Id, booking.BranchId, booking.EmployeeId,
-                booking.ScheduledDate, booking.StartMinutes, booking.EndMinutes });
+            new
+            {
+                sale.Id,
+                booking.BranchId,
+                booking.EmployeeId,
+                booking.ScheduledDate,
+                booking.StartMinutes,
+                booking.EndMinutes
+            });
         auditWriter.Write(tenantId, AuditActions.SaleBooked, nameof(Sale),
             sale.Id, sale.Id, new { booking.Id });
         try

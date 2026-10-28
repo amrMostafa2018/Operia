@@ -155,6 +155,7 @@ public static class ApiErrorCodes
         public const string DateRangeTooLarge = "BookingDateRangeTooLarge";
         public const string NotFound = "BookingNotFound";
         public const string SlotUnavailable = "BookingSlotUnavailable";
+        public const string DurationMismatch = "BookingDurationMismatch";
         public const string Changed = "BookingChanged";
         public const string StatusInvalid = "BookingStatusInvalid";
         public const string CustomerNotFound = "BookingCustomerNotFound";
