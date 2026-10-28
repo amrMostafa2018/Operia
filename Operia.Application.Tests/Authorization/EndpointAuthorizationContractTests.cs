@@ -60,6 +60,7 @@ public sealed class EndpointAuthorizationContractTests
             ["CustomersController.Register"] = Policies.CustomersManage,
             ["CustomersController.DirectSales"] = Policies.CustomersRead,
             ["CustomersController.PurchaseInquiry"] = Policies.CustomersRead,
+            ["CustomersController.Statement"] = Policies.CustomersRead,
             ["CustomersController.CollectInstallment"] = Policies.CustomersCollectInstallment,
 
             ["RevenueController.InstallmentCollections"] = Policies.RevenueRead,

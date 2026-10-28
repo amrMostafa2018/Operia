@@ -145,6 +145,9 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
         result.CompletedSessions.Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new CompletedPurchaseSessionDto(
                 1, new DateOnly(2026, 10, 20), 600, null, 2500, "Performed"));
+        var outsideBranch = await new GetCustomerPurchaseDetailsHandler(db, user.Object, clock.Object)
+            .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1", ["branch-2"]), CancellationToken.None);
+        outsideBranch.CompletedSessions.Should().BeEmpty();
 
         var storedPurchase = await db.CustomerPackages.SingleAsync(x => x.Id == "purchase-1");
         storedPurchase.AmountDue = 10000m;

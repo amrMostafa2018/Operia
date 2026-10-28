@@ -9,6 +9,7 @@ using Operia.Application.Customers.Queries.ListDirectCustomerSales;
 using Operia.Application.Customers.Commands.RegisterBookingCustomer;
 using Operia.Application.Customers.Queries.ListCustomerOperations;
 using Operia.Application.Customers.Queries.ExportCustomerOperations;
+using Operia.Application.Customers.Queries.GetCustomerStatement;
 
 namespace Operia.Controllers;
 
@@ -84,6 +85,14 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
         string purchaseId,
         CancellationToken cancellationToken) =>
         mediator.Send(new GetCustomerPurchaseDetailsQuery(purchaseId), cancellationToken);
+
+    [HttpGet("{customerId}/purchases/{purchaseId}/statement")]
+    [Authorize(Policy = Policies.CustomersRead)]
+    public Task<CustomerStatementDto> Statement(
+        string customerId,
+        string purchaseId,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new GetCustomerStatementQuery(customerId, purchaseId), cancellationToken);
 
     [HttpPost("purchases/{purchaseId}/installments")]
     [Authorize(Policy = Policies.CustomersCollectInstallment)]
