@@ -10,6 +10,10 @@ using Operia.Application.Customers.Commands.RegisterBookingCustomer;
 using Operia.Application.Customers.Queries.ListCustomerOperations;
 using Operia.Application.Customers.Queries.ExportCustomerOperations;
 using Operia.Application.Customers.Queries.GetCustomerStatement;
+using Operia.Application.Customers.Queries.GetCustomerAction;
+using Operia.Application.Customers.Commands.CancelAndRefundPurchase;
+using Operia.Application.Customers.Commands.SetCustomerBlock;
+using Operia.Application.Customers.Queries.GetCustomerActionHistory;
 
 namespace Operia.Controllers;
 
@@ -102,4 +106,31 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
         CancellationToken cancellationToken) =>
         mediator.Send(new CollectInstallmentCommand(
             purchaseId, request.PaymentMethod, request.IdempotencyKey), cancellationToken);
+
+    [HttpGet("{customerId}/purchases/{purchaseId}/action")]
+    [Authorize(Policy = Policies.CustomersRead)]
+    public Task<CustomerActionDto> Action(string customerId, string purchaseId,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new GetCustomerActionQuery(customerId, purchaseId), cancellationToken);
+
+    [HttpPost("purchases/{purchaseId}/cancel-refund")]
+    [Authorize(Policy = Policies.CustomersRefund)]
+    public Task<CancelAndRefundPurchaseResult> CancelAndRefund(string purchaseId,
+        [FromBody] CancelAndRefundPurchaseRequest request, CancellationToken cancellationToken) =>
+        mediator.Send(new CancelAndRefundPurchaseCommand(purchaseId, request.Amount,
+            request.IdempotencyKey, request.Note), cancellationToken);
+
+    [HttpPut("{customerId}/block")]
+    [Authorize(Policy = Policies.CustomersBlock)]
+    public Task<SetCustomerBlockResult> SetBlock(string customerId,
+        [FromBody] SetCustomerBlockRequest request, CancellationToken cancellationToken) =>
+        mediator.Send(new SetCustomerBlockCommand(customerId, request.IsBlocked,
+            request.Reason, request.Version), cancellationToken);
+
+    [HttpGet("{customerId}/purchases/{purchaseId}/history")]
+    [Authorize(Policy = Policies.CustomersHistory)]
+    public Task<CustomerActionHistoryPage> History(string customerId, string purchaseId,
+        [FromQuery] int page = 1, CancellationToken cancellationToken = default) =>
+        mediator.Send(new GetCustomerActionHistoryQuery(customerId, purchaseId, page),
+            cancellationToken);
 }

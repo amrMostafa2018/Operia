@@ -17,6 +17,8 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(x => x.FullName).IsRequired().HasMaxLength(200);
         builder.Property(x => x.MobileNumber).IsRequired().HasMaxLength(30);
         builder.Property(x => x.NormalizedMobileNumber).IsRequired().HasMaxLength(30);
+        builder.Property(x => x.BlockReason).HasMaxLength(500);
+        builder.Property(x => x.Version).IsRowVersion();
         builder.Property(x => x.CreatedBy).HasMaxLength(450);
         builder.HasIndex(x => new { x.TenantId, x.NormalizedMobileNumber }).IsUnique();
     }

@@ -100,7 +100,7 @@ public sealed class CustomerOperationsTests
             FullName = "Blocked customer",
             MobileNumber = "01012345678",
             NormalizedMobileNumber = "01012345678",
-            IsActive = false
+            IsBlocked = true
         });
         var line = new ConfirmedSaleItemSnapshot(
             "offer-1", null, "Ten sessions", "package", 60, 10, 1, "installment",
@@ -173,11 +173,13 @@ public sealed class CustomerOperationsTests
             .ToDictionary(x => (string)x.Attribute("r")!, x => x);
         cells["C2"].Attribute("t")!.Value.Should().Be("inlineStr");
         cells["C2"].Descendants(ns + "t").Single().Value.Should().Be("01012345678");
-        cells["P2"].Attribute("s")!.Value.Should().Be("1");
-        cells["P2"].Element(ns + "v")!.Value.Should().NotBeNullOrWhiteSpace();
+        cells["S2"].Attribute("s")!.Value.Should().Be("1");
+        cells["S2"].Element(ns + "v")!.Value.Should().NotBeNullOrWhiteSpace();
         cells["H2"].Element(ns + "v")!.Value.Should().Be("20000");
         cells["I2"].Element(ns + "v")!.Value.Should().Be("5000");
-        cells["J2"].Element(ns + "v")!.Value.Should().Be("15000");
+        cells["J2"].Element(ns + "v")!.Value.Should().Be("0");
+        cells["K2"].Element(ns + "v")!.Value.Should().Be("5000");
+        cells["L2"].Element(ns + "v")!.Value.Should().Be("15000");
         xml.Descendants(ns + "row").Should().HaveCount(2);
 
         var purchase = await db.CustomerPackages.SingleAsync();

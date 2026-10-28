@@ -14,5 +14,9 @@ public sealed class Customer : Entity, ITenantScoped
     /// <summary>The tenant's shared walk-in ledger, not an identifiable person.</summary>
     public bool IsDirect { get; set; }
     public bool IsActive { get; set; } = true;
+    /// <summary>Center-specific restriction on new bookings.</summary>
+    public bool IsBlocked { get; set; }
+    public string? BlockReason { get; set; }
+    public byte[] Version { get; set; } = [];
     public ICollection<CustomerPackage> Packages { get; set; } = [];
 }

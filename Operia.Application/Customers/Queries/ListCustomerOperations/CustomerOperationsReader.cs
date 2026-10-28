@@ -32,7 +32,7 @@ public sealed class CustomerOperationsReader(
                     select new SaleSource(
                         sale.Id, sale.CreatedAt, sale.ItemsSnapshotJson,
                         sale.Status, customer.Id, customer.FullName, customer.MobileNumber,
-                        customer.IsActive, branch.Name);
+                        customer.IsActive, customer.IsBlocked, branch.Name);
 
         if (filter.FromDate is { } from)
         {
@@ -76,6 +76,12 @@ public sealed class CustomerOperationsReader(
             .Where(x => x.TenantId == tenantId && saleIds.Contains(x.SaleId) && x.Confirmed)
             .Select(x => x.SaleId).Distinct().ToArrayAsync(cancellationToken);
         var confirmed = confirmedIds.ToHashSet();
+        var purchaseIds = purchases.Select(x => x.Id).ToArray();
+        var refunds = await db.RefundTransactions.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && purchaseIds.Contains(x.CustomerPackageId))
+            .GroupBy(x => x.CustomerPackageId)
+            .Select(group => new { PurchaseId = group.Key, Amount = group.Sum(x => x.Amount) })
+            .ToDictionaryAsync(x => x.PurchaseId, x => x.Amount, cancellationToken);
         var today = DateOnly.FromDateTime(clock.UtcNow);
         var rows = new List<CustomerOperationDto>();
 
@@ -103,7 +109,7 @@ public sealed class CustomerOperationsReader(
                         var total = purchase.PurchasePrice ?? line.FinalAmount / linked.Length;
                         var collected = Math.Clamp(total - (purchase.AmountDue ?? total), 0m, total);
                         rows.Add(CreateRow(sale, line, purchase.Id, total, collected,
-                            purchase, today));
+                            purchase, today, refunds.GetValueOrDefault(purchase.Id)));
                     }
                 }
             }
@@ -136,25 +142,30 @@ public sealed class CustomerOperationsReader(
         decimal total,
         decimal collected,
         PurchaseSource? purchase,
-        DateOnly today)
+        DateOnly today,
+        decimal refunded = 0m)
     {
-        var remaining = Math.Max(0m, total - collected);
+        var financialDue = Math.Max(0m, total - collected);
+        var remaining = purchase is { IsActive: false } ? 0m : financialDue;
         var status = purchase is null ? sale.Status == "PendingCollection" ? "pending" : "completed"
             : !purchase.IsActive ? "cancelled"
             : purchase.ExpiresOn is { } expiry && expiry < today ? "expired"
             : purchase.Total > 0 && purchase.Used >= purchase.Total ? "completed" : "active";
-        var paymentStatus = total == 0m || remaining == 0m ? "fullyPaid"
+        var paymentStatus = total == 0m || financialDue == 0m ? "fullyPaid"
             : collected > 0m ? "partial" : "unpaid";
         var snapshot = PackagePurchaseSnapshot.FromJson(purchase?.SnapshotJson);
-        var installmentStatus = InstallmentStatus(snapshot, remaining, collected, purchase?.Used ?? 0);
+        var installmentStatus = purchase is { IsActive: false } ? "cancelled"
+            : InstallmentStatus(snapshot, financialDue, collected, purchase?.Used ?? 0);
         return new CustomerOperationDto(
             id, sale.Id, sale.CustomerId, sale.CustomerName, sale.Mobile,
             sale.BranchName, line.Name,
             line.OfferType == "package" ? "package" : "session", sale.CreatedAt,
             line.PaymentOption, total, collected, remaining,
             purchase?.Total, purchase is null ? null : Math.Max(0, purchase.Total - purchase.Used),
-            sale.CustomerActive ? "active" : "blocked", status, paymentStatus,
-            installmentStatus);
+            sale.CustomerBlocked ? "blocked" : sale.CustomerActive ? "active" : "inactive",
+            status, paymentStatus,
+            installmentStatus, refunded, collected - refunded,
+            refunded == 0m ? "none" : refunded >= collected ? "full" : "partial");
     }
 
     private static string InstallmentStatus(
@@ -189,7 +200,7 @@ public sealed class CustomerOperationsReader(
     private sealed record SaleSource(
         string Id, DateTime CreatedAt, string ItemsJson, string Status,
         string CustomerId, string CustomerName, string Mobile,
-        bool CustomerActive, string BranchName);
+        bool CustomerActive, bool CustomerBlocked, string BranchName);
 
     private sealed record PurchaseSource(
         string Id, string SaleId, int? ItemIndex, decimal? PurchasePrice,
