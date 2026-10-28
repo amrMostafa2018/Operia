@@ -7,6 +7,8 @@ using Operia.Application.Customers.Queries.GetCustomerPurchaseDetails;
 using Operia.Application.Customers.Commands.CollectInstallment;
 using Operia.Application.Customers.Queries.ListDirectCustomerSales;
 using Operia.Application.Customers.Commands.RegisterBookingCustomer;
+using Operia.Application.Customers.Queries.ListCustomerOperations;
+using Operia.Application.Customers.Queries.ExportCustomerOperations;
 
 namespace Operia.Controllers;
 
@@ -14,6 +16,45 @@ namespace Operia.Controllers;
 [Route("api/customers")]
 public sealed class CustomersController(IMediator mediator) : ControllerBase
 {
+    [HttpGet("operations")]
+    [Authorize(Policy = Policies.CustomersRead)]
+    public Task<CustomerOperationsPageDto> Operations(
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
+        [FromQuery] string? customer = null,
+        [FromQuery] string? mobile = null,
+        [FromQuery] string? service = null,
+        [FromQuery] string? serviceType = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string? paymentType = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default) =>
+        mediator.Send(new ListCustomerOperationsQuery(
+            new CustomerOperationsFilter(fromDate, toDate, customer, mobile, service,
+                serviceType, status, paymentType), page, pageSize), cancellationToken);
+
+    [HttpGet("operations/export")]
+    [Authorize(Policy = Policies.CustomersExport)]
+    public async Task<FileContentResult> ExportOperations(
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
+        [FromQuery] string? customer = null,
+        [FromQuery] string? mobile = null,
+        [FromQuery] string? service = null,
+        [FromQuery] string? serviceType = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string? paymentType = null,
+        CancellationToken cancellationToken = default)
+    {
+        var workbook = await mediator.Send(new ExportCustomerOperationsQuery(
+            new CustomerOperationsFilter(fromDate, toDate, customer, mobile, service,
+                serviceType, status, paymentType)), cancellationToken);
+        return File(workbook,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "customer-operations.xlsx");
+    }
+
     [HttpPost("registration")]
     [Authorize(Policy = Policies.CustomersManage)]
     public async Task<IActionResult> Register(

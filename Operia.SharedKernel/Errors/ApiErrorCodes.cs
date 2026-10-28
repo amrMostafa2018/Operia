@@ -38,6 +38,8 @@ public static class ApiErrorCodes
 
     public static class Customers
     {
+        public const string InvalidOperationDateRange = "CustomerOperationDateRangeInvalid";
+        public const string InvalidOperationFilter = "CustomerOperationFilterInvalid";
         public const string PurchaseNotFound = "CustomerPurchaseNotFound";
         public const string InstallmentUnavailable = "CustomerInstallmentUnavailable";
         public const string InstallmentNotEligible = "CustomerInstallmentNotEligible";

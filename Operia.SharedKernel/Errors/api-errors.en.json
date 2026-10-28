@@ -16,6 +16,14 @@
     "Value": "This customer purchase could not be found."
   },
   {
+    "Name": "CustomerOperationDateRangeInvalid",
+    "Value": "The end date must be on or after the start date."
+  },
+  {
+    "Name": "CustomerOperationFilterInvalid",
+    "Value": "Select a valid customer operations filter."
+  },
+  {
     "Name": "CustomerInstallmentUnavailable",
     "Value": "There is no open installment on this purchase."
   },
