@@ -19,16 +19,26 @@ public sealed class FindBookingCustomerHandler(
         CancellationToken cancellationToken)
     {
         var tenantId = BookingAccess.RequireTenant(currentUser);
-        var normalizedMobile = NormalizeMobile(request.Mobile);
-        var alternateMobile = normalizedMobile.StartsWith("20", StringComparison.Ordinal) &&
-                              normalizedMobile.Length == 12
-            ? "0" + normalizedMobile[2..]
-            : normalizedMobile;
         var today = DateOnly.FromDateTime(clock.UtcNow);
-        var customer = await db.Customers.AsNoTracking()
-            .Where(x => x.TenantId == tenantId && x.IsActive && !x.IsDirect &&
-                        (x.NormalizedMobileNumber == normalizedMobile ||
-                         x.NormalizedMobileNumber == alternateMobile))
+        var customerQuery = db.Customers.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.IsActive && !x.IsDirect);
+        if (!string.IsNullOrWhiteSpace(request.CustomerId))
+        {
+            customerQuery = customerQuery.Where(x => x.Id == request.CustomerId);
+        }
+        else
+        {
+            var normalizedMobile = NormalizeMobile(request.Mobile ?? string.Empty);
+            var alternateMobile = normalizedMobile.StartsWith("20", StringComparison.Ordinal) &&
+                                  normalizedMobile.Length == 12
+                ? "0" + normalizedMobile[2..]
+                : normalizedMobile;
+            customerQuery = customerQuery.Where(x =>
+                x.NormalizedMobileNumber == normalizedMobile ||
+                x.NormalizedMobileNumber == alternateMobile);
+        }
+
+        var customer = await customerQuery
             .Select(x => new { x.Id, x.FullName, x.MobileNumber })
             .SingleOrDefaultAsync(cancellationToken);
         if (customer is null)

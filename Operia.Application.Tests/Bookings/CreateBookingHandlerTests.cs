@@ -148,6 +148,33 @@ public sealed class CreateBookingHandlerTests
         var byMobile = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
             .Handle(new FindBookingCustomerQuery("01098765432"), CancellationToken.None);
         byMobile!.Id.Should().Be(created.Id);
+        var byId = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
+            .Handle(new FindBookingCustomerQuery(null, CustomerId: created.Id), CancellationToken.None);
+        byId!.Id.Should().Be(created.Id);
+    }
+
+    [Fact]
+    public async Task NameSearch_DistinguishesCustomersByIdAndMobile()
+    {
+        await SeedAsync();
+        _db.Customers.Add(new Customer
+        {
+            Id = "customer-2",
+            TenantId = "tenant-1",
+            FullName = "Ahmed Ali",
+            MobileNumber = "01098765432",
+            NormalizedMobileNumber = "201098765432"
+        });
+        await _db.SaveChangesAsync();
+
+        var results = await new SearchBookingCustomersHandler(_db, _user.Object)
+            .Handle(new SearchBookingCustomersQuery("Ahmed Ali"), CancellationToken.None);
+        results.Select(x => (x.Id, x.MobileNumber)).Should().BeEquivalentTo(
+            new[] { ("customer-1", "01012345678"), ("customer-2", "01098765432") });
+        var selected = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
+            .Handle(new FindBookingCustomerQuery(null, CustomerId: "customer-2"), CancellationToken.None);
+        selected!.Id.Should().Be("customer-2");
+        selected.MobileNumber.Should().Be("01098765432");
     }
 
     [Fact]
