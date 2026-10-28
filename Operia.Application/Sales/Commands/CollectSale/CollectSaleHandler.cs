@@ -84,6 +84,7 @@ public sealed class CollectSaleHandler(
             };
             db.SaleCollections.Add(attempt);
 
+            var oldStatus = sale.Status;
             if (request.PaymentConfirmed)
             {
                 var items = JsonSerializer.Deserialize<ConfirmedSaleItemSnapshot[]>(sale.ItemsSnapshotJson)
@@ -135,9 +136,19 @@ public sealed class CollectSaleHandler(
                 sale.Status = sale.Disposition == "Close" ? "Closed" : "ReadyToBook";
             }
 
-            auditWriter.Write(tenantId, AuditActions.SaleCollectionAttempted,
+            auditWriter.Write(tenantId,
+                request.PaymentConfirmed ? AuditActions.SalePaymentConfirmed
+                    : AuditActions.SaleCollectionAttempted,
                 nameof(Sale), sale.Id, sale.Id,
-                new { attempt.Id, attempt.Amount, attempt.PaymentMethod, attempt.Confirmed });
+                new
+                {
+                    attempt.Id,
+                    attempt.Amount,
+                    attempt.PaymentMethod,
+                    attempt.Confirmed,
+                    OldStatus = oldStatus,
+                    NewStatus = sale.Status
+                });
             await db.SaveChangesAsync(token);
             return Result(sale, attempt);
         }, cancellationToken);

@@ -7,6 +7,7 @@ using Operia.Application.Common.Interfaces;
 using Operia.Application.Customers.Commands.CancelAndRefundPurchase;
 using Operia.Application.Customers.Commands.SetCustomerBlock;
 using Operia.Application.Customers.Queries.GetCustomerAction;
+using Operia.Application.Customers.Queries.GetCustomerActionHistory;
 using Operia.Application.Dashboard.Queries.GetDashboardRevenue;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Entities;
@@ -74,12 +75,135 @@ public sealed class CustomerRefundAndBlockTests
         (await fixture.Db.Bookings.SingleAsync()).Status.Should().Be(BookingStatus.Booked);
         (await fixture.Db.CustomerPackages.SingleAsync()).IsActive.Should().BeTrue();
 
+        await handler.Handle(new SetCustomerBlockCommand("customer-1", true, "Updated reason",
+            Convert.ToBase64String(customer.Version)), CancellationToken.None);
+
         await handler.Handle(new SetCustomerBlockCommand("customer-1", false, null,
             Convert.ToBase64String(customer.Version)), CancellationToken.None);
         (await fixture.Db.AuditLogs.CountAsync(x => x.Action == AuditActions.CustomerBlocked))
             .Should().Be(1);
         (await fixture.Db.AuditLogs.CountAsync(x => x.Action == AuditActions.CustomerUnblocked))
             .Should().Be(1);
+        (await fixture.Db.AuditLogs.CountAsync(x =>
+            x.Action == AuditActions.CustomerBlockReasonChanged)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task HistoryShowsSavedRefundAndBlockTransitionsForSelectedCustomer()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var action = await new GetCustomerActionHandler(fixture.Db, fixture.User.Object,
+            fixture.Scope.Object).Handle(new GetCustomerActionQuery("customer-1", "purchase-1"),
+                CancellationToken.None);
+        var block = new SetCustomerBlockHandler(fixture.Db, fixture.User.Object,
+            new AuditWriter(fixture.Db, fixture.User.Object));
+        await block.Handle(new SetCustomerBlockCommand("customer-1", true, "Safety review",
+            action.CustomerVersion), CancellationToken.None);
+        var customer = await fixture.Db.Customers.SingleAsync();
+        await block.Handle(new SetCustomerBlockCommand("customer-1", false, null,
+            Convert.ToBase64String(customer.Version)), CancellationToken.None);
+        var refund = await fixture.Refund(1500m, "refund-one");
+
+        var history = await fixture.History();
+        history.Items.Should().Contain(x => x.Action == AuditActions.CustomerBlocked &&
+            x.OldValue == "unblocked" && x.NewValue == "blocked" &&
+            x.NewReason == "Safety review" && x.ReferenceId == "customer-1");
+        history.Items.Should().Contain(x => x.Action == AuditActions.CustomerUnblocked &&
+            x.OldValue == "blocked" && x.NewValue == "unblocked" &&
+            x.OldReason == "Safety review" && x.NewReason == null);
+        history.Items.Should().Contain(x => x.Action == AuditActions.RefundPosted &&
+            x.Amount == 1500m && x.ReferenceId == refund.RefundId &&
+            x.ReferenceType == "refund");
+        history.Items.Should().Contain(x => x.Action == AuditActions.PurchaseCancelled &&
+            x.OldValue == "active" && x.NewValue == "cancelled");
+    }
+
+    [Fact]
+    public async Task HistoryCursorDoesNotRepeatRowsWhenNewAuditArrives()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        for (var index = 0; index < 12; index++)
+        {
+            fixture.Db.AuditLogs.Add(new AuditLog
+            {
+                Id = $"history-{index:D2}",
+                TenantId = "tenant-1",
+                EntityType = nameof(Customer),
+                EntityId = "customer-1",
+                Action = AuditActions.CustomerBlocked
+            });
+        }
+        fixture.Db.AuditLogs.Add(new AuditLog
+        {
+            Id = "other-customer",
+            TenantId = "tenant-1",
+            EntityType = nameof(Customer),
+            EntityId = "other-customer",
+            Action = AuditActions.CustomerBlocked
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var first = await fixture.History();
+        first.Items.Should().HaveCount(10);
+        first.NextCursor.Should().NotBeNull();
+        fixture.Db.AuditLogs.Add(new AuditLog
+        {
+            Id = "history-99",
+            TenantId = "tenant-1",
+            EntityType = nameof(Customer),
+            EntityId = "customer-1",
+            Action = AuditActions.CustomerBlocked
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var second = await fixture.History(first.NextCursor);
+        second.Items.Should().HaveCount(2);
+        second.NextCursor.Should().BeNull();
+        first.Items.Select(x => x.Id).Intersect(second.Items.Select(x => x.Id))
+            .Should().BeEmpty();
+        first.Items.Concat(second.Items).Select(x => x.Id).Should().NotContain("other-customer");
+    }
+
+    [Fact]
+    public async Task HistoryRequiresSelectedSaleBranch()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        fixture.Scope.Setup(x => x.GetAllowedBranchIdsAsync("admin-1",
+                It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        var read = () => fixture.History();
+        await read.Should().ThrowAsync<ApiNotFoundException>();
+    }
+
+    [Fact]
+    public async Task SaleLineHistoryShowsConfirmedPaymentAndRejectsAnotherCustomer()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        fixture.Db.AuditLogs.Add(new AuditLog
+        {
+            TenantId = "tenant-1",
+            EntityType = nameof(Sale),
+            EntityId = "sale-1",
+            Action = AuditActions.SalePaymentConfirmed,
+            UserDisplayName = "Cashier",
+            DetailsJson = """
+                {"id":"payment-1","amount":5000,"confirmed":true,
+                 "oldStatus":"PendingCollection","newStatus":"ReadyToBook"}
+                """
+        });
+        await fixture.Db.SaveChangesAsync();
+        var handler = new GetCustomerActionHistoryHandler(fixture.Db,
+            fixture.User.Object, fixture.Scope.Object);
+
+        var history = await handler.Handle(new GetCustomerActionHistoryQuery(
+            "customer-1", "sale-1", true), CancellationToken.None);
+        history.Items.Should().ContainSingle(x => x.Action == AuditActions.SalePaymentConfirmed &&
+            x.Actor == "Cashier" && x.Amount == 5000m &&
+            x.OldValue == "PendingCollection" && x.NewValue == "ReadyToBook" &&
+            x.ReferenceType == "payment" && x.ReferenceId == "payment-1");
+
+        var otherCustomer = () => handler.Handle(new GetCustomerActionHistoryQuery(
+            "customer-2", "sale-1", true), CancellationToken.None);
+        await otherCustomer.Should().ThrowAsync<ApiNotFoundException>();
     }
 
     private sealed class Fixture : IAsyncDisposable
@@ -194,6 +318,13 @@ public sealed class CustomerRefundAndBlockTests
                 Scope.Object, new AuditWriter(Db, User.Object), _clock.Object);
             return handler.Handle(new CancelAndRefundPurchaseCommand("purchase-1", amount, key, null),
                 CancellationToken.None);
+        }
+
+        public Task<CustomerActionHistoryPage> History(string? cursor = null)
+        {
+            var handler = new GetCustomerActionHistoryHandler(Db, User.Object, Scope.Object);
+            return handler.Handle(new GetCustomerActionHistoryQuery(
+                "customer-1", "purchase-1", false, cursor), CancellationToken.None);
         }
 
         public ValueTask DisposeAsync() => Db.DisposeAsync();

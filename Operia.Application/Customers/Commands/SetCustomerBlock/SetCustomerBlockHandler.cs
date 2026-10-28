@@ -34,8 +34,10 @@ public sealed class SetCustomerBlockHandler(
         var oldReason = customer.BlockReason;
         customer.IsBlocked = request.IsBlocked;
         customer.BlockReason = reason;
-        auditWriter.Write(tenantId,
-            customer.IsBlocked ? AuditActions.CustomerBlocked : AuditActions.CustomerUnblocked,
+        var auditAction = oldState == customer.IsBlocked
+            ? AuditActions.CustomerBlockReasonChanged
+            : customer.IsBlocked ? AuditActions.CustomerBlocked : AuditActions.CustomerUnblocked;
+        auditWriter.Write(tenantId, auditAction,
             nameof(Operia.Domain.Entities.Customer), customer.Id, customer.FullName,
             new
             {

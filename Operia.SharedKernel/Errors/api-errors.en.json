@@ -56,6 +56,7 @@
   { "Name": "CustomerChanged", "Value": "This customer was changed by another user. Refresh and try again." },
   { "Name": "CustomerNotFound", "Value": "This customer could not be found." },
   { "Name": "CustomerBlocked", "Value": "This customer cannot make a new booking at this center. Contact the center for help." },
+  { "Name": "CustomerHistoryCursorInvalid", "Value": "This history page is no longer available. Reopen the history and try again." },
   {
     "Name": "BookingBranchRequired",
     "Value": "Select a branch to view bookable employees."

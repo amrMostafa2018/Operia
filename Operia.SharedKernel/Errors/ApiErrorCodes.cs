@@ -56,6 +56,7 @@ public static class ApiErrorCodes
         public const string CustomerChanged = "CustomerChanged";
         public const string CustomerNotFound = "CustomerNotFound";
         public const string CustomerBlocked = "CustomerBlocked";
+        public const string HistoryCursorInvalid = "CustomerHistoryCursorInvalid";
     }
 
     /// <summary>Employee working-day and branch schedule failures.</summary>

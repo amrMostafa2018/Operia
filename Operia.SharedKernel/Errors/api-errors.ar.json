@@ -56,6 +56,7 @@
   { "Name": "CustomerChanged", "Value": "تم تعديل هذا العميل بواسطة مستخدم آخر. حدّث البيانات وأعد المحاولة." },
   { "Name": "CustomerNotFound", "Value": "تعذر العثور على هذا العميل." },
   { "Name": "CustomerBlocked", "Value": "لا يمكن لهذا العميل إجراء حجز جديد لدى هذا المركز حاليًا. يرجى التواصل مع المركز." },
+  { "Name": "CustomerHistoryCursorInvalid", "Value": "صفحة سجل التعديلات لم تعد متاحة. أعد فتح السجل وحاول مجددًا." },
   {
     "Name": "BookingBranchRequired",
     "Value": "اختر فرعًا لعرض الموظفين المتاحين للحجز."

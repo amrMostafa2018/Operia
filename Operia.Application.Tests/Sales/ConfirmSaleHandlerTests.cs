@@ -58,7 +58,9 @@ public sealed class ConfirmSaleHandlerTests
         purchases[1].PurchasePrice.Should().Be(30m);
         purchases[1].AmountDue.Should().Be(0m);
         (await fixture.Db.AuditLogs.CountAsync(x =>
-            x.Action == AuditActions.SaleCollectionAttempted)).Should().Be(2);
+            x.Action == AuditActions.SaleCollectionAttempted)).Should().Be(1);
+        (await fixture.Db.AuditLogs.CountAsync(x =>
+            x.Action == AuditActions.SalePaymentConfirmed)).Should().Be(1);
         var revenue = await new ListActivityRevenueHandler(fixture.Db, fixture.User.Object)
             .Handle(new ListActivityRevenueQuery(), CancellationToken.None);
         revenue.ConfirmedTotal.Should().Be(80m);

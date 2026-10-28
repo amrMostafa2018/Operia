@@ -130,7 +130,14 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
     [HttpGet("{customerId}/purchases/{purchaseId}/history")]
     [Authorize(Policy = Policies.CustomersHistory)]
     public Task<CustomerActionHistoryPage> History(string customerId, string purchaseId,
-        [FromQuery] int page = 1, CancellationToken cancellationToken = default) =>
-        mediator.Send(new GetCustomerActionHistoryQuery(customerId, purchaseId, page),
+        [FromQuery] string? cursor = null, CancellationToken cancellationToken = default) =>
+        mediator.Send(new GetCustomerActionHistoryQuery(customerId, purchaseId, false, cursor),
+            cancellationToken);
+
+    [HttpGet("{customerId}/sales/{saleId}/history")]
+    [Authorize(Policy = Policies.CustomersHistory)]
+    public Task<CustomerActionHistoryPage> SaleHistory(string customerId, string saleId,
+        [FromQuery] string? cursor = null, CancellationToken cancellationToken = default) =>
+        mediator.Send(new GetCustomerActionHistoryQuery(customerId, saleId, true, cursor),
             cancellationToken);
 }
