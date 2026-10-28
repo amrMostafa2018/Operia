@@ -16,6 +16,14 @@
     "Value": "تعذر العثور على عملية الشراء هذه."
   },
   {
+    "Name": "CustomerOperationDateRangeInvalid",
+    "Value": "يجب أن يكون تاريخ النهاية في أو بعد تاريخ البداية."
+  },
+  {
+    "Name": "CustomerOperationFilterInvalid",
+    "Value": "اختر فلترًا صالحًا لعمليات العملاء."
+  },
+  {
     "Name": "CustomerInstallmentUnavailable",
     "Value": "لا يوجد قسط مفتوح لهذه العملية."
   },

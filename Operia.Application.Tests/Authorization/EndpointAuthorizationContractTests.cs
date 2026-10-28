@@ -55,6 +55,8 @@ public sealed class EndpointAuthorizationContractTests
             ["BookingsController.Export"] = Policies.BookingsExport,
 
             ["CustomersController.Inquiry"] = Policies.CustomersRead,
+            ["CustomersController.Operations"] = Policies.CustomersRead,
+            ["CustomersController.ExportOperations"] = Policies.CustomersExport,
             ["CustomersController.Register"] = Policies.CustomersManage,
             ["CustomersController.DirectSales"] = Policies.CustomersRead,
             ["CustomersController.PurchaseInquiry"] = Policies.CustomersRead,
