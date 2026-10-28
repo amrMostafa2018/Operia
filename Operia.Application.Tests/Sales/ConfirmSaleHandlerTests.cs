@@ -13,6 +13,7 @@ using Operia.Application.Sales.Queries.GetSale;
 using Operia.Application.Revenue.Queries.ListActivityRevenue;
 using Operia.Application.Dashboard.Queries.GetDashboardRevenue;
 using Operia.Application.Sales.Queries.QuoteSale;
+using Operia.Application.Bookings.Commands.CancelBooking;
 using Operia.Application.Customers.Queries.ListDirectCustomerSales;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Entities;
@@ -260,6 +261,30 @@ public sealed class ConfirmSaleHandlerTests
     }
 
     [Fact]
+    public async Task DirectServiceBooking_RequiresCollectionAndCreatesNoReusablePurchase()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var items = new[] { Item("service", "cash") };
+        var quote = await fixture.Quote(items, direct: true);
+        var sale = await fixture.Confirm(items, quote, "direct-booking", direct: true,
+            disposition: "BookNow");
+        fixture.AddBookableEmployee();
+        await fixture.Db.SaveChangesAsync();
+        var unpaid = () => fixture.Book(sale.SaleId, 600);
+        (await unpaid.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.BookingUnavailable);
+
+        await fixture.Collect(sale.SaleId, "direct-paid", true);
+        var booked = await fixture.Book(sale.SaleId, 600);
+
+        booked.Status.Should().Be("Booked");
+        var booking = await fixture.Db.Bookings.SingleAsync(x => x.Id == booked.BookingId);
+        booking.CustomerMobile.Should().BeEmpty();
+        (await fixture.Db.CustomerPackages.CountAsync(x => x.SaleId == sale.SaleId))
+            .Should().Be(0);
+    }
+
+    [Fact]
     public async Task DirectCustomer_CannotBuyPackageOrUseOwnedSession()
     {
         await using var fixture = await Fixture.CreateAsync();
@@ -446,6 +471,36 @@ public sealed class ConfirmSaleHandlerTests
         purchase.ReservedSessions.Should().Be(1);
         (await fixture.Db.Bookings.SingleAsync(x => x.Id == booked.BookingId)).PaidAmount
             .Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task CollectedServiceBooking_CancellationRestoresSessionWithoutUndoingCollection()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var items = new[] { Item("service", "cash") };
+        var quote = await fixture.Quote(items);
+        var sale = await fixture.Confirm(items, quote, "cancel-service", disposition: "BookNow");
+        await fixture.Collect(sale.SaleId, "cancel-service-paid", true);
+        fixture.AddBookableEmployee();
+        await fixture.Db.SaveChangesAsync();
+        var booked = await fixture.Book(sale.SaleId, 600);
+        var booking = await fixture.Db.Bookings.SingleAsync(x => x.Id == booked.BookingId);
+        var clock = new Mock<IDateTimeProvider>();
+        clock.SetupGet(x => x.UtcNow).Returns(
+            new DateTime(2026, 10, 27, 9, 0, 0, DateTimeKind.Utc));
+        var handler = new CancelBookingHandler(fixture.Db, fixture.User.Object,
+            fixture.BranchScope.Object, new AuditWriter(fixture.Db, fixture.User.Object),
+            new BookingConcurrencyStore(fixture.Db), clock.Object);
+
+        var cancelled = await handler.Handle(new CancelBookingCommand(
+            booking.Id, Convert.ToBase64String(booking.Version)), CancellationToken.None);
+
+        cancelled.Status.Should().Be(nameof(BookingStatus.Cancelled));
+        var purchase = await fixture.Db.CustomerPackages.SingleAsync(x => x.SaleId == sale.SaleId);
+        purchase.Used.Should().Be(0);
+        purchase.ReservedSessions.Should().Be(0);
+        (await fixture.Db.SaleCollections.CountAsync(x => x.SaleId == sale.SaleId && x.Confirmed))
+            .Should().Be(1);
     }
 
     private static QuoteSaleItem Item(string id, string option) =>
