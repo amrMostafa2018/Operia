@@ -379,5 +379,7 @@
   { "Name": "BookingDirectCustomerPackageUnavailable", "Value": "لا يمكن للعميل المباشر استخدام أو شراء باقة في هذا الحجز." },
   { "Name": "BookingDirectCustomerItemsReadOnly", "Value": "لا يمكن تغيير عناصر حجز العميل المباشر بعد التأكيد." },
   { "Name": "BookingCustomerNameTooLong", "Value": "لا يمكن أن يتجاوز اسم العميل 200 حرف." },
-  { "Name": "BookingCustomerSearchTermInvalid", "Value": "ابحث عن عميل باستخدام 2 إلى 100 حرف." }
+  { "Name": "BookingCustomerSearchTermInvalid", "Value": "ابحث عن عميل باستخدام 2 إلى 100 حرف." },
+  { "Name": "BookingRequestInvalid", "Value": "راجع تفاصيل الحجز وحاول مرة أخرى." },
+  { "Name": "BookingCustomerSelectionRequired", "Value": "اختر عميلاً مسجلاً أو حدّد العميل المباشر." }
 ]

@@ -65,6 +65,14 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
         CancellationToken cancellationToken) =>
         mediator.Send(new FindBookingCustomerQuery(mobile, bookingId), cancellationToken);
 
+    /// <summary>Loads a selected registered customer and owned balances by tenant-scoped ID.</summary>
+    [HttpGet("customers/{customerId}")]
+    [Authorize(Policy = Policies.BookingsManage)]
+    public Task<BookingCustomerDto?> FindCustomerById(
+        string customerId,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new FindBookingCustomerQuery(null, CustomerId: customerId), cancellationToken);
+
     [HttpGet("customers/search")]
     [Authorize(Policy = Policies.BookingsManage)]
     public Task<IReadOnlyList<BookingCustomerSearchResult>> SearchCustomers(

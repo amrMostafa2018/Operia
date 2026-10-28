@@ -42,6 +42,7 @@ public sealed class EndpointAuthorizationContractTests
 
             ["BookingsController.Create"] = Policies.BookingsManage,
             ["BookingsController.FindCustomer"] = Policies.BookingsManage,
+            ["BookingsController.FindCustomerById"] = Policies.BookingsManage,
             ["BookingsController.SearchCustomers"] = Policies.BookingsManage,
             ["BookingsController.Calendar"] = Policies.BookingsRead,
             ["BookingsController.List"] = Policies.BookingsRead,

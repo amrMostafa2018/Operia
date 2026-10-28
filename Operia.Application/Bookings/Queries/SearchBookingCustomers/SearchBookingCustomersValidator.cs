@@ -7,7 +7,10 @@ public sealed class SearchBookingCustomersValidator : AbstractValidator<SearchBo
 {
     public SearchBookingCustomersValidator()
     {
-        RuleFor(x => x.Term).NotEmpty().MinimumLength(2).MaximumLength(100)
-            .WithErrorCode(ApiErrorCodes.Bookings.CustomerSearchTermInvalid);
+        RuleFor(x => x.Term)
+            .Cascade(CascadeMode.Stop)
+            .NotEmpty().WithErrorCode(ApiErrorCodes.Bookings.CustomerSearchTermInvalid)
+            .MinimumLength(2).WithErrorCode(ApiErrorCodes.Bookings.CustomerSearchTermInvalid)
+            .MaximumLength(100).WithErrorCode(ApiErrorCodes.Bookings.CustomerSearchTermInvalid);
     }
 }

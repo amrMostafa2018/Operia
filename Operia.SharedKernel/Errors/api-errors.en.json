@@ -387,5 +387,7 @@
   { "Name": "BookingDirectCustomerPackageUnavailable", "Value": "Direct customers cannot use or buy packages in this booking." },
   { "Name": "BookingDirectCustomerItemsReadOnly", "Value": "Direct customer booking items cannot be changed after confirmation." },
   { "Name": "BookingCustomerNameTooLong", "Value": "Customer name cannot exceed 200 characters." },
-  { "Name": "BookingCustomerSearchTermInvalid", "Value": "Search for a customer with 2 to 100 characters." }
+  { "Name": "BookingCustomerSearchTermInvalid", "Value": "Search for a customer with 2 to 100 characters." },
+  { "Name": "BookingRequestInvalid", "Value": "Review the booking details and try again." },
+  { "Name": "BookingCustomerSelectionRequired", "Value": "Select a registered customer or choose Direct Customer." }
 ]

@@ -148,6 +148,8 @@ public static class ApiErrorCodes
     /// <summary>Booking access, availability, state, and reservation failures.</summary>
     public static class Bookings
     {
+        public const string RequestInvalid = "BookingRequestInvalid";
+        public const string CustomerSelectionRequired = "BookingCustomerSelectionRequired";
         public const string BranchRequired = "BookingBranchRequired";
         public const string DateRangeInvalid = "BookingDateRangeInvalid";
         public const string DateRangeTooLarge = "BookingDateRangeTooLarge";
