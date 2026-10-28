@@ -2,7 +2,9 @@ using MediatR;
 
 namespace Operia.Application.Customers.Queries.GetCustomerPurchaseDetails;
 
-public sealed record GetCustomerPurchaseDetailsQuery(string PurchaseId) : IRequest<CustomerPurchaseDetailsDto>;
+public sealed record GetCustomerPurchaseDetailsQuery(
+    string PurchaseId,
+    IReadOnlyCollection<string>? AllowedBranchIds = null) : IRequest<CustomerPurchaseDetailsDto>;
 
 public sealed record PurchaseBalanceDto(int Total, int Used, int Remaining, int Bookable = 0);
 

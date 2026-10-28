@@ -100,7 +100,7 @@ public sealed class GetCustomerPurchaseDetailsHandler(
             ? await BookingPaymentMethods.GetEnabledAsync(db, tenantId, cancellationToken)
             : [];
         var completed = await LoadCompletedSessionsAsync(
-            tenantId, purchase.Id, purchase.PackageId, cancellationToken);
+            tenantId, purchase.Id, purchase.PackageId, request.AllowedBranchIds, cancellationToken);
 
         return new CustomerPurchaseDetailsDto(
             purchase.Id,
@@ -129,6 +129,7 @@ public sealed class GetCustomerPurchaseDetailsHandler(
         string tenantId,
         string purchaseId,
         string packageId,
+        IReadOnlyCollection<string>? allowedBranchIds,
         CancellationToken cancellationToken)
     {
         var reservations = await db.BookingPackageReservations.AsNoTracking()
@@ -142,9 +143,14 @@ public sealed class GetCustomerPurchaseDetailsHandler(
         }
 
         var candidateIds = reservations.Select(x => x.BookingId).Distinct().ToArray();
-        var bookings = await db.Bookings.AsNoTracking()
+        var bookingQuery = db.Bookings.AsNoTracking()
             .Where(x => x.TenantId == tenantId && candidateIds.Contains(x.Id) &&
-                        x.Status == BookingStatus.Completed)
+                        x.Status == BookingStatus.Completed);
+        if (allowedBranchIds is not null)
+        {
+            bookingQuery = bookingQuery.Where(x => allowedBranchIds.Contains(x.BranchId));
+        }
+        var bookings = await bookingQuery
             .Select(x => new
             {
                 x.Id,
