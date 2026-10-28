@@ -136,6 +136,83 @@ public sealed class ConfirmSaleHandlerTests
     }
 
     [Fact]
+    public async Task FailedCollection_DoesNotConfirmBooking_AndRetryKeyCannotDoubleCollect()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var items = new[] { Item("service", "cash") };
+        var quote = await fixture.Quote(items);
+        var sale = await fixture.Confirm(items, quote, "payment-booking", disposition: "BookNow");
+        fixture.AddBookableEmployee();
+        await fixture.Db.SaveChangesAsync();
+
+        var beforeCollection = () => fixture.Book(sale.SaleId, 600);
+        (await beforeCollection.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.BookingUnavailable);
+        await fixture.Collect(sale.SaleId, "failed-key", false);
+        var afterFailure = () => fixture.Book(sale.SaleId, 600);
+        (await afterFailure.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.BookingUnavailable);
+        (await fixture.Db.Bookings.CountAsync()).Should().Be(0);
+
+        var confirmed = await fixture.Collect(sale.SaleId, "success-key", true);
+        var repeated = await fixture.Collect(sale.SaleId, "success-key", true);
+        repeated.CollectionId.Should().Be(confirmed.CollectionId);
+        (await fixture.Db.SaleCollections.CountAsync(x => x.Confirmed)).Should().Be(1);
+        var booked = await fixture.Book(sale.SaleId, 600);
+        booked.Status.Should().Be("Booked");
+        (await fixture.Db.CustomerPackages.SingleAsync(x => x.SaleId == sale.SaleId)).Used
+            .Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ExtraPackageUnits_ArePurchasesNotAdditionalConcurrentSessions()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var items = new[] { new QuoteSaleItem("package", null, null, null, null, "cash", 2) };
+        var quote = await fixture.Quote(items);
+        var sale = await fixture.Confirm(items, quote, "two-packages", disposition: "BookNow");
+        await fixture.Collect(sale.SaleId, "two-packages-paid", true);
+        fixture.AddBookableEmployee();
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Book(sale.SaleId, 600, 60);
+
+        result.Status.Should().Be("Booked");
+        (await fixture.Db.BookingItems.SingleAsync(x => x.BookingId == result.BookingId))
+            .UnitPrice.Should().Be(180m);
+        (await fixture.Db.CustomerPackages.CountAsync(x => x.SaleId == sale.SaleId)).Should().Be(2);
+        (await fixture.Db.BookingPackageReservations.CountAsync(x => x.BookingId == result.BookingId))
+            .Should().Be(1);
+        (await fixture.Db.CustomerPackages.Where(x => x.SaleId == sale.SaleId)
+            .SumAsync(x => x.Used)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task InstallmentFirstPayment_UsesSavedPlanAndKeepsUnreleasedSessionUnbooked()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var items = new[] { Item("package", "installment") };
+        var quote = await fixture.Quote(items);
+        quote.GrandTotal.Should().Be(200m);
+        quote.DueNow.Should().Be(50m);
+        var sale = await fixture.Confirm(items, quote, "installment-booking", disposition: "BookNow");
+        await fixture.Collect(sale.SaleId, "first-payment", true);
+        fixture.AddBookableEmployee();
+        await fixture.Db.SaveChangesAsync();
+
+        var booking = await fixture.Book(sale.SaleId, 600, 60);
+
+        booking.Status.Should().Be("BookingPending");
+        booking.RecoveryCode.Should().Be(ApiErrorCodes.Bookings.PackageSessionUnavailable);
+        (await fixture.Db.Bookings.CountAsync(x => x.SaleId == sale.SaleId)).Should().Be(0);
+        var purchase = await fixture.Db.CustomerPackages.SingleAsync(x => x.SaleId == sale.SaleId);
+        purchase.AmountDue.Should().Be(150m);
+        purchase.ReleasedSessions.Should().Be(0);
+        (await fixture.Db.SaleCollections.SingleAsync(x => x.SaleId == sale.SaleId))
+            .Amount.Should().Be(50m);
+    }
+
+    [Fact]
     public async Task SingleSessionInstallment_IsRejectedBeforeSaleOrCollection()
     {
         await using var fixture = await Fixture.CreateAsync();
@@ -333,6 +410,42 @@ public sealed class ConfirmSaleHandlerTests
         result.Status.Should().Be("ReadyToBook");
         (await fixture.Db.CustomerPackages.SingleAsync()).Used.Should().Be(0);
         (await fixture.Db.InstallmentCollections.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task CoveredSession_BooksWithoutAnotherChargeOrCompletedUse()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        fixture.Db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "owned-free-session",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "service",
+            PurchasePrice = 30m,
+            AmountDue = 0m,
+            Total = 1,
+            ReleasedSessions = 1,
+            IsActive = true
+        });
+        await fixture.Db.SaveChangesAsync();
+        var items = new[] { new QuoteSaleItem(null, "owned-free-session", null, null, null, "owned") };
+        var quote = await fixture.Quote(items);
+        quote.GrandTotal.Should().Be(0m);
+        var sale = await fixture.Confirm(items, quote, "covered-session", null,
+            disposition: "BookNow");
+        await fixture.Collect(sale.SaleId, "covered-session-zero", true);
+        fixture.AddBookableEmployee();
+        await fixture.Db.SaveChangesAsync();
+
+        var booked = await fixture.Book(sale.SaleId, 600);
+
+        booked.Status.Should().Be("Booked");
+        var purchase = await fixture.Db.CustomerPackages.SingleAsync(x => x.Id == "owned-free-session");
+        purchase.Used.Should().Be(0);
+        purchase.ReservedSessions.Should().Be(1);
+        (await fixture.Db.Bookings.SingleAsync(x => x.Id == booked.BookingId)).PaidAmount
+            .Should().Be(0m);
     }
 
     private static QuoteSaleItem Item(string id, string option) =>
@@ -537,7 +650,7 @@ public sealed class ConfirmSaleHandlerTests
             });
         }
 
-        public async Task<BookSaleResult> Book(string saleId, int startMinutes)
+        public async Task<BookSaleResult> Book(string saleId, int startMinutes, int durationMinutes = 30)
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase(_database).Options;
@@ -554,7 +667,7 @@ public sealed class ConfirmSaleHandlerTests
                 _user.Object, BranchScope.Object, identity.Object,
                 new AuditWriter(requestDb, _user.Object), clock.Object);
             var result = await handler.Handle(new BookSaleCommand(saleId, "staff-1",
-                new DateOnly(2026, 10, 27), startMinutes, startMinutes + 30),
+                new DateOnly(2026, 10, 27), startMinutes, startMinutes + durationMinutes),
                 CancellationToken.None);
             Db.ChangeTracker.Clear();
             return result;

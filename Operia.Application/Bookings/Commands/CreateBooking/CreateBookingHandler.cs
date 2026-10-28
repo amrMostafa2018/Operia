@@ -111,6 +111,10 @@ public sealed class CreateBookingHandler(
                 .ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
 
         var booking = BuildBooking(tenantId, customer, request, catalog, ownedCatalogPackageIds);
+        if (booking.TotalAmount > 0m)
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.PaymentCollectionRequired, "items");
+        }
         var (reservations, newPurchases) = request.DirectCustomer
             ? (new List<BookingPackageReservation>(), new List<CustomerPackage>())
             : await BuildReservationsAsync(

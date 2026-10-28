@@ -50,6 +50,40 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
+    public async Task PaidBooking_RequiresVerifiedCollectionBeforeAnyBookingOrPurchaseIsSaved()
+    {
+        await SeedAsync();
+        var request = new CreateBookingCommand(
+            "unpaid-service", "customer-1", "branch-1", "employee-1", _scheduledDate,
+            720, 750, [new CreateBookingItemInput("service-1", null, 1)], "cash");
+
+        var action = () => CreateHandler().Handle(request, CancellationToken.None);
+
+        (await action.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Bookings.PaymentCollectionRequired);
+        (await _db.Bookings.CountAsync()).Should().Be(0);
+        (await _db.CustomerPackages.CountAsync()).Should().Be(1);
+        (await _db.AuditLogs.CountAsync(x => x.Action == AuditActions.BookingCreated)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task EditingOwnedBooking_CannotAddAnUncollectedService()
+    {
+        await SeedAsync();
+        var booked = await CreateHandler().Handle(Command("owned-only", 600, 690), CancellationToken.None);
+        var handler = new UpdateBookingHandler(_db, _user.Object, _branchScope.Object,
+            new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object);
+        var action = () => handler.Handle(new UpdateBookingCommand(booked.Id, booked.Version,
+            [new CreateBookingItemInput("package-1", "owned-1", 1),
+             new CreateBookingItemInput("service-1", null, 1)]), CancellationToken.None);
+
+        (await action.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Bookings.PaymentCollectionRequired);
+        (await _db.Bookings.SingleAsync()).TotalAmount.Should().Be(0m);
+        (await _db.CustomerPackages.CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
     public async Task Handle_PersistsBookingHistoryAuditAndOnePackageReservation()
     {
         await SeedAsync();
@@ -151,31 +185,8 @@ public sealed class CreateBookingHandlerTests
 
         await CreateHandler().Handle(new CreateBookingCommand(
             "first-user", "customer-1", "branch-1", "employee-1", _scheduledDate,
-            600, 690, query.Items), CancellationToken.None);
+            600, 690, [new CreateBookingItemInput("package-1", "owned-1", 1)]), CancellationToken.None);
         (await handler.Handle(query, CancellationToken.None)).Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task DirectCustomer_BooksStandaloneServiceWithoutPersonalRecordOrPurchase()
-    {
-        await SeedAsync();
-        var first = await CreateHandler().Handle(new CreateBookingCommand(
-            "direct-1", null, "branch-1", "employee-1", _scheduledDate, 600, 630,
-            [new CreateBookingItemInput("service-1", null, 1)], DirectCustomer: true), CancellationToken.None);
-        var repeated = await CreateHandler().Handle(new CreateBookingCommand(
-            "direct-1", null, "branch-1", "employee-1", _scheduledDate, 600, 630,
-            [new CreateBookingItemInput("service-1", null, 1)], DirectCustomer: true), CancellationToken.None);
-        var second = await CreateHandler().Handle(new CreateBookingCommand(
-            "direct-2", null, "branch-1", "employee-1", _scheduledDate, 720, 750,
-            [new CreateBookingItemInput("service-1", null, 1)], DirectCustomer: true), CancellationToken.None);
-
-        repeated.Id.Should().Be(first.Id);
-        var bookings = await _db.Bookings.Where(x => x.Id == first.Id || x.Id == second.Id).ToListAsync();
-        bookings.Select(x => x.CustomerId).Distinct().Should().ContainSingle();
-        bookings.Should().OnlyContain(x => x.CustomerMobile == string.Empty);
-        (await _db.Customers.CountAsync(x => x.IsDirect)).Should().Be(1);
-        (await _db.CustomerPackages.CountAsync()).Should().Be(1);
-        (await _db.BookingPackageReservations.CountAsync()).Should().Be(0);
     }
 
     [Fact]
@@ -196,25 +207,6 @@ public sealed class CreateBookingHandlerTests
         }
 
         (await _db.Bookings.CountAsync()).Should().Be(0);
-    }
-
-    [Fact]
-    public async Task DirectCustomer_EditCannotCreateOwnedPurchase()
-    {
-        await SeedAsync();
-        var created = await CreateHandler().Handle(new CreateBookingCommand(
-            "direct-edit", null, "branch-1", "employee-1", _scheduledDate, 600, 630,
-            [new CreateBookingItemInput("service-1", null, 1)], DirectCustomer: true), CancellationToken.None);
-
-        var edit = () => new UpdateBookingHandler(
-                _db, _user.Object, _branchScope.Object, new AuditWriter(_db, _user.Object),
-                _identity.Object, _clock.Object)
-            .Handle(new UpdateBookingCommand(created.Id, created.Version,
-                [new CreateBookingItemInput("package-1", null, 1)]), CancellationToken.None);
-
-        (await edit.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
-            .Should().Be(ApiErrorCodes.Bookings.DirectCustomerItemsReadOnly);
-        (await _db.CustomerPackages.CountAsync()).Should().Be(1);
     }
 
     [Fact]
@@ -304,30 +296,6 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
-    public async Task Handle_CapturesPurchaseTermsBeforeOfferChanges()
-    {
-        await SeedAsync();
-        await CreateHandler().Handle(new CreateBookingCommand(
-            "sale-snapshot", "customer-1", "branch-1", "employee-1",
-            _scheduledDate, 600, 630,
-            [new CreateBookingItemInput("service-1", null, 1)]), CancellationToken.None);
-        var purchase = await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1");
-        var original = PackagePurchaseSnapshot.FromJson(purchase.PurchaseSnapshotJson);
-        var offer = await _db.Packages.SingleAsync(x => x.Id == purchase.PackageId);
-        offer.Name = "Updated Offer";
-        offer.Price = 9000m;
-        offer.SessionDurationMinutes = 90;
-        await _db.SaveChangesAsync();
-
-        var stored = PackagePurchaseSnapshot.FromJson(
-            (await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1")).PurchaseSnapshotJson);
-        stored.Should().BeEquivalentTo(original);
-        stored!.OfferName.Should().Be("Standalone Service");
-        stored.SessionDurationMinutes.Should().Be(30);
-        stored.PurchasePrice.Should().Be(purchase.PurchasePrice);
-    }
-
-    [Fact]
     public async Task Handle_RejectsEmployeeNotSelectedForOffer()
     {
         await SeedAsync();
@@ -391,38 +359,6 @@ public sealed class CreateBookingHandlerTests
         item.UnitPrice.Should().Be(0);
         item.CustomerPackageId.Should().Be("owned-service");
         item.PackageSessionLinked.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task Create_PackageAndExtraService_AppearInCalendarDetails()
-    {
-        await SeedAsync();
-        await CreateHandler().Handle(
-            new CreateBookingCommand(
-                "request-with-extra",
-                "customer-1",
-                "branch-1",
-                "employee-1",
-                _scheduledDate,
-                600,
-                690,
-                [
-                    new CreateBookingItemInput("package-1", "owned-1", 1),
-                    new CreateBookingItemInput("service-1", null, 1)
-                ]),
-            CancellationToken.None);
-
-        var calendar = await new GetCalendarBookingsHandler(
-                _db,
-                _user.Object,
-                _branchScope.Object,
-                _clock.Object)
-            .Handle(
-                new GetCalendarBookingsQuery("branch-1", _scheduledDate, _scheduledDate, "employee-1"),
-                CancellationToken.None);
-
-        calendar.Bookings.Single().Items.Select(item => item.Name)
-            .Should().BeEquivalentTo("Laser Package", "Standalone Service");
     }
 
     [Fact]
@@ -540,97 +476,6 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
-    public async Task Cancel_StandaloneService_ReturnsOneSessionThatCanBeRebookedWithoutAnotherCharge()
-    {
-        await SeedAsync();
-        var created = await CreateHandler().Handle(
-            new CreateBookingCommand(
-                "standalone-1", "customer-1", "branch-1", "employee-1", _scheduledDate,
-                720, 750, [new CreateBookingItemInput("service-1", null, 1)]),
-            CancellationToken.None);
-        var purchase = await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1");
-        purchase.Total.Should().Be(1);
-        purchase.ReservedSessions.Should().Be(1);
-        (await _db.Bookings.SingleAsync(x => x.Id == created.Id)).TotalAmount.Should().Be(250);
-
-        var cancelled = await new CancelBookingHandler(
-                _db, _user.Object, _branchScope.Object, new AuditWriter(_db, _user.Object),
-                new BookingConcurrencyStore(_db), _clock.Object)
-            .Handle(new CancelBookingCommand(created.Id, created.Version), CancellationToken.None);
-
-        cancelled.Status.Should().Be(nameof(BookingStatus.Cancelled));
-        purchase.ReservedSessions.Should().Be(0);
-        (await _db.BookingPackageReservations.SingleAsync()).CancellationAtUtc.Should().NotBeNull();
-        var found = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
-            .Handle(new FindBookingCustomerQuery("01012345678"), CancellationToken.None);
-        found!.Packages.Single(x => x.CustomerPackageId == purchase.Id).OfferType.Should().Be("session");
-        found.Packages.Single(x => x.CustomerPackageId == purchase.Id).AvailableSessions.Should().Be(1);
-        found.Packages.Single(x => x.CustomerPackageId == purchase.Id).PulseCount.Should().BeNull();
-        found.Packages.Single(x => x.CustomerPackageId == purchase.Id).SessionCount.Should().BeNull();
-
-        var rebooked = await CreateHandler().Handle(
-            new CreateBookingCommand(
-                "standalone-2", "customer-1", "branch-1", "employee-1", _scheduledDate,
-                720, 750, [new CreateBookingItemInput("service-1", purchase.Id, 1)]),
-            CancellationToken.None);
-
-        (await _db.Bookings.SingleAsync(x => x.Id == rebooked.Id)).TotalAmount.Should().Be(0);
-        purchase.ReservedSessions.Should().Be(1);
-        (await _db.BookingPackageReservations.CountAsync()).Should().Be(2);
-    }
-
-    [Fact]
-    public async Task Cancel_MultipleStandaloneUnits_ReturnsEachOneSessionPurchase()
-    {
-        await SeedAsync();
-        var created = await CreateHandler().Handle(
-            new CreateBookingCommand(
-                "two-services", "customer-1", "branch-1", "employee-1", _scheduledDate,
-                720, 780, [new CreateBookingItemInput("service-1", null, 2)]),
-            CancellationToken.None);
-
-        var purchases = await _db.CustomerPackages.Where(x => x.PackageId == "service-1").ToListAsync();
-        purchases.Should().HaveCount(2);
-        purchases.Should().OnlyContain(x => x.Total == 1 && x.ReservedSessions == 1);
-
-        await new CancelBookingHandler(
-                _db, _user.Object, _branchScope.Object, new AuditWriter(_db, _user.Object),
-                new BookingConcurrencyStore(_db), _clock.Object)
-            .Handle(new CancelBookingCommand(created.Id, created.Version), CancellationToken.None);
-
-        purchases.Should().OnlyContain(x => x.ReservedSessions == 0);
-        (await _db.BookingPackageReservations.CountAsync(x => x.CancellationAtUtc != null)).Should().Be(2);
-    }
-
-    [Fact]
-    public async Task Cancel_MixedBooking_ReleasesPackageAndStandaloneBalancesOnce()
-    {
-        await SeedAsync();
-        var created = await CreateHandler().Handle(
-            new CreateBookingCommand(
-                "mixed-1", "customer-1", "branch-1", "employee-1", _scheduledDate,
-                600, 690,
-                [
-                    new CreateBookingItemInput("package-1", "owned-1", 1),
-                    new CreateBookingItemInput("service-1", null, 1)
-                ]),
-            CancellationToken.None);
-
-        var handler = new CancelBookingHandler(
-            _db, _user.Object, _branchScope.Object, new AuditWriter(_db, _user.Object),
-            new BookingConcurrencyStore(_db), _clock.Object);
-        var first = await handler.Handle(new CancelBookingCommand(created.Id, created.Version), CancellationToken.None);
-        var second = await handler.Handle(new CancelBookingCommand(created.Id, created.Version), CancellationToken.None);
-
-        first.Status.Should().Be(nameof(BookingStatus.Cancelled));
-        second.Status.Should().Be(nameof(BookingStatus.Cancelled));
-        (await _db.CustomerPackages.SingleAsync(x => x.Id == "owned-1")).ReservedSessions.Should().Be(0);
-        (await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1")).ReservedSessions.Should().Be(0);
-        (await _db.BookingPackageReservations.CountAsync(x => x.CancellationAtUtc != null)).Should().Be(2);
-        (await _db.BookingHistory.CountAsync(x => x.BookingId == created.Id)).Should().Be(2);
-    }
-
-    [Fact]
     public async Task Cancel_EarlierPackageSession_AllowsItsNumberToBeReservedAgain()
     {
         await SeedAsync();
@@ -697,45 +542,6 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
-    public async Task Update_AddingAnotherStandaloneUnit_ToAReusedBooking_ChargesOnlyTheNewUnit()
-    {
-        await SeedAsync();
-        var original = await CreateHandler().Handle(
-            new CreateBookingCommand(
-                "original-service", "customer-1", "branch-1", "employee-1", _scheduledDate,
-                720, 750, [new CreateBookingItemInput("service-1", null, 1)]),
-            CancellationToken.None);
-        var purchase = await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1");
-        await new CancelBookingHandler(
-                _db, _user.Object, _branchScope.Object, new AuditWriter(_db, _user.Object),
-                new BookingConcurrencyStore(_db), _clock.Object)
-            .Handle(new CancelBookingCommand(original.Id, original.Version), CancellationToken.None);
-        var reused = await CreateHandler().Handle(
-            new CreateBookingCommand(
-                "reused-service", "customer-1", "branch-1", "employee-1", _scheduledDate,
-                720, 780, [new CreateBookingItemInput("service-1", purchase.Id, 1)]),
-            CancellationToken.None);
-
-        await new UpdateBookingHandler(
-                _db, _user.Object, _branchScope.Object, new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object)
-            .Handle(
-                new UpdateBookingCommand(
-                    reused.Id,
-                    reused.Version,
-                    [
-                        new CreateBookingItemInput("service-1", null, 1),
-                        new CreateBookingItemInput("service-1", null, 1)
-                    ]),
-                CancellationToken.None);
-
-        var updated = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == reused.Id);
-        updated.TotalAmount.Should().Be(250);
-        updated.Items.Select(x => x.UnitPrice).Should().BeEquivalentTo(new[] { 0m, 250m });
-        (await _db.BookingPackageReservations.CountAsync(x => x.BookingId == reused.Id && x.CancellationAtUtc == null))
-            .Should().Be(2);
-    }
-
-    [Fact]
     public async Task Update_AddsOwnedSingleSessionWithoutCreatingDuplicateCustomerPackage()
     {
         await SeedAsync();
@@ -780,47 +586,6 @@ public sealed class CreateBookingHandlerTests
                      x.CustomerPackageId == "owned-service" &&
                      x.CancellationAtUtc == null))
             .Should().Be(1);
-    }
-
-    [Fact]
-    public async Task Update_AddsStandaloneServiceWithoutChangingPackageReservation()
-    {
-        await SeedAsync();
-        var created = await CreateHandler().Handle(Command("request-1", 600, 690), CancellationToken.None);
-        var booking = await _db.Bookings.SingleAsync(x => x.Id == created.Id);
-
-        await new UpdateBookingHandler(
-                _db,
-                _user.Object,
-                _branchScope.Object,
-                new AuditWriter(_db, _user.Object), _identity.Object,
-                _clock.Object)
-            .Handle(
-                new UpdateBookingCommand(
-                    booking.Id,
-                    Convert.ToBase64String(booking.Version),
-                    [
-                        new CreateBookingItemInput("package-1", "owned-1", 1),
-                        new CreateBookingItemInput("service-1", null, 1)
-                    ]),
-                CancellationToken.None);
-
-        (await _db.CustomerPackages.SingleAsync(x => x.Id == "owned-1")).ReservedSessions.Should().Be(1);
-        (await _db.CustomerPackages.SingleAsync(x => x.PackageId == "service-1")).ReservedSessions.Should().Be(1);
-        (await _db.BookingItems.CountAsync(x => x.BookingId == booking.Id)).Should().Be(2);
-        (await _db.BookingHistory.CountAsync(x => x.BookingId == booking.Id)).Should().Be(2);
-        (await _db.Bookings.SingleAsync(x => x.Id == booking.Id)).TotalAmount.Should().Be(250);
-
-        var calendar = await new GetCalendarBookingsHandler(
-                _db,
-                _user.Object,
-                _branchScope.Object,
-                _clock.Object)
-            .Handle(
-                new GetCalendarBookingsQuery("branch-1", _scheduledDate, _scheduledDate, "employee-1"),
-                CancellationToken.None);
-        calendar.Bookings.Single().Items.Select(item => item.Name)
-            .Should().BeEquivalentTo("Laser Package", "Standalone Service");
     }
 
     [Fact]
@@ -904,95 +669,6 @@ public sealed class CreateBookingHandlerTests
         (await _db.Bookings.SingleAsync(x => x.Id == booking.Id)).PaymentMethod.Should().BeNull();
         (await _db.BookingHistory.CountAsync(x => x.BookingId == booking.Id)).Should().Be(1);
         (await _db.AuditLogs.CountAsync(x => x.EntityId == booking.Id)).Should().Be(1);
-    }
-
-    [Fact]
-    public async Task Update_PreservesBookedPriceForRetainedServices()
-    {
-        await SeedAsync();
-        var first = await CreateHandler().Handle(
-            new CreateBookingCommand(
-                "service-request-1",
-                "customer-1",
-                "branch-1",
-                "employee-1",
-                _scheduledDate,
-                720,
-                780,
-                [new CreateBookingItemInput("service-1", null, 1)]),
-            CancellationToken.None);
-        var booking = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == first.Id);
-        booking.Items.Single().UnitPrice.Should().Be(250);
-
-        (await _db.Packages.SingleAsync(x => x.Id == "service-1")).Price = 400;
-        await _db.SaveChangesAsync();
-
-        await new UpdateBookingHandler(
-                _db,
-                _user.Object,
-                _branchScope.Object,
-                new AuditWriter(_db, _user.Object), _identity.Object,
-                _clock.Object)
-            .Handle(
-                new UpdateBookingCommand(
-                    booking.Id,
-                    Convert.ToBase64String(booking.Version),
-                    [new CreateBookingItemInput("service-1", null, 2)]),
-                CancellationToken.None);
-
-        var updated = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == booking.Id);
-        updated.Items.Single(x => x.PackageId == "service-1").UnitPrice.Should().Be(250);
-        updated.TotalAmount.Should().Be(500);
-        updated.LastModifiedAt.Should().Be(_clock.Object.UtcNow);
-    }
-
-    [Fact]
-    public async Task Update_TouchesAggregateWhenReplacementHasSameTotal()
-    {
-        await SeedAsync();
-        var first = await CreateHandler().Handle(
-            new CreateBookingCommand(
-                "service-request-2",
-                "customer-1",
-                "branch-1",
-                "employee-1",
-                _scheduledDate,
-                720,
-                750,
-                [new CreateBookingItemInput("service-1", null, 1)]),
-            CancellationToken.None);
-        _db.Packages.Add(new Package
-        {
-            Id = "service-2",
-            TenantId = "tenant-1",
-            BusinessId = "business-1",
-            Name = "Same-price replacement",
-            Description = "Service",
-            OfferType = OfferType.SingleSession,
-            ServiceCategoryId = "category-1",
-            SessionDurationMinutes = 30,
-            Price = 250,
-            Status = PackageStatus.Active
-        });
-        await _db.SaveChangesAsync();
-        var booking = await _db.Bookings.SingleAsync(x => x.Id == first.Id);
-
-        await new UpdateBookingHandler(
-                _db,
-                _user.Object,
-                _branchScope.Object,
-                new AuditWriter(_db, _user.Object), _identity.Object,
-                _clock.Object)
-            .Handle(
-                new UpdateBookingCommand(
-                    booking.Id,
-                    Convert.ToBase64String(booking.Version),
-                    [new CreateBookingItemInput("service-2", null, 1)]),
-                CancellationToken.None);
-
-        var updated = await _db.Bookings.SingleAsync(x => x.Id == booking.Id);
-        updated.TotalAmount.Should().Be(250);
-        updated.LastModifiedAt.Should().Be(_clock.Object.UtcNow);
     }
 
     private CreateBookingHandler CreateHandler() =>
