@@ -105,6 +105,8 @@ public sealed class EndpointAuthorizationContractTests
             ["SalesController.Customer"] = Policies.PackagesSell,
             ["SalesController.PaymentMethods"] = Policies.PackagesSell,
             ["RevenueController.Collections"] = Policies.RevenueRead,
+            ["RevenueController.Summary"] = Policies.RevenueRead,
+            ["RevenueController.Branches"] = Policies.RevenueRead,
             ["DashboardController.Revenue"] = Policies.DashboardRead,
 
             ["OnboardingController.GetStatus"] = Policies.AuthenticatedUser,
