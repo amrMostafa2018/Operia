@@ -28,11 +28,11 @@ internal sealed class RevenueLedger(
         var sales = db.Sales.AsNoTracking()
             .Where(x => x.TenantId == tenantId && branches.Contains(x.BranchId));
 
-        var collections = from collection in db.SaleCollections.AsNoTracking()
+        var attempts = from collection in db.SaleCollections.AsNoTracking()
                           join sale in sales on collection.SaleId equals sale.Id
-                          where collection.TenantId == tenantId && collection.Confirmed &&
-                                collection.Amount > 0m
+                          where collection.TenantId == tenantId && collection.Amount > 0m
                           select collection;
+        var collections = attempts.Where(x => x.Confirmed);
         var installments = from collection in db.InstallmentCollections.AsNoTracking()
                            join purchase in db.CustomerPackages.AsNoTracking()
                                on collection.CustomerPackageId equals purchase.Id
@@ -47,11 +47,12 @@ internal sealed class RevenueLedger(
                             refund.SaleId == purchase.SaleId
                       select refund;
 
-        return new RevenueMovements(collections, installments, refunds);
+        return new RevenueMovements(attempts, collections, installments, refunds);
     }
 }
 
 internal sealed record RevenueMovements(
+    IQueryable<SaleCollection> SaleAttempts,
     IQueryable<SaleCollection> Sales,
     IQueryable<InstallmentCollection> Installments,
     IQueryable<RefundTransaction> Refunds)
@@ -59,7 +60,8 @@ internal sealed record RevenueMovements(
     public async Task<RevenuePeriod> ForPeriodAsync(
         DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
     {
-        var saleRows = Sales.Where(x => x.AttemptedAtUtc >= fromUtc && x.AttemptedAtUtc < toUtc);
+        var saleRows = Sales.Where(x => (x.ConfirmedAtUtc ?? x.AttemptedAtUtc) >= fromUtc &&
+            (x.ConfirmedAtUtc ?? x.AttemptedAtUtc) < toUtc);
         var installmentRows = Installments.Where(x =>
             x.ConfirmedAtUtc >= fromUtc && x.ConfirmedAtUtc < toUtc);
         var refundRows = Refunds.Where(x => x.RecordedAtUtc >= fromUtc && x.RecordedAtUtc < toUtc);

@@ -1605,6 +1605,9 @@ namespace Operia.Infrastructure.Migrations
                     b.Property<DateTime>("AttemptedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("ConfirmedAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("CollectedByUserId")
                         .IsRequired()
                         .HasMaxLength(450)
@@ -1632,6 +1635,24 @@ namespace Operia.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<byte[]>("ProofContent")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("ProofContentType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ReviewStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("SaleId")
                         .IsRequired()

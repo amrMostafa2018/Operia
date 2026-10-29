@@ -13,6 +13,13 @@ public sealed class SaleCollection : Entity, ITenantScoped
     public decimal Amount { get; set; }
     public string PaymentMethod { get; set; } = string.Empty;
     public bool Confirmed { get; set; }
+    /// <summary>Null on older cashier attempts; their Confirmed flag supplies the legacy state.</summary>
+    public string? ReviewStatus { get; set; }
+    public byte[]? ProofContent { get; set; }
+    public string? ProofContentType { get; set; }
+    public string? ReviewedByUserId { get; set; }
+    public DateTime? ReviewedAtUtc { get; set; }
     public DateTime AttemptedAtUtc { get; set; }
+    public DateTime? ConfirmedAtUtc { get; set; }
     public string CollectedByUserId { get; set; } = string.Empty;
 }

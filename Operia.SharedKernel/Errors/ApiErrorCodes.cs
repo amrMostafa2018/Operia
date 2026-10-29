@@ -157,6 +157,16 @@ public static class ApiErrorCodes
         public const string RevenueRangeInvalid = "DashboardRevenueRangeInvalid";
     }
 
+    public static class Revenue
+    {
+        public const string DateRangeInvalid = "RevenueDateRangeInvalid";
+        public const string ServiceInvalid = "RevenueServiceInvalid";
+        public const string ReviewUnavailable = "RevenueReviewUnavailable";
+        public const string ProofInvalid = "RevenueProofInvalid";
+        public const string ProofNotFound = "RevenueProofNotFound";
+        public const string PaymentNotFound = "RevenuePaymentNotFound";
+    }
+
     /// <summary>Booking access, availability, state, and reservation failures.</summary>
     public static class Bookings
     {

@@ -17,6 +17,9 @@ public sealed class SaleCollectionConfiguration : IEntityTypeConfiguration<SaleC
         builder.Property(x => x.PaymentMethod).IsRequired().HasMaxLength(30);
         builder.Property(x => x.CollectedByUserId).IsRequired().HasMaxLength(450);
         builder.Property(x => x.Amount).HasPrecision(18, 2);
+        builder.Property(x => x.ReviewStatus).HasMaxLength(20);
+        builder.Property(x => x.ProofContentType).HasMaxLength(50);
+        builder.Property(x => x.ReviewedByUserId).HasMaxLength(450);
         builder.Property(x => x.CreatedBy).HasMaxLength(450);
         builder.HasIndex(x => new { x.TenantId, x.SaleId, x.IdempotencyKey }).IsUnique();
         builder.HasIndex(x => new { x.TenantId, x.SaleId })
