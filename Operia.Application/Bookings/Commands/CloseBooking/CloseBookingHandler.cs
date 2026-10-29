@@ -92,6 +92,7 @@ public sealed class CloseBookingHandler(
             cancellationToken);
         var ownedPackages = new Dictionary<string, CustomerPackage>(StringComparer.Ordinal);
         var outcomes = new List<CloseOutcome>();
+        var assignedReservations = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var item in bookingItems)
         {
@@ -100,7 +101,8 @@ public sealed class CloseBookingHandler(
                 item,
                 input,
                 activeReservations,
-                reservationQueues);
+                reservationQueues,
+                assignedReservations);
             var isComplete = string.Equals(input.Status, "complete", StringComparison.OrdinalIgnoreCase);
             var pulseApplied = false;
 
@@ -147,6 +149,11 @@ public sealed class CloseBookingHandler(
                 input.Status,
                 input.PulsesUsed,
                 input.Notes));
+        }
+
+        if (assignedReservations.Count != activeReservations.Count)
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.Changed);
         }
 
         booking.Status = BookingStatus.Completed;
@@ -261,17 +268,29 @@ public sealed class CloseBookingHandler(
         BookingItem item,
         CloseBookingItemInput input,
         IReadOnlyList<BookingPackageReservation> activeReservations,
-        IReadOnlyDictionary<string, Queue<BookingPackageReservation>> reservationQueues)
+        IReadOnlyDictionary<string, Queue<BookingPackageReservation>> reservationQueues,
+        HashSet<string> assignedReservations)
     {
         if (!string.IsNullOrWhiteSpace(input.CustomerPackageId))
         {
             var matched = activeReservations
-                .Where(x => string.Equals(x.CustomerPackageId, input.CustomerPackageId, StringComparison.Ordinal))
+                .Where(x => string.Equals(x.CustomerPackageId, input.CustomerPackageId, StringComparison.Ordinal) &&
+                            !assignedReservations.Contains(x.Id))
+                .Take(item.Quantity)
                 .ToList();
-            if (matched.Count > 0)
+            if (matched.Count == 0 ||
+                item.PackageId is null ||
+                !reservationQueues.TryGetValue(item.PackageId, out var matchingQueue) ||
+                matched.Any(x => !matchingQueue.Contains(x)))
             {
-                return matched;
+                throw ConflictException.FromCode(ApiErrorCodes.Bookings.Changed);
             }
+
+            foreach (var reservation in matched)
+            {
+                assignedReservations.Add(reservation.Id);
+            }
+            return matched;
         }
 
         if (item.PackageId is null || !reservationQueues.TryGetValue(item.PackageId, out var queue))
@@ -280,9 +299,13 @@ public sealed class CloseBookingHandler(
         }
 
         var resolved = new List<BookingPackageReservation>();
-        for (var unit = 0; unit < item.Quantity && queue.Count > 0; unit++)
+        while (resolved.Count < item.Quantity && queue.Count > 0)
         {
-            resolved.Add(queue.Dequeue());
+            var reservation = queue.Dequeue();
+            if (assignedReservations.Add(reservation.Id))
+            {
+                resolved.Add(reservation);
+            }
         }
 
         return resolved;
