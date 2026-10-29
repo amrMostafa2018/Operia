@@ -147,6 +147,13 @@ public sealed class UpdateBookingHandler(
             .Select(x => x.CustomerPackageId!)
             .Distinct(StringComparer.Ordinal)
             .ToList();
+        if (requestedItems.Any(item =>
+                BookingItemPricing.IsExplicitNewPurchase(item) &&
+                booking.Items.Any(existing => existing.PackageId == item.PackageId && existing.UnitPrice == 0)))
+        {
+            return true;
+        }
+
         if (selectedIds.Count == 0)
         {
             return false;
@@ -186,7 +193,8 @@ public sealed class UpdateBookingHandler(
         CancellationToken cancellationToken)
     {
         var today = DateOnly.FromDateTime(clock.UtcNow);
-        var ownedCatalogPackageIds = await LoadOwnedCatalogPackageIdsAsync(tenantId, booking.CustomerId, today, cancellationToken);
+        var ownedCatalogPackageIds = await LoadOwnedCatalogPackageIdsAsync(
+            tenantId, booking.CustomerId, booking.Id, catalog, today, cancellationToken);
         await ReconcileStandaloneReservationsAsync(booking, requestedItems, catalog, tenantId, cancellationToken);
         await ReconcilePackageReservationsAsync(
             booking,
@@ -234,6 +242,11 @@ public sealed class UpdateBookingHandler(
     {
         if (product.OfferType == OfferType.Package)
         {
+            if (BookingItemPricing.IsExplicitNewPurchase(input))
+            {
+                return BookingItemPricing.CashPrice(product);
+            }
+
             if (existingItem is not null)
             {
                 if (existingItem.Quantity == input.Quantity || existingItem.UnitPrice > 0)
@@ -266,16 +279,28 @@ public sealed class UpdateBookingHandler(
     private async Task<HashSet<string>> LoadOwnedCatalogPackageIdsAsync(
         string tenantId,
         string customerId,
+        string bookingId,
+        IReadOnlyDictionary<string, Package> catalog,
         DateOnly today,
-        CancellationToken cancellationToken) =>
-        (await db.CustomerPackages.AsNoTracking()
+        CancellationToken cancellationToken)
+    {
+        var reservedIds = await db.BookingPackageReservations.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.BookingId == bookingId && x.CancellationAtUtc == null)
+            .Select(x => x.CustomerPackageId)
+            .ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
+        var balances = await db.CustomerPackages.AsNoTracking()
             .Where(x => x.TenantId == tenantId &&
                         x.CustomerId == customerId &&
                         x.IsActive &&
                         (x.ExpiresOn == null || x.ExpiresOn >= today))
+            .ToListAsync(cancellationToken);
+        return balances
+            .Where(x => catalog.TryGetValue(x.PackageId, out var product) &&
+                        (reservedIds.Contains(x.Id) || CustomerPackageBalance.HasAvailable(
+                            x.Total, x.Used, x.ReservedSessions, product.OfferType, product.PulseCount)))
             .Select(x => x.PackageId)
-            .ToListAsync(cancellationToken))
-        .ToHashSet(StringComparer.Ordinal);
+            .ToHashSet(StringComparer.Ordinal);
+    }
 
     /// <summary>Stages before and after details in booking history and the audit trail.</summary>
     private void StageEditHistory(
@@ -521,8 +546,11 @@ public sealed class UpdateBookingHandler(
         foreach (var item in requestedItems.Where(x => catalog[x.PackageId].OfferType == OfferType.Package))
         {
             var desired = BookingItemPricing.IsPackagePurchaseOnly(item) ? item.Quantity : 1;
+            var replacingOwnedWithPurchase = BookingItemPricing.IsExplicitNewPurchase(item) &&
+                booking.Items.Any(existing => existing.PackageId == item.PackageId && existing.UnitPrice == 0);
             var matching = unmatched
                 .Where(x => x.CustomerPackage?.PackageId == item.PackageId &&
+                    !replacingOwnedWithPurchase &&
                     (string.IsNullOrWhiteSpace(item.CustomerPackageId) || x.CustomerPackageId == item.CustomerPackageId))
                 .Take(desired)
                 .ToList();
@@ -545,7 +573,8 @@ public sealed class UpdateBookingHandler(
             {
                 var ownedId = unit == 0 && retained == 0 ? item.CustomerPackageId : null;
                 if (string.IsNullOrWhiteSpace(ownedId) &&
-                    BookingItemPricing.IsPackagePurchaseOnly(item) && unit == 0 && retained == 0)
+                    BookingItemPricing.IsPackagePurchaseOnly(item) &&
+                    !BookingItemPricing.IsExplicitNewPurchase(item) && unit == 0 && retained == 0)
                 {
                     ownedId = await FindAvailableOwnedPackageAsync(
                         booking, tenantId, product, today, cancellationToken);

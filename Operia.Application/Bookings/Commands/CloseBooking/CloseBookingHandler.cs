@@ -96,7 +96,9 @@ public sealed class CloseBookingHandler(
 
         foreach (var item in bookingItems)
         {
-            var input = request.Items.Single(x => x.BookingItemId == item.Id);
+            var inputIndex = Enumerable.Range(0, request.Items.Count)
+                .Single(index => request.Items[index].BookingItemId == item.Id);
+            var input = request.Items[inputIndex];
             var reservations = ResolveReservations(
                 item,
                 input,
@@ -124,7 +126,7 @@ public sealed class CloseBookingHandler(
                     {
                         if (!pulseApplied)
                         {
-                            ApplyPulseUsage(input, owned);
+                            ApplyPulseUsage(input, owned, inputIndex);
                             pulseApplied = true;
                         }
 
@@ -338,11 +340,11 @@ public sealed class CloseBookingHandler(
     }
 
     /// <summary>Consumes pulse balance for one completed pulse-package line.</summary>
-    private static void ApplyPulseUsage(CloseBookingItemInput input, CustomerPackage owned)
+    private static void ApplyPulseUsage(CloseBookingItemInput input, CustomerPackage owned, int inputIndex)
     {
         if (input.PulsesUsed is not > 0)
         {
-            throw Invalid(ApiErrorCodes.Bookings.PulsesExceedRemaining, "items");
+            throw Invalid(ApiErrorCodes.Bookings.PulsesExceedRemaining, $"items[{inputIndex}].pulsesUsed");
         }
 
         var remaining = CustomerPackageBalance.Remaining(
@@ -353,7 +355,7 @@ public sealed class CloseBookingHandler(
             owned.Package?.PulseCount);
         if (input.PulsesUsed.Value > remaining)
         {
-            throw Invalid(ApiErrorCodes.Bookings.PulsesExceedRemaining, "items");
+            throw Invalid(ApiErrorCodes.Bookings.PulsesExceedRemaining, $"items[{inputIndex}].pulsesUsed");
         }
 
         owned.Used += input.PulsesUsed.Value;

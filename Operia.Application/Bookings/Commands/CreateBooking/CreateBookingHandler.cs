@@ -52,13 +52,18 @@ public sealed class CreateBookingHandler(
         await ValidatePaymentMethodAsync(tenantId, request.PaymentMethod, cancellationToken);
 
         var today = DateOnly.FromDateTime(clock.UtcNow);
-        var ownedCatalogPackageIds = await db.CustomerPackages.AsNoTracking()
+        var ownedBalances = await db.CustomerPackages.AsNoTracking()
             .Where(x => x.TenantId == tenantId &&
                         x.CustomerId == customer.Id &&
                         x.IsActive &&
                         (x.ExpiresOn == null || x.ExpiresOn >= today))
+            .ToListAsync(cancellationToken);
+        var ownedCatalogPackageIds = ownedBalances
+            .Where(x => catalog.TryGetValue(x.PackageId, out var product) &&
+                        CustomerPackageBalance.HasAvailable(
+                            x.Total, x.Used, x.ReservedSessions, product.OfferType, product.PulseCount))
             .Select(x => x.PackageId)
-            .ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
+            .ToHashSet(StringComparer.Ordinal);
 
         var booking = BuildBooking(tenantId, customer, request, catalog, ownedCatalogPackageIds);
         var (reservations, newPurchases) = await BuildReservationsAsync(
@@ -344,6 +349,11 @@ public sealed class CreateBookingHandler(
             reservations.Add(NewReservation(tenantId, bookingId, owned.Id));
             alreadyReserved.Add(owned.Id);
             reservedCount++;
+        }
+
+        if (reservedCount != ownedUnits)
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");
         }
     }
 
