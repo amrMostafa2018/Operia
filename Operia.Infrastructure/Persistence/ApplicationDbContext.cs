@@ -54,6 +54,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<BookingHold> BookingHolds => Set<BookingHold>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<CustomerPackage> CustomerPackages => Set<CustomerPackage>();
+    public DbSet<CustomerPackageInstallment> CustomerPackageInstallments => Set<CustomerPackageInstallment>();
     public DbSet<BookingPackageReservation> BookingPackageReservations => Set<BookingPackageReservation>();
 
     /// <summary>Applies entity configuration and global tenant query filters.</summary>
@@ -114,6 +115,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
         modelBuilder.Entity<BookingHold>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<Customer>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<CustomerPackage>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<CustomerPackageInstallment>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<BookingPackageReservation>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
     }
 

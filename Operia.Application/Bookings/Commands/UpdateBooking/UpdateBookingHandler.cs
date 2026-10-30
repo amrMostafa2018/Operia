@@ -28,10 +28,14 @@ public sealed class UpdateBookingHandler(
     {
         var tenantId = BookingAccess.RequireTenant(currentUser);
         var booking = await LoadEditableBookingAsync(tenantId, request, cancellationToken);
-        var catalog = await LoadCatalogAsync(tenantId, request.Items, cancellationToken);
-        BookingItemPricing.ValidatePackageSelection(request.Items, catalog);
-
         var itemsChanged = HasItemsChanged(booking.Items, request.Items);
+        var containsInstallment = booking.Items.Any(x =>
+            string.Equals(x.PaymentOption, "installment", StringComparison.OrdinalIgnoreCase));
+        if ((containsInstallment && itemsChanged) ||
+            (!containsInstallment && request.Items.Any(BookingItemPricing.IsInstallmentPurchase)))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.InstallmentEditNotAllowed, "items");
+        }
         var paymentMethodChanged = !string.Equals(booking.PaymentMethod, request.PaymentMethod, StringComparison.Ordinal);
         if (!itemsChanged && !paymentMethodChanged)
         {
@@ -44,6 +48,8 @@ public sealed class UpdateBookingHandler(
         var beforePaymentMethod = booking.PaymentMethod;
         if (itemsChanged)
         {
+            var catalog = await LoadCatalogAsync(tenantId, request.Items, cancellationToken);
+            BookingItemPricing.ValidatePackageSelection(request.Items, catalog);
             await ReplaceItemsAsync(booking, request.Items, catalog, tenantId, cancellationToken);
         }
 
@@ -236,7 +242,10 @@ public sealed class UpdateBookingHandler(
             .Where(x => x.TenantId == tenantId &&
                         x.CustomerId == customerId &&
                         x.IsActive &&
-                        (x.ExpiresOn == null || x.ExpiresOn >= today))
+                        (x.ExpiresOn == null || x.ExpiresOn >= today) &&
+                        (x.Package != null && x.Package.PulseCount > 0
+                            ? x.Total > x.Used
+                            : x.Total > x.Used + (x.ReservedSessions ?? 0)))
             .Select(x => x.PackageId)
             .ToListAsync(cancellationToken))
         .ToHashSet(StringComparer.Ordinal);

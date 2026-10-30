@@ -14,12 +14,19 @@ public static class BookingItemPricing
     public static bool IsPackagePurchaseOnly(CreateBookingItemInput item) =>
         string.Equals(item.Type, "packagePurchase", StringComparison.OrdinalIgnoreCase);
 
+    public static bool IsInstallmentPurchase(CreateBookingItemInput item) =>
+        string.Equals(item.PaymentOption, "installment", StringComparison.OrdinalIgnoreCase);
+
     public static int PackageNewPurchaseUnits(
         CreateBookingItemInput item,
         IReadOnlySet<string> ownedCatalogPackageIds)
     {
         if (IsPackagePurchaseOnly(item))
         {
+            if (IsInstallmentPurchase(item))
+            {
+                return item.Quantity;
+            }
             return ownedCatalogPackageIds.Contains(item.PackageId)
                 ? Math.Max(0, item.Quantity - 1)
                 : item.Quantity;
@@ -41,7 +48,7 @@ public static class BookingItemPricing
         }
 
         var units = PackageNewPurchaseUnits(item, ownedCatalogPackageIds);
-        return units > 0 ? CashPrice(product) * units : 0;
+        return units > 0 ? SelectedPrice(item, product) * units : 0;
     }
 
     public static decimal CalculateUnitPrice(
@@ -54,7 +61,20 @@ public static class BookingItemPricing
             return item.CustomerPackageId is not null ? 0 : CashPrice(product);
         }
 
-        return PackageNewPurchaseUnits(item, ownedCatalogPackageIds) > 0 ? CashPrice(product) : 0;
+        return PackageNewPurchaseUnits(item, ownedCatalogPackageIds) > 0 ? SelectedPrice(item, product) : 0;
+    }
+
+    private static decimal SelectedPrice(CreateBookingItemInput item, Package product)
+    {
+        if (!IsInstallmentPurchase(item))
+        {
+            return CashPrice(product);
+        }
+        if (!product.InstallmentEnabled || product.InstallmentPrice is not > 0)
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageInstallmentUnavailable, "items");
+        }
+        return product.InstallmentPrice.Value;
     }
 
     public static decimal CashPrice(Package product)
@@ -81,6 +101,23 @@ public static class BookingItemPricing
         {
             throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageEditNotAllowed, "items");
         }
+        foreach (var item in items)
+        {
+            if (item.PaymentOption is not null &&
+                !string.Equals(item.PaymentOption, "cash", StringComparison.OrdinalIgnoreCase) &&
+                !IsInstallmentPurchase(item))
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageInstallmentUnavailable, "items");
+            }
+            if (IsInstallmentPurchase(item) &&
+                (catalog[item.PackageId].OfferType != OfferType.Package ||
+                 !catalog[item.PackageId].InstallmentEnabled ||
+                 !IsPackagePurchaseOnly(item) ||
+                 item.CustomerPackageId is not null))
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Bookings.InstallmentPurchaseOnly, "items");
+            }
+        }
     }
 
     /// <summary>Creates a customer-package row for a newly purchased package offer.</summary>
@@ -88,7 +125,9 @@ public static class BookingItemPricing
         Package product,
         string tenantId,
         string customerId,
-        DateOnly today)
+        DateOnly today,
+        bool installment = false,
+        string? originBookingId = null)
     {
         var total = product.PulseCount is > 0 ? product.PulseCount.Value : product.SessionCount ?? 0;
         if (total <= 0)
@@ -103,17 +142,49 @@ public static class BookingItemPricing
             ? today.AddMonths(product.PackageExpiryMonths.Value)
             : null;
 
-        return new CustomerPackage
+        var price = installment
+            ? product.InstallmentPrice ?? throw ConflictException.FromCode(
+                ApiErrorCodes.Packages.PackageInstallmentUnavailable, "items")
+            : CashPrice(product);
+        var purchase = new CustomerPackage
         {
             TenantId = tenantId,
             CustomerId = customerId,
             PackageId = product.Id,
-            PurchasePrice = CashPrice(product),
-            AmountDue = CashPrice(product),
-            Total = total,
+            OriginBookingId = originBookingId,
+            PurchasePrice = price,
+            AmountDue = price,
+            Total = installment ? 0 : total,
             ReservedSessions = 0,
             ExpiresOn = expiresOn,
             IsActive = true
         };
+        if (installment)
+        {
+            if (product.SessionCount is not > 0 || product.PulseCount is > 0 ||
+                product.FirstPayment is null || product.Installments.Count != product.InstallmentCount)
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageInstallmentUnavailable, "items");
+            }
+            purchase.Installments.Add(new CustomerPackageInstallment
+            {
+                TenantId = tenantId,
+                CustomerPackageId = purchase.Id,
+                Number = 0,
+                Amount = product.FirstPayment.Value
+            });
+            foreach (var row in product.Installments.OrderBy(x => x.Number))
+            {
+                purchase.Installments.Add(new CustomerPackageInstallment
+                {
+                    TenantId = tenantId,
+                    CustomerPackageId = purchase.Id,
+                    Number = row.Number,
+                    Amount = row.Amount,
+                    CumulativeAvailableSessions = row.CumulativeAvailableSessions
+                });
+            }
+        }
+        return purchase;
     }
 }

@@ -33,6 +33,7 @@ public interface IApplicationDbContext
     DbSet<BookingHold> BookingHolds { get; }
     DbSet<Customer> Customers { get; }
     DbSet<CustomerPackage> CustomerPackages { get; }
+    DbSet<CustomerPackageInstallment> CustomerPackageInstallments { get; }
     DbSet<BookingPackageReservation> BookingPackageReservations { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

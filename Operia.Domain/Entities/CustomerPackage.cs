@@ -10,10 +10,12 @@ public sealed class CustomerPackage : Entity, ITenantScoped
     public string TenantId { get; set; } = string.Empty;
     public string CustomerId { get; set; } = string.Empty;
     public string PackageId { get; set; } = string.Empty;
+    /// <summary>Booking that sold this purchase, when it was bought through booking creation.</summary>
+    public string? OriginBookingId { get; set; }
     public decimal? PurchasePrice { get; set; }
     public decimal? AmountDue { get; set; }
 
-    /// <summary>Total sessions or pulses purchased for this package or standalone service unit.</summary>
+    /// <summary>Released sessions or pulses; installment purchases grow this balance as collections are confirmed.</summary>
     public int Total { get; set; }
 
     /// <summary>Sessions or pulses consumed by completed bookings.</summary>
@@ -34,6 +36,7 @@ public sealed class CustomerPackage : Entity, ITenantScoped
     public Customer? Customer { get; set; }
     public Package? Package { get; set; }
     public ICollection<BookingPackageReservation> Reservations { get; set; } = [];
+    public ICollection<CustomerPackageInstallment> Installments { get; set; } = [];
 
     /// <summary>Reserved session count; returns 0 when <see cref="ReservedSessions"/> is null.</summary>
     public int ReservedSessionCount => ReservedSessions ?? 0;
