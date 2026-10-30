@@ -3,7 +3,7 @@ using MediatR;
 namespace Operia.Application.Bookings.Queries.FindBookingCustomer;
 
 /// <summary>Requests find booking customer data.</summary>
-public sealed record FindBookingCustomerQuery(string Mobile) : IRequest<BookingCustomerDto?>;
+public sealed record FindBookingCustomerQuery(string Mobile, string? BookingId = null) : IRequest<BookingCustomerDto?>;
 
 /// <summary>Carries booking customer package dto data across the operation boundary.</summary>
 public sealed record BookingCustomerPackageDto(
@@ -16,7 +16,9 @@ public sealed record BookingCustomerPackageDto(
     int ReservedSessions,
     int AvailableSessions,
     DateOnly? ExpiresOn,
-    string OfferType);
+    string OfferType,
+    int? SessionCount,
+    int? PulseCount);
 
 /// <summary>Carries booking customer dto data across the operation boundary.</summary>
 public sealed record BookingCustomerDto(

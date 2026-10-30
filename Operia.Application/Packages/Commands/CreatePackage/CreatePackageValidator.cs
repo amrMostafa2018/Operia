@@ -1,4 +1,5 @@
 using FluentValidation;
+using Operia.Application.Packages;
 using Operia.SharedKernel.Errors;
 
 namespace Operia.Application.Packages.Commands.CreatePackage;
@@ -18,17 +19,30 @@ public sealed class CreatePackageValidator : AbstractValidator<CreatePackageComm
             .GreaterThan(0).WithErrorCode(ApiErrorCodes.Packages.PackageDurationMin);
         RuleFor(command => command.Price)
             .GreaterThanOrEqualTo(0).WithErrorCode(ApiErrorCodes.Packages.PackagePriceMin);
+        RuleFor(command => command.Price)
+            .GreaterThan(0).When(command => command.CashEnabled)
+            .WithErrorCode(ApiErrorCodes.Packages.PackageCashPricePositive);
+        RuleFor(command => command.CashEnabled)
+            .Must((command, cashEnabled) => cashEnabled || command.InstallmentEnabled)
+            .WithErrorCode(ApiErrorCodes.Packages.PackagePaymentOptionRequired);
+        RuleFor(command => command.InstallmentPrice)
+            .NotNull().When(command => command.InstallmentEnabled)
+            .WithErrorCode(ApiErrorCodes.Packages.PackageInstallmentPriceRequired);
+        RuleFor(command => command.InstallmentPrice)
+            .GreaterThan(0).When(command => command.InstallmentEnabled && command.InstallmentPrice.HasValue)
+            .WithErrorCode(ApiErrorCodes.Packages.PackageInstallmentPriceMin);
+        RuleFor(command => command.InstallmentPrice)
+            .GreaterThanOrEqualTo(0).When(command => !command.InstallmentEnabled && command.InstallmentPrice.HasValue)
+            .WithErrorCode(ApiErrorCodes.Packages.PackageInstallmentPriceMin);
         RuleFor(command => command.DiscountCode)
             .MaximumLength(50);
         RuleFor(command => command.DiscountPercent)
             .InclusiveBetween(0, 100).When(command => command.DiscountPercent.HasValue)
             .WithErrorCode(ApiErrorCodes.Packages.PackageDiscountPercentRange);
-        RuleFor(command => command.PulseCount)
-            .GreaterThanOrEqualTo(0).When(command => command.PulseCount.HasValue)
-            .WithErrorCode(ApiErrorCodes.Packages.PackagePulseCountMin);
-        RuleFor(command => command.SessionCount)
-            .GreaterThanOrEqualTo(1)
-            .When(command => string.Equals(command.OfferType, "package", StringComparison.OrdinalIgnoreCase))
-            .WithErrorCode(ApiErrorCodes.Packages.PackageSessionCountMin);
+        PackageSessionPulseValidationRules.Apply(
+            this,
+            command => command.OfferType,
+            command => command.SessionCount,
+            command => command.PulseCount);
     }
 }

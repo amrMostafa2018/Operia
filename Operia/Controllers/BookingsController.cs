@@ -8,6 +8,7 @@ using Operia.Application.Bookings.Queries.FindBookingCustomer;
 using Operia.Application.Bookings.Queries.ListBookings;
 using Operia.Application.Bookings.Commands.CreateBooking;
 using Operia.Application.Bookings.Commands.CancelBooking;
+using Operia.Application.Bookings.Commands.CloseBooking;
 using Operia.Application.Bookings.Commands.UpdateBooking;
 using Operia.Application.Bookings.Queries.ExportBookings;
 using Operia.Application.Bookings.Queries.GetBookingPaymentMethods;
@@ -39,6 +40,15 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
         CancellationToken cancellationToken) =>
         mediator.Send(new CancelBookingCommand(id, request.Version), cancellationToken);
 
+    /// <summary>Closes a Booked appointment, finalises per-item usage, and marks it Completed.</summary>
+    [HttpPost("{id}/close")]
+    [Authorize(Policy = Policies.BookingsManage)]
+    public Task<CloseBookingResult> Close(
+        string id,
+        CloseBookingRequest request,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new CloseBookingCommand(id, request.Version, request.Items), cancellationToken);
+
     /// <summary>Updates booking items or payment choice without changing its Package session.</summary>
     [HttpPut("{id}")]
     [Authorize(Policy = Policies.BookingsManage)]
@@ -48,8 +58,11 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
     /// <summary>Finds a registered customer and eligible owned purchases by mobile number.</summary>
     [HttpGet("customers/by-mobile")]
     [Authorize(Policy = Policies.BookingsManage)]
-    public Task<BookingCustomerDto?> FindCustomer([FromQuery] string mobile, CancellationToken cancellationToken) =>
-        mediator.Send(new FindBookingCustomerQuery(mobile), cancellationToken);
+    public Task<BookingCustomerDto?> FindCustomer(
+        [FromQuery] string mobile,
+        [FromQuery] string? bookingId,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new FindBookingCustomerQuery(mobile, bookingId), cancellationToken);
 
     /// <summary>Lists enabled payment identifiers without exposing account settings.</summary>
     [HttpGet("payment-methods")]
@@ -112,12 +125,3 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
     public Task<IReadOnlyList<BookingHistoryDto>> History(string id, CancellationToken cancellationToken) =>
         mediator.Send(new GetBookingHistoryQuery(id), cancellationToken);
 }
-
-/// <summary>Carries cancel booking request data across the operation boundary.</summary>
-public sealed record CancelBookingRequest(string Version);
-
-/// <summary>Carries update booking request data across the operation boundary.</summary>
-public sealed record UpdateBookingRequest(
-    string Version,
-    IReadOnlyList<CreateBookingItemInput> Items,
-    string? PaymentMethod);

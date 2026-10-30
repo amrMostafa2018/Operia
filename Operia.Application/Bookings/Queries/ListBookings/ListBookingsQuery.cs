@@ -35,7 +35,8 @@ public sealed record BookingListItemDto(
     string? PaymentMethod,
     decimal TotalAmount,
     decimal PaidAmount,
-    decimal DiscountAmount);
+    decimal DiscountAmount,
+    DateTime ConfirmedAt);
 
 /// <summary>Carries booking summary dto data across the operation boundary.</summary>
 public sealed record BookingSummaryDto(int Total, int Booked, int Completed, int Cancelled);

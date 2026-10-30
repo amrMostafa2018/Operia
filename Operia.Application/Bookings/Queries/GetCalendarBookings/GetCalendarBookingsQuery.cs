@@ -34,7 +34,11 @@ public sealed record CalendarBookingItemDto(
     decimal UnitPrice,
     string? PackageId,
     string? CustomerPackageId,
-    int? PackageRemainingSessions);
+    int? PackageRemainingSessions,
+    int? PackagePulseCount,
+    int? PackageTotal,
+    int? PackageUsed,
+    bool PackageSessionLinked);
 
 /// <summary>Carries calendar booking dto data across the operation boundary.</summary>
 public sealed record CalendarBookingDto(

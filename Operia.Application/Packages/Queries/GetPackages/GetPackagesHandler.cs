@@ -15,8 +15,9 @@ public sealed class GetPackagesHandler(
         CancellationToken cancellationToken)
     {
         var tenantId = PackageMapper.RequireTenant(currentUser);
-        var pageSize = Math.Clamp(request.PageSize, 1, 50);
-        var pageNumber = Math.Max(request.PageNumber, 1);
+        var ignorePagination = request.IgnorePagination;
+        var pageSize = ignorePagination ? int.MaxValue : Math.Clamp(request.PageSize, 1, 50);
+        var pageNumber = ignorePagination ? 1 : Math.Max(request.PageNumber, 1);
         var baseQuery = db.Packages.AsNoTracking().Where(package => package.TenantId == tenantId);
 
         var activeCount = await baseQuery.CountAsync(
@@ -52,21 +53,31 @@ public sealed class GetPackagesHandler(
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
-        var packages = await query
+        var orderedQuery = query
             .Include(package => package.ServiceCategory)
-            .OrderByDescending(package => package.CreatedAt)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancellationToken);
+            .OrderByDescending(package => package.CreatedAt);
+
+        var packages = ignorePagination
+            ? await orderedQuery.ToListAsync(cancellationToken)
+            : await orderedQuery
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
 
         var items = packages.Select(PackageMapper.ToListItemDto).ToList();
+        var responsePageSize = ignorePagination
+            ? Math.Max(totalCount, 1)
+            : pageSize;
+        var totalPages = ignorePagination
+            ? 1
+            : (int)Math.Ceiling(totalCount / (double)pageSize);
 
         return new PackageListResultDto(
             items,
             pageNumber,
-            pageSize,
+            responsePageSize,
             totalCount,
-            (int)Math.Ceiling(totalCount / (double)pageSize),
+            totalPages,
             activeCount,
             cancelledCount);
     }

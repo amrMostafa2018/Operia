@@ -15,10 +15,13 @@ public sealed class Package : Entity, ITenantScoped
     public string ServiceCategoryId { get; set; } = string.Empty;
     public string? SubServiceCategoryId { get; set; }
     public int SessionDurationMinutes { get; set; }
-    public int SessionCount { get; set; }
+    public int? SessionCount { get; set; }
     public int? PulseCount { get; set; }
     public int? PackageExpiryMonths { get; set; }
     public decimal Price { get; set; }
+    public bool CashEnabled { get; set; } = true;
+    public bool InstallmentEnabled { get; set; }
+    public decimal? InstallmentPrice { get; set; }
     public string DiscountCode { get; set; } = string.Empty;
     public decimal? DiscountPercent { get; set; }
     public PackageStatus Status { get; set; } = PackageStatus.Active;

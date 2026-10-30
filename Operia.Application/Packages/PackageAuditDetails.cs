@@ -35,6 +35,9 @@ internal static class PackageAuditDetails
             package.PulseCount,
             package.PackageExpiryMonths,
             package.Price,
+            package.CashEnabled,
+            package.InstallmentEnabled,
+            package.InstallmentPrice,
             package.DiscountCode,
             package.DiscountPercent
         };

@@ -34,19 +34,29 @@ public sealed class FindBookingCustomerHandler(
                                     (owned.ExpiresOn == null || owned.ExpiresOn >= today) &&
                                     owned.Package != null &&
                                     owned.Package.Status == PackageStatus.Active &&
-                                    owned.TotalSessions > owned.UsedSessions + owned.ReservedSessions)
+                                    (((owned.Package.OfferType == OfferType.Package &&
+                                       (owned.Package.PulseCount ?? 0) > 0)
+                                        ? owned.Total > owned.Used
+                                        : owned.Total > owned.Used + (owned.ReservedSessions ?? 0)) ||
+                                     (request.BookingId != null &&
+                                      owned.Reservations.Any(r => r.BookingId == request.BookingId))))
                     .OrderBy(owned => owned.ExpiresOn)
                     .Select(owned => new BookingCustomerPackageDto(
                         owned.Id,
                         owned.PackageId,
                         owned.Package!.Name,
                         owned.Package.SessionDurationMinutes,
-                        owned.TotalSessions,
-                        owned.UsedSessions,
-                        owned.ReservedSessions,
-                        owned.TotalSessions - owned.UsedSessions - owned.ReservedSessions,
+                        owned.Total,
+                        owned.Used,
+                        owned.ReservedSessions ?? 0,
+                        (owned.Package.OfferType == OfferType.Package &&
+                         (owned.Package.PulseCount ?? 0) > 0)
+                            ? owned.Total - owned.Used
+                            : owned.Total - owned.Used - (owned.ReservedSessions ?? 0),
                         owned.ExpiresOn,
-                        owned.Package.OfferType == OfferType.Package ? "package" : "session"))
+                        owned.Package.OfferType == OfferType.Package ? "package" : "session",
+                        owned.Package.SessionCount,
+                        owned.Package.PulseCount))
                     .ToList()))
             .SingleOrDefaultAsync(cancellationToken);
     }

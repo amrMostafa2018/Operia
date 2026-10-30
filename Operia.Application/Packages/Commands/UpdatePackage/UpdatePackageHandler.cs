@@ -46,10 +46,13 @@ public sealed class UpdatePackageHandler(
         package.ServiceCategoryId = request.ServiceCategoryId;
         package.SubServiceCategoryId = request.SubServiceCategoryId;
         package.SessionDurationMinutes = request.SessionDurationMinutes;
-        package.SessionCount = offerType == OfferType.Package ? request.SessionCount : 0;
+        package.SessionCount = offerType == OfferType.Package ? request.SessionCount : null;
         package.PulseCount = offerType == OfferType.Package ? request.PulseCount : null;
         package.PackageExpiryMonths = offerType == OfferType.Package ? request.PackageExpiryMonths : null;
         package.Price = request.Price;
+        package.CashEnabled = request.CashEnabled;
+        package.InstallmentEnabled = request.InstallmentEnabled;
+        package.InstallmentPrice = request.InstallmentEnabled ? request.InstallmentPrice : null;
         package.DiscountCode = request.DiscountCode.Trim();
         package.DiscountPercent = request.DiscountPercent;
         package.Status = PackageMapper.FromIsActive(request.IsActive);

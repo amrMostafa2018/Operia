@@ -13,8 +13,12 @@ public sealed record PackageDetailDto(
     string? EndsAt,
     string Description,
     string? SubServiceCategoryId,
-    int SessionCount,
+    int? SessionCount,
     int? PulseCount,
     int? PackageExpiryMonths,
     string DiscountCode,
-    decimal? DiscountPercent);
+    decimal? DiscountPercent,
+    bool CashEnabled,
+    bool InstallmentEnabled,
+    decimal? InstallmentPrice,
+    decimal CashPriceAfterDiscount);

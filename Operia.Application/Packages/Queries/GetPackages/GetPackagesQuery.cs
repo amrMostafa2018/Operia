@@ -9,4 +9,5 @@ public sealed record GetPackagesQuery(
     string? Search = null,
     string? OfferType = null,
     string? ServiceCategoryId = null,
-    string? Status = null) : IRequest<PackageListResultDto>;
+    string? Status = null,
+    bool IgnorePagination = false) : IRequest<PackageListResultDto>;

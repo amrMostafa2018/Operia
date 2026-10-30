@@ -28,9 +28,17 @@ public sealed class PackagesController(IMediator mediator) : ControllerBase
         [FromQuery] string? offerType = null,
         [FromQuery] string? serviceCategoryId = null,
         [FromQuery] string? status = null,
+        [FromQuery] bool ignorePagination = false,
         CancellationToken cancellationToken = default) =>
         mediator.Send(
-            new GetPackagesQuery(pageNumber, pageSize, search, offerType, serviceCategoryId, status),
+            new GetPackagesQuery(
+                pageNumber,
+                pageSize,
+                search,
+                offerType,
+                serviceCategoryId,
+                status,
+                ignorePagination),
             cancellationToken);
 
     [HttpGet("service-categories")]
@@ -83,7 +91,10 @@ public sealed class PackagesController(IMediator mediator) : ControllerBase
                 request.PackageExpiryMonths,
                 request.Price,
                 request.DiscountCode,
-                request.DiscountPercent),
+                request.DiscountPercent,
+                request.CashEnabled,
+                request.InstallmentEnabled,
+                request.InstallmentPrice),
             cancellationToken);
 
     [HttpDelete("{id}")]

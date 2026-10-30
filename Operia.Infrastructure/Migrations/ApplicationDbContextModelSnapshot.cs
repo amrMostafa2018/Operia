@@ -517,6 +517,9 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
 
+                    b.Property<DateTime?>("CancellationAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -530,9 +533,6 @@ namespace Operia.Infrastructure.Migrations
                         .HasColumnType("nvarchar(36)");
 
                     b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ReleasedAtUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("SessionNumber")
@@ -553,7 +553,7 @@ namespace Operia.Infrastructure.Migrations
 
                     b.HasIndex("TenantId", "CustomerPackageId", "SessionNumber")
                         .IsUnique()
-                        .HasFilter("[ReleasedAtUtc] IS NULL");
+                        .HasFilter("[CancellationAtUtc] IS NULL");
 
                     b.ToTable("BookingPackageReservations", (string)null);
                 });
@@ -800,6 +800,10 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
 
+                    b.Property<decimal?>("AmountDue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -826,7 +830,11 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
 
-                    b.Property<int>("ReservedSessions")
+                    b.Property<decimal?>("PurchasePrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("ReservedSessions")
                         .HasColumnType("int");
 
                     b.Property<string>("TenantId")
@@ -834,10 +842,10 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
 
-                    b.Property<int>("TotalSessions")
+                    b.Property<int>("Total")
                         .HasColumnType("int");
 
-                    b.Property<int>("UsedSessions")
+                    b.Property<int>("Used")
                         .HasColumnType("int");
 
                     b.Property<byte[]>("Version")
@@ -1006,6 +1014,11 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
 
+                    b.Property<bool>("CashEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1029,6 +1042,13 @@ namespace Operia.Infrastructure.Migrations
 
                     b.Property<DateOnly?>("EndsAt")
                         .HasColumnType("date");
+
+                    b.Property<bool>("InstallmentEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("InstallmentPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("datetime2");
@@ -1056,7 +1076,7 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
 
-                    b.Property<int>("SessionCount")
+                    b.Property<int?>("SessionCount")
                         .HasColumnType("int");
 
                     b.Property<int>("SessionDurationMinutes")

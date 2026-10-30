@@ -87,6 +87,6 @@ public sealed class CreateServiceCategoryHandlerTests
         var audit = await _db.AuditLogs.SingleAsync(x => x.Action == AuditActions.ServiceCategoryCreated);
         audit.Should().NotBeNull();
         audit.DetailsJson.Should().NotBeNullOrWhiteSpace();
-        audit.DetailsJson.Should().Contain("\"name\":\"Body Laser\"");
+        audit.DetailsJson.Should().Contain("\"name\":\"Face Laser\"");
     }
 }

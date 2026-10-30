@@ -84,6 +84,22 @@
     "Value": "The selected payment method is no longer enabled. Choose another method."
   },
   {
+    "Name": "BookingItemsRequired",
+    "Value": "Choose at least one service before saving changes."
+  },
+  {
+    "Name": "BookingNotBookedStatus",
+    "Value": "Booking is not in Booked status."
+  },
+  {
+    "Name": "PulsesExceedRemaining",
+    "Value": "Pulses used cannot exceed remaining balance."
+  },
+  {
+    "Name": "CloseItemsIncomplete",
+    "Value": "Close request must include every booking line item."
+  },
+  {
     "Name": "GalleryPhotoLimitExceeded",
     "Value": "A maximum of six business photos is allowed."
   },
@@ -248,6 +264,14 @@
     "Value": "Session count must be at least 1."
   },
   {
+    "Name": "PACKAGE_SESSION_OR_PULSE_REQUIRED",
+    "Value": "Number of sessions or number of pulses is required."
+  },
+  {
+    "Name": "PACKAGE_SESSION_AND_PULSE_BOTH_FILLED",
+    "Value": "Please enter either the number of sessions or the number of pulses, not both."
+  },
+  {
     "Name": "PACKAGE_PULSE_COUNT_MIN",
     "Value": "Pulse count cannot be negative."
   },
@@ -260,8 +284,28 @@
     "Value": "Price cannot be negative."
   },
   {
+    "Name": "PACKAGE_CASH_PRICE_POSITIVE",
+    "Value": "Cash price must be greater than zero when cash is enabled."
+  },
+  {
     "Name": "PACKAGE_DISCOUNT_PERCENT_RANGE",
     "Value": "Discount percent must be between 0 and 100."
+  },
+  {
+    "Name": "PACKAGE_PAYMENT_OPTION_REQUIRED",
+    "Value": "Enable cash or installments to sell this offer."
+  },
+  {
+    "Name": "PACKAGE_INSTALLMENT_PRICE_REQUIRED",
+    "Value": "Installment price is required when installments are enabled."
+  },
+  {
+    "Name": "PACKAGE_INSTALLMENT_PRICE_MIN",
+    "Value": "Installment price must be greater than zero when installments are enabled and cannot be negative."
+  },
+  {
+    "Name": "PACKAGE_CASH_UNAVAILABLE",
+    "Value": "Cash purchase is not available for this offer."
   },
   {
     "Name": "PACKAGE_NOT_FOUND",

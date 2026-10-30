@@ -59,7 +59,10 @@ public sealed class BookingReadHandlerTests
                     null),
                 CancellationToken.None);
 
-        result.Items.Should().ContainSingle().Which.Id.Should().Be("booking-allowed");
+        var item = result.Items.Should().ContainSingle().Subject;
+        item.Id.Should().Be("booking-allowed");
+        var stored = await fixture.Db.Bookings.AsNoTracking().SingleAsync(x => x.Id == "booking-allowed");
+        item.ConfirmedAt.Should().Be(stored.CreatedAt);
         result.Summary.Should().Be(new BookingSummaryDto(1, 1, 0, 0));
     }
 
@@ -104,6 +107,7 @@ public sealed class BookingReadHandlerTests
                 CancellationToken.None);
 
         csv.Should().Contain("OP-booking-allowed");
+        csv.Should().Contain("Confirmation Date");
         csv.Should().NotContain("OP-booking-denied");
     }
 
@@ -160,6 +164,143 @@ public sealed class BookingReadHandlerTests
         item.PackageRemainingSessions.Should().Be(6);
     }
 
+    [Fact]
+    public async Task Calendar_EnrichesEachRepeatedPackageLineWithItsOwnReservation()
+    {
+        var fixture = await CreateFixtureAsync();
+        fixture.Db.BookingItems.Add(new BookingItem
+        {
+            Id = "item-allowed-2",
+            TenantId = "tenant-1",
+            BookingId = "booking-allowed",
+            Type = BookingItemType.PackageSession,
+            PackageId = "package-1",
+            Name = "Owned package",
+            Quantity = 1,
+            DurationMinutes = 60,
+            CreatedAt = new DateTime(2026, 9, 18, 8, 1, 0, DateTimeKind.Utc)
+        });
+        fixture.Db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "customer-package-2",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "package-1",
+            Total = 11,
+            Used = 0,
+            ReservedSessions = 1
+        });
+        fixture.Db.BookingPackageReservations.Add(new BookingPackageReservation
+        {
+            Id = "reservation-2",
+            TenantId = "tenant-1",
+            BookingId = "booking-allowed",
+            CustomerPackageId = "customer-package-2",
+            SessionNumber = 1,
+            CreatedAt = new DateTime(2026, 9, 18, 8, 1, 0, DateTimeKind.Utc)
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await new GetCalendarBookingsHandler(
+                fixture.Db,
+                fixture.User.Object,
+                fixture.Scope.Object,
+                fixture.Clock.Object)
+            .Handle(
+                new GetCalendarBookingsQuery(
+                    "branch-allowed",
+                    new DateOnly(2026, 9, 18),
+                    new DateOnly(2026, 9, 18),
+                    null),
+                CancellationToken.None);
+
+        var items = result.Bookings.Single().Items;
+        items.Should().HaveCount(2);
+        items[0].CustomerPackageId.Should().Be("customer-package-1");
+        items[0].PackageRemainingSessions.Should().Be(6);
+        items[1].CustomerPackageId.Should().Be("customer-package-2");
+        items[1].PackageRemainingSessions.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task Calendar_ZeroPriceOwnedPackageWithoutReservation_IsLinkedAsUsage()
+    {
+        var fixture = await CreateFixtureAsync();
+        fixture.Db.Bookings.Add(Booking("booking-owned-fallback", "tenant-1", "branch-allowed", "employee-allowed"));
+        fixture.Db.BookingItems.Add(new BookingItem
+        {
+            Id = "item-owned-fallback",
+            TenantId = "tenant-1",
+            BookingId = "booking-owned-fallback",
+            Type = BookingItemType.PackageSession,
+            PackageId = "package-1",
+            Name = "Owned package",
+            Quantity = 1,
+            DurationMinutes = 60,
+            UnitPrice = 0,
+            CreatedAt = new DateTime(2026, 9, 18, 8, 2, 0, DateTimeKind.Utc)
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await new GetCalendarBookingsHandler(
+                fixture.Db,
+                fixture.User.Object,
+                fixture.Scope.Object,
+                fixture.Clock.Object)
+            .Handle(
+                new GetCalendarBookingsQuery(
+                    "branch-allowed",
+                    new DateOnly(2026, 9, 18),
+                    new DateOnly(2026, 9, 18),
+                    null),
+                CancellationToken.None);
+
+        var item = result.Bookings.Single(x => x.Id == "booking-owned-fallback").Items.Should().ContainSingle().Which;
+        item.PackageSessionLinked.Should().BeTrue();
+        item.CustomerPackageId.Should().Be("customer-package-1");
+        item.PackageRemainingSessions.Should().Be(6);
+        item.UnitPrice.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Calendar_PaidPackageWithMatchingOwnedBalance_StaysUnlinkedPurchase()
+    {
+        var fixture = await CreateFixtureAsync();
+        fixture.Db.Bookings.Add(Booking("booking-paid-package", "tenant-1", "branch-allowed", "employee-allowed"));
+        fixture.Db.BookingItems.Add(new BookingItem
+        {
+            Id = "item-paid-package",
+            TenantId = "tenant-1",
+            BookingId = "booking-paid-package",
+            Type = BookingItemType.PackageSession,
+            PackageId = "package-1",
+            Name = "Owned package",
+            Quantity = 1,
+            DurationMinutes = 60,
+            UnitPrice = 1000,
+            CreatedAt = new DateTime(2026, 9, 18, 8, 3, 0, DateTimeKind.Utc)
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await new GetCalendarBookingsHandler(
+                fixture.Db,
+                fixture.User.Object,
+                fixture.Scope.Object,
+                fixture.Clock.Object)
+            .Handle(
+                new GetCalendarBookingsQuery(
+                    "branch-allowed",
+                    new DateOnly(2026, 9, 18),
+                    new DateOnly(2026, 9, 18),
+                    null),
+                CancellationToken.None);
+
+        var item = result.Bookings.Single(x => x.Id == "booking-paid-package").Items.Should().ContainSingle().Which;
+        item.PackageSessionLinked.Should().BeFalse();
+        item.CustomerPackageId.Should().Be("customer-package-1");
+        item.UnitPrice.Should().Be(1000);
+    }
+
     private static async Task<Fixture> CreateFixtureAsync()
     {
         var user = new Mock<ICurrentUserService>();
@@ -188,6 +329,21 @@ public sealed class BookingReadHandlerTests
         db.Employees.AddRange(
             Employee("employee-allowed", "tenant-1"),
             Employee("employee-denied", "tenant-1"));
+        db.Packages.Add(new Package
+        {
+            Id = "package-1",
+            TenantId = "tenant-1",
+            BusinessId = "business-1",
+            Name = "Owned package",
+            Description = "Package",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = "category-1",
+            SessionDurationMinutes = 60,
+            SessionCount = 11,
+            PulseCount = null,
+            Price = 1000,
+            Status = PackageStatus.Active
+        });
         db.Bookings.AddRange(
             Booking("booking-allowed", "tenant-1", "branch-allowed", "employee-allowed"),
             Booking("booking-denied", "tenant-1", "branch-denied", "employee-denied"));
@@ -203,7 +359,8 @@ public sealed class BookingReadHandlerTests
             PackageId = "package-1",
             Name = "Owned package",
             Quantity = 1,
-            DurationMinutes = 60
+            DurationMinutes = 60,
+            CreatedAt = new DateTime(2026, 9, 18, 8, 0, 0, DateTimeKind.Utc)
         });
         db.CustomerPackages.Add(new CustomerPackage
         {
@@ -211,8 +368,8 @@ public sealed class BookingReadHandlerTests
             TenantId = "tenant-1",
             CustomerId = "customer-1",
             PackageId = "package-1",
-            TotalSessions = 11,
-            UsedSessions = 2,
+            Total = 11,
+            Used = 2,
             ReservedSessions = 3
         });
         db.BookingPackageReservations.Add(new BookingPackageReservation
@@ -221,7 +378,8 @@ public sealed class BookingReadHandlerTests
             TenantId = "tenant-1",
             BookingId = "booking-allowed",
             CustomerPackageId = "customer-package-1",
-            SessionNumber = 3
+            SessionNumber = 3,
+            CreatedAt = new DateTime(2026, 9, 18, 8, 0, 0, DateTimeKind.Utc)
         });
         await db.SaveChangesAsync();
         tenantId = "tenant-1";

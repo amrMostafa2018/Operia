@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Bookings.Common;
@@ -42,7 +43,7 @@ public sealed class GetBookingHistoryHandler(
         var allowedBranches = await BookingAccess.GetAllowedBranchesAsync(currentUser, branchScope, cancellationToken);
         BookingAccess.RequireBranch(allowedBranches, branchId);
 
-        return await db.BookingHistory
+        var history = await db.BookingHistory
             .AsNoTracking()
             .Where(x => x.TenantId == tenantId && x.BookingId == request.BookingId)
             .OrderBy(x => x.CreatedAt)
@@ -54,5 +55,97 @@ public sealed class GetBookingHistoryHandler(
                 x.CreatedAt,
                 x.ChangesJson))
             .ToListAsync(cancellationToken);
+
+        var itemNames = await db.BookingItems
+            .AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.BookingId == request.BookingId)
+            .Select(x => new
+            {
+                x.Id,
+                x.Name,
+                PackageName = x.Package != null ? x.Package.Name : null
+            })
+            .ToListAsync(cancellationToken);
+        var namesByItemId = itemNames.ToDictionary(
+            x => x.Id,
+            x => FirstName(x.Name, x.PackageName),
+            StringComparer.Ordinal);
+
+        return history
+            .Select(entry => entry.Action == "Closed"
+                ? entry with { ChangesJson = FillClosedItemNames(entry.ChangesJson, namesByItemId) }
+                : entry)
+            .ToList();
     }
+
+    /// <summary>Fills a missing closed-line name from the booking item, leaving stored notes in place.</summary>
+    private static string? FillClosedItemNames(
+        string? changesJson,
+        IReadOnlyDictionary<string, string> namesByItemId)
+    {
+        if (string.IsNullOrWhiteSpace(changesJson))
+        {
+            return changesJson;
+        }
+
+        JsonNode? root;
+        try
+        {
+            root = JsonNode.Parse(changesJson);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return changesJson;
+        }
+
+        var items = root?["Items"]?.AsArray() ?? root?["items"]?.AsArray();
+        if (items is null)
+        {
+            return changesJson;
+        }
+
+        foreach (var item in items)
+        {
+            if (item is not JsonObject line)
+            {
+                continue;
+            }
+
+            var bookingItemId = ReadString(line, "BookingItemId", "bookingItemId");
+            var name = ReadString(line, "Name", "name");
+            if (!string.IsNullOrWhiteSpace(name) ||
+                bookingItemId is null ||
+                !namesByItemId.TryGetValue(bookingItemId, out var resolved) ||
+                string.IsNullOrWhiteSpace(resolved))
+            {
+                continue;
+            }
+
+            line["Name"] = resolved;
+        }
+
+        return root?.ToJsonString();
+    }
+
+    private static string? ReadString(JsonObject line, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (line[key] is not JsonValue value ||
+                !value.TryGetValue<string>(out var text) ||
+                string.IsNullOrWhiteSpace(text))
+            {
+                continue;
+            }
+
+            return text.Trim();
+        }
+
+        return null;
+    }
+
+    private static string FirstName(string? itemName, string? packageName) =>
+        !string.IsNullOrWhiteSpace(itemName) ? itemName.Trim() :
+        !string.IsNullOrWhiteSpace(packageName) ? packageName.Trim() :
+        string.Empty;
 }

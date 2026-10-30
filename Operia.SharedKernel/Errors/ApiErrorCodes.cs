@@ -71,10 +71,17 @@ public static class ApiErrorCodes
         public const string PackageDurationMin = "PACKAGE_DURATION_MIN";
         public const string PackageSessionCountRequired = "PACKAGE_SESSION_COUNT_REQUIRED";
         public const string PackageSessionCountMin = "PACKAGE_SESSION_COUNT_MIN";
+        public const string PackageSessionOrPulseRequired = "PACKAGE_SESSION_OR_PULSE_REQUIRED";
+        public const string PackageSessionAndPulseBothFilled = "PACKAGE_SESSION_AND_PULSE_BOTH_FILLED";
         public const string PackagePulseCountMin = "PACKAGE_PULSE_COUNT_MIN";
         public const string PackagePriceRequired = "PACKAGE_PRICE_REQUIRED";
         public const string PackagePriceMin = "PACKAGE_PRICE_MIN";
+        public const string PackageCashPricePositive = "PACKAGE_CASH_PRICE_POSITIVE";
         public const string PackageDiscountPercentRange = "PACKAGE_DISCOUNT_PERCENT_RANGE";
+        public const string PackagePaymentOptionRequired = "PACKAGE_PAYMENT_OPTION_REQUIRED";
+        public const string PackageInstallmentPriceRequired = "PACKAGE_INSTALLMENT_PRICE_REQUIRED";
+        public const string PackageInstallmentPriceMin = "PACKAGE_INSTALLMENT_PRICE_MIN";
+        public const string PackageCashUnavailable = "PACKAGE_CASH_UNAVAILABLE";
         public const string PackageNotFound = "PACKAGE_NOT_FOUND";
         public const string PackageAlreadyCancelled = "PACKAGE_ALREADY_CANCELLED";
     }
@@ -100,5 +107,9 @@ public static class ApiErrorCodes
         public const string TerminalReadOnly = "BookingTerminalReadOnly";
         public const string PackageEditNotAllowed = "BookingPackageEditNotAllowed";
         public const string PaymentMethodUnavailable = "BookingPaymentMethodUnavailable";
+        public const string ItemsRequired = "BookingItemsRequired";
+        public const string NotBookedStatus = "BookingNotBookedStatus";
+        public const string PulsesExceedRemaining = "PulsesExceedRemaining";
+        public const string CloseItemsIncomplete = "CloseItemsIncomplete";
     }
 }
