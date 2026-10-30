@@ -12,8 +12,9 @@ using Operia.Application.Packages.Queries.GetPackageById;
 using Operia.Application.Packages.Queries.GetPackages;
 using Operia.Application.Packages.Queries.GetServiceCategories;
 using Operia.Application.Packages.Queries.GetSubServiceCategories;
-using Operia.Application.Packages.Queries.GetAvailablePackageStaff;
 using Operia.Application.Packages;
+using Operia.Application.Packages.InstallmentPurchases;
+using Operia.Application.Packages.Queries.GetAvailablePackageStaff;
 
 namespace Operia.Controllers;
 
@@ -66,6 +67,22 @@ public sealed class PackagesController(IMediator mediator) : ControllerBase
     [Authorize(Policy = Policies.PackagesRead)]
     public Task<PackageDetailDto> Get(string id, CancellationToken cancellationToken) =>
         mediator.Send(new GetPackageByIdQuery(id), cancellationToken);
+
+    /// <summary>Reads a purchase's frozen installment schedule and collected amounts.</summary>
+    [HttpGet("installment-purchases/{purchaseId}")]
+    [Authorize(Policy = Policies.PackagesSell)]
+    public Task<InstallmentPurchaseDto> GetInstallmentPurchase(
+        string purchaseId, CancellationToken cancellationToken) =>
+        mediator.Send(new GetInstallmentPurchaseQuery(purchaseId), cancellationToken);
+
+    /// <summary>Confirms collection of the next scheduled payment and releases its sessions.</summary>
+    [HttpPost("installment-purchases/{purchaseId}/installments/{number:int}/collect")]
+    [Authorize(Policy = Policies.PackagesSell)]
+    public Task<InstallmentPurchaseDto> CollectInstallment(
+        string purchaseId, int number, CollectInstallmentRequest request,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new CollectInstallmentCommand(
+            purchaseId, number, request.Amount, request.PaymentMethod), cancellationToken);
 
     [HttpPost]
     [Authorize(Policy = Policies.PackagesManage)]

@@ -77,6 +77,11 @@ internal static class InstallmentPlanRules
             }
 
             var sessions = sessionCount(command).GetValueOrDefault();
+            if (sessions <= 0)
+            {
+                Add(context, "installments", ApiErrorCodes.Packages.PackageInstallmentSessionsInvalid);
+                return;
+            }
             var cumulativeSessions = 0;
             var cumulativePayment = upfront.GetValueOrDefault();
             foreach (var row in planRows)
@@ -94,6 +99,10 @@ internal static class InstallmentPlanRules
                     Add(context, "installments", ApiErrorCodes.Packages.PackageInstallmentReleaseCap);
                     return;
                 }
+            }
+            if (cumulativeSessions != sessions)
+            {
+                Add(context, "installments", ApiErrorCodes.Packages.PackageInstallmentSessionsInvalid);
             }
         });
     }
