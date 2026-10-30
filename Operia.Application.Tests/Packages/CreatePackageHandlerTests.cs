@@ -5,6 +5,7 @@ using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Packages.Commands.CreatePackage;
+using Operia.Application.Packages.DTOs;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Enums;
 using Operia.Infrastructure.Persistence;
@@ -114,6 +115,34 @@ public sealed class CreatePackageHandlerTests
         audit.Should().NotBeNull();
         audit.DetailsJson.Should().NotBeNullOrWhiteSpace();
         audit.DetailsJson.Should().Contain("\"offerType\":\"singleSession\"");
+    }
+
+    [Fact]
+    public async Task CreatePackage_StoresNumberedInstallmentsAndCumulativeRelease()
+    {
+        await SeedCategoryAsync("cat-1");
+        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var command = ValidCommand("cat-1", "package") with
+        {
+            InstallmentEnabled = true,
+            InstallmentPrice = 20000m,
+            FirstPayment = 5000m,
+            InstallmentCount = 3,
+            SessionCount = 10,
+            Installments = [
+                new PackageInstallmentInput(5000m, 3),
+                new PackageInstallmentInput(5000m, 4),
+                new PackageInstallmentInput(5000m, 3)
+            ]
+        };
+
+        var result = await handler.Handle(command, default);
+
+        result.Installments.Select(row => row.CumulativeAvailableSessions)
+            .Should().Equal(3, 7, 10);
+        (await _db.PackageInstallments.CountAsync()).Should().Be(3);
+        var audit = await _db.AuditLogs.SingleAsync(x => x.Action == AuditActions.PackageCreated);
+        audit.DetailsJson.Should().Contain("\"firstPayment\":5000");
     }
 
     private async Task SeedCategoryAsync(string categoryId)

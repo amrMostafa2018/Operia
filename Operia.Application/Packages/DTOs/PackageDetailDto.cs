@@ -21,4 +21,7 @@ public sealed record PackageDetailDto(
     bool CashEnabled,
     bool InstallmentEnabled,
     decimal? InstallmentPrice,
-    decimal CashPriceAfterDiscount);
+    decimal CashPriceAfterDiscount,
+    decimal? FirstPayment,
+    int? InstallmentCount,
+    IReadOnlyList<PackageInstallmentDto> Installments);

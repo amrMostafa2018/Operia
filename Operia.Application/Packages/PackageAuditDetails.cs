@@ -38,6 +38,18 @@ internal static class PackageAuditDetails
             package.CashEnabled,
             package.InstallmentEnabled,
             package.InstallmentPrice,
+            package.FirstPayment,
+            package.InstallmentCount,
+            installments = package.Installments
+                .OrderBy(row => row.Number)
+                .Select(row => new
+                {
+                    row.Number,
+                    row.Amount,
+                    row.SessionsUnlocked,
+                    row.CumulativeAvailableSessions
+                })
+                .ToArray(),
             package.DiscountCode,
             package.DiscountPercent
         };

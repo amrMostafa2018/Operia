@@ -5,6 +5,7 @@ using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Packages.Commands.UpdatePackage;
+using Operia.Application.Packages.DTOs;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Enums;
 using Operia.Domain.Exceptions;
@@ -124,6 +125,42 @@ public sealed class UpdatePackageHandlerTests
         audit.DetailsJson.Should().NotBeNullOrWhiteSpace();
         audit.DetailsJson.Should().Contain("\"previous\"");
         audit.DetailsJson.Should().Contain("\"current\"");
+    }
+
+    [Fact]
+    public async Task UpdatePackage_ReplacesPlanRowsWithoutKeepingObsoleteRows()
+    {
+        await SeedPackageAsync("pkg-1", "cat-1", PackageStatus.Active);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var first = ValidUpdateCommand("pkg-1", "cat-1") with
+        {
+            OfferType = "package",
+            SessionCount = 10,
+            InstallmentEnabled = true,
+            InstallmentPrice = 20000m,
+            FirstPayment = 5000m,
+            InstallmentCount = 3,
+            Installments = [
+                new PackageInstallmentInput(5000m, 3),
+                new PackageInstallmentInput(5000m, 4),
+                new PackageInstallmentInput(5000m, 3)
+            ]
+        };
+        await handler.Handle(first, default);
+
+        var revised = first with
+        {
+            InstallmentCount = 2,
+            Installments = [
+                new PackageInstallmentInput(7000m, 7),
+                new PackageInstallmentInput(8000m, 3)
+            ]
+        };
+        var result = await handler.Handle(revised, default);
+
+        result.Installments.Select(row => row.Number).Should().Equal(1, 2);
+        result.Installments.Select(row => row.CumulativeAvailableSessions).Should().Equal(7, 10);
+        (await _db.PackageInstallments.CountAsync()).Should().Be(2);
     }
 
     private async Task SeedPackageAsync(string packageId, string categoryId, PackageStatus status)

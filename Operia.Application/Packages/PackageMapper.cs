@@ -82,5 +82,15 @@ internal static class PackageMapper
             package.CashEnabled,
             package.InstallmentEnabled,
             package.InstallmentPrice,
-            PackageCashPricing.FinalPrice(package));
+            PackageCashPricing.FinalPrice(package),
+            package.FirstPayment,
+            package.InstallmentCount,
+            package.Installments
+                .OrderBy(row => row.Number)
+                .Select(row => new PackageInstallmentDto(
+                    row.Number,
+                    row.Amount,
+                    row.SessionsUnlocked,
+                    row.CumulativeAvailableSessions))
+                .ToArray());
 }

@@ -6,6 +6,7 @@ using Operia.Application.Bookings.Commands.CancelBooking;
 using Operia.Application.Bookings.Commands.UpdateBooking;
 using Operia.Application.Bookings.Queries.GetCalendarBookings;
 using Operia.Application.Bookings.Queries.FindBookingCustomer;
+using Operia.Application.Packages.InstallmentPurchases;
 using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
@@ -40,6 +41,98 @@ public sealed class CreateBookingHandlerTests
             .UseInMemoryDatabase($"CreateBooking_{Guid.NewGuid()}")
             .Options;
         _db = new TestApplicationDbContext(options, _clock.Object, _user.Object);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InstallmentPurchase_ReleasesSessionsOnlyAfterConfirmedCollections(bool cashEnabled)
+    {
+        await SeedAsync();
+        var product = await _db.Packages.SingleAsync(x => x.Id == "package-1");
+        product.CashEnabled = cashEnabled;
+        product.InstallmentEnabled = true;
+        product.InstallmentPrice = 1500m;
+        product.FirstPayment = 300m;
+        product.InstallmentCount = 2;
+        product.Installments.Add(new PackageInstallment
+        {
+            TenantId = "tenant-1", PackageId = product.Id, Number = 1,
+            Amount = 600m, SessionsUnlocked = 3, CumulativeAvailableSessions = 3
+        });
+        product.Installments.Add(new PackageInstallment
+        {
+            TenantId = "tenant-1", PackageId = product.Id, Number = 2,
+            Amount = 600m, SessionsUnlocked = 3, CumulativeAvailableSessions = 6
+        });
+        await _db.SaveChangesAsync();
+
+        var command = new CreateBookingCommand(
+            "installment-purchase", "customer-1", "branch-1", "employee-1",
+            _scheduledDate, 600, 660,
+            [new CreateBookingItemInput("package-1", null, 1, "packagePurchase", "installment")]);
+        var booking = await CreateHandler().Handle(command, CancellationToken.None);
+        var purchaseId = booking.InstallmentPurchaseIds.Should().ContainSingle().Which;
+        (await CreateHandler().Handle(command, CancellationToken.None))
+            .InstallmentPurchaseIds.Should().ContainSingle().Which.Should().Be(purchaseId);
+
+        var purchase = await _db.CustomerPackages.Include(x => x.Installments)
+            .SingleAsync(x => x.Id == purchaseId);
+        purchase.PurchasePrice.Should().Be(1500m);
+        purchase.AmountDue.Should().Be(1500m);
+        purchase.Total.Should().Be(0);
+        (await _db.Bookings.SingleAsync(x => x.Id == booking.Id)).TotalAmount.Should().Be(1500m);
+        (await _db.BookingPackageReservations.CountAsync(x => x.BookingId == booking.Id)).Should().Be(0);
+
+        product.InstallmentPrice = 1900m;
+        product.FirstPayment = 100m;
+        product.Installments.Single(x => x.Number == 1).Amount = 900m;
+        product.Installments.Single(x => x.Number == 2).Amount = 900m;
+        await _db.SaveChangesAsync();
+
+        var collector = new CollectInstallmentHandler(
+            _db, _user.Object, new AuditWriter(_db, _user.Object), _clock.Object);
+        var beforeRelease = () => CreateHandler().Handle(new CreateBookingCommand(
+            "unreleased-session", "customer-1", "branch-1", "employee-1",
+            _scheduledDate, 720, 780,
+            [new CreateBookingItemInput("package-1", purchaseId, 1)]), CancellationToken.None);
+        (await beforeRelease.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Bookings.PackageSessionUnavailable);
+
+        var outOfOrder = () => collector.Handle(
+            new CollectInstallmentCommand(purchaseId, 1, 600m, "cash"), CancellationToken.None);
+        (await outOfOrder.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Bookings.InstallmentCollectionInvalid);
+
+        var missingMethod = () => collector.Handle(
+            new CollectInstallmentCommand(purchaseId, 0, 300m, null), CancellationToken.None);
+        (await missingMethod.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Bookings.PaymentMethodUnavailable);
+
+        var first = await collector.Handle(
+            new CollectInstallmentCommand(purchaseId, 0, 300m, "cash"), CancellationToken.None);
+        first.AmountDue.Should().Be(1200m);
+        first.AvailableSessions.Should().Be(0);
+
+        var second = await collector.Handle(
+            new CollectInstallmentCommand(purchaseId, 1, 600m, "cash"), CancellationToken.None);
+        second.AmountDue.Should().Be(600m);
+        second.AvailableSessions.Should().Be(3);
+        (await collector.Handle(
+            new CollectInstallmentCommand(purchaseId, 1, 600m, "cash"), CancellationToken.None))
+            .AmountDue.Should().Be(600m);
+
+        var sessionBooking = await CreateHandler().Handle(new CreateBookingCommand(
+            "first-released-session", "customer-1", "branch-1", "employee-1",
+            _scheduledDate, 720, 780,
+            [new CreateBookingItemInput("package-1", purchaseId, 1)]), CancellationToken.None);
+        (await _db.Bookings.SingleAsync(x => x.Id == sessionBooking.Id)).TotalAmount.Should().Be(0);
+
+        var final = await collector.Handle(
+            new CollectInstallmentCommand(purchaseId, 2, 600m, "cash"), CancellationToken.None);
+        final.AmountDue.Should().Be(0);
+        final.AvailableSessions.Should().Be(6);
+        (await _db.Bookings.SingleAsync(x => x.Id == booking.Id)).PaidAmount.Should().Be(1500m);
     }
 
     [Fact]
