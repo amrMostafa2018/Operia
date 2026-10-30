@@ -10,4 +10,5 @@ public sealed record PackageListItemDto(
     decimal Price,
     string Status,
     DateTime CreatedAt,
-    string? EndsAt);
+    string? EndsAt,
+    decimal CashPriceAfterDiscount = 0m);

@@ -5,10 +5,14 @@ using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Packages.Commands.CreatePackage;
+using Operia.Application.Packages.DTOs;
+using Operia.Application.Packages.Queries.GetAvailablePackageStaff;
+using Operia.Domain.Entities;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Enums;
 using Operia.Infrastructure.Persistence;
 using Operia.SharedKernel.Interfaces;
+using Operia.SharedKernel.Errors;
 using Xunit;
 using ValidationException = Operia.Application.Common.Exceptions.ValidationException;
 
@@ -40,7 +44,7 @@ public sealed class CreatePackageHandlerTests
     public async Task CreatePackage_SingleSession_SavesCorrectly()
     {
         await SeedCategoryAsync("cat-1");
-        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
 
         var result = await handler.Handle(ValidCommand("cat-1", "singleSession"), default);
 
@@ -60,7 +64,7 @@ public sealed class CreatePackageHandlerTests
     public async Task CreatePackage_PackageType_SavesSessionCountAndPulse()
     {
         await SeedCategoryAsync("cat-1");
-        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         var command = ValidCommand("cat-1", "package") with
         {
             SessionCount = 8,
@@ -79,7 +83,7 @@ public sealed class CreatePackageHandlerTests
     [Fact]
     public async Task CreatePackage_UnknownServiceCategoryId_ThrowsValidationException()
     {
-        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         var act = () => handler.Handle(ValidCommand("missing-cat"), default);
 
         var exception = await act.Should().ThrowAsync<ValidationException>();
@@ -90,7 +94,7 @@ public sealed class CreatePackageHandlerTests
     public async Task CreatePackage_WithDiscount_PersistsDiscountFields()
     {
         await SeedCategoryAsync("cat-1");
-        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         var command = ValidCommand("cat-1") with
         {
             DiscountCode = "WELCOME15",
@@ -107,13 +111,119 @@ public sealed class CreatePackageHandlerTests
     public async Task CreatePackage_WritesAuditLog_WithActionPackageCreated()
     {
         await SeedCategoryAsync("cat-1");
-        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         await handler.Handle(ValidCommand("cat-1"), default);
 
         var audit = await _db.AuditLogs.SingleAsync(x => x.Action == AuditActions.PackageCreated);
         audit.Should().NotBeNull();
         audit.DetailsJson.Should().NotBeNullOrWhiteSpace();
         audit.DetailsJson.Should().Contain("\"offerType\":\"singleSession\"");
+    }
+
+    [Fact]
+    public async Task CreatePackage_StoresNumberedInstallmentsAndCumulativeRelease()
+    {
+        await SeedCategoryAsync("cat-1");
+        var handler = new CreatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
+        var command = ValidCommand("cat-1", "package") with
+        {
+            InstallmentEnabled = true,
+            InstallmentPrice = 20000m,
+            FirstPayment = 5000m,
+            InstallmentCount = 3,
+            SessionCount = 10,
+            Installments = [
+                new PackageInstallmentInput(5000m, 3),
+                new PackageInstallmentInput(5000m, 4),
+                new PackageInstallmentInput(5000m, 3)
+            ]
+        };
+
+        var result = await handler.Handle(command, default);
+
+        result.Installments.Select(row => row.CumulativeAvailableSessions)
+            .Should().Equal(3, 7, 10);
+        (await _db.PackageInstallments.CountAsync()).Should().Be(3);
+        var audit = await _db.AuditLogs.SingleAsync(x => x.Action == AuditActions.PackageCreated);
+        audit.DetailsJson.Should().Contain("\"firstPayment\":5000");
+    }
+
+    [Fact]
+    public async Task CreatePackage_SelectedStaff_PersistsScopedAssignmentAndAudit()
+    {
+        await SeedCategoryAsync("cat-1");
+        _db.Branches.Add(BranchTestData.Branch("branch-1", "tenant-1", "business-tenant-1", "Main"));
+        _db.Employees.Add(BranchTestData.Employee(
+            "staff-1", "tenant-1", "business-tenant-1", "staff-user", "E1",
+            "Mona", "mona@example.com", "01000000000"));
+        _db.UserBranches.Add(new UserBranch
+        {
+            TenantId = "tenant-1",
+            EmployeeId = "staff-1",
+            BranchId = "branch-1"
+        });
+        await _db.SaveChangesAsync();
+        var branches = new Mock<IBranchScope>();
+        branches.Setup(x => x.GetAllowedBranchIdsAsync("user-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["branch-1"]);
+        var identity = new Mock<IIdentityService>();
+        identity.Setup(x => x.GetRolesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["staff-user"] = "Staff" });
+        var command = ValidCommand("cat-1") with
+        {
+            AllStaff = false,
+            StaffIds = ["staff-1"]
+        };
+
+        var result = await new CreatePackageHandler(
+            _db, _currentUserServiceMock.Object, _auditWriter,
+            branches.Object, identity.Object).Handle(command, default);
+
+        result.AllStaff.Should().BeFalse();
+        result.StaffIds.Should().Equal("staff-1");
+        (await _db.PackageStaff.SingleAsync()).TenantId.Should().Be("tenant-1");
+        var audit = await _db.AuditLogs.SingleAsync(x => x.Action == AuditActions.PackageCreated);
+        audit.DetailsJson.Should().Contain("staff-1");
+    }
+
+    [Fact]
+    public async Task CreatePackage_RejectsStaffOutsideAccessibleBranches()
+    {
+        await SeedCategoryAsync("cat-1");
+        _tenantId = "tenant-2";
+        _db.Businesses.Add(BranchTestData.Business("tenant-2"));
+        _db.Branches.Add(BranchTestData.Branch("branch-2", "tenant-2", "business-tenant-2", "Other"));
+        _db.Employees.Add(BranchTestData.Employee(
+            "other-tenant-staff", "tenant-2", "business-tenant-2", "other-user", "E2",
+            "Other Staff", "other@example.com", "01000000002"));
+        _db.UserBranches.Add(new UserBranch
+        {
+            TenantId = "tenant-2",
+            EmployeeId = "other-tenant-staff",
+            BranchId = "branch-2"
+        });
+        await _db.SaveChangesAsync();
+        _tenantId = "tenant-1";
+        var command = ValidCommand("cat-1") with
+        {
+            AllStaff = false,
+            StaffIds = ["other-tenant-staff"]
+        };
+        var branches = new Mock<IBranchScope>();
+        branches.Setup(x => x.GetAllowedBranchIdsAsync("user-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["branch-2"]);
+        var identity = new Mock<IIdentityService>();
+        identity.Setup(x => x.GetRolesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["other-user"] = "Staff" });
+
+        var act = () => new CreatePackageHandler(
+            _db, _currentUserServiceMock.Object, _auditWriter,
+            branches.Object, identity.Object).Handle(command, default);
+
+        var failure = await act.Should().ThrowAsync<ValidationException>();
+        failure.Which.ErrorCodes.Values.SelectMany(codes => codes)
+            .Should().Contain(ApiErrorCodes.Packages.PackageStaffInvalid);
+        (await _db.Packages.CountAsync()).Should().Be(0);
     }
 
     private async Task SeedCategoryAsync(string categoryId)

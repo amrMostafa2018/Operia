@@ -7,6 +7,7 @@ using Operia.Application.Common.Interfaces;
 using Operia.Application.Employees.Queries.GetBookableEmployees;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Entities;
+using Operia.Domain.Enums;
 using Operia.Infrastructure.Persistence;
 using Operia.SharedKernel.Errors;
 using Operia.SharedKernel.Interfaces;
@@ -121,6 +122,60 @@ public sealed class GetBookableEmployeesHandlerTests
 
         result.Should().ContainSingle();
         result.Single().Id.Should().Be("employee-own");
+    }
+
+    [Fact]
+    public async Task Handle_ForPackage_ReturnsOnlyAssignedStaffInBranch()
+    {
+        _branchScope
+            .Setup(scope => scope.GetAllowedBranchIdsAsync("staff-user", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["branch-1"]);
+        _db.Businesses.Add(BranchTestData.Business("tenant-1"));
+        _db.Branches.Add(BranchTestData.Branch(
+            "branch-1", "tenant-1", "business-tenant-1", "Main"));
+        foreach (var id in new[] { "employee-1", "employee-2" })
+        {
+            _db.Employees.Add(BranchTestData.Employee(
+                id, "tenant-1", "business-tenant-1", id + "-user", id,
+                id, id + "@example.com", "01000000000"));
+            _db.UserBranches.Add(new UserBranch
+            {
+                TenantId = "tenant-1",
+                EmployeeId = id,
+                BranchId = "branch-1"
+            });
+        }
+        _db.Packages.Add(new Package
+        {
+            Id = "package-1",
+            TenantId = "tenant-1",
+            BusinessId = "business-tenant-1",
+            Name = "Offer",
+            ServiceCategoryId = "category-1",
+            OfferType = OfferType.Package,
+            Status = PackageStatus.Active,
+            AllStaff = false,
+            AvailableStaff =
+            [
+                new PackageStaff
+                {
+                    TenantId = "tenant-1", PackageId = "package-1", EmployeeId = "employee-1"
+                }
+            ]
+        });
+        await _db.SaveChangesAsync();
+        _identity.Setup(service => service.GetRolesAsync(
+                It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, string>
+            {
+                ["employee-1-user"] = Roles.Staff,
+                ["employee-2-user"] = Roles.Staff
+            });
+
+        var result = await CreateHandler().Handle(
+            new GetBookableEmployeesQuery("branch-1", "package-1"), CancellationToken.None);
+
+        result.Select(employee => employee.Id).Should().Equal("employee-1");
     }
 
     private GetBookableEmployeesHandler CreateHandler() =>

@@ -75,8 +75,9 @@ public sealed class EmployeesController(IMediator mediator) : ControllerBase
     [Authorize(Policy = Policies.BookingsRead)]
     public Task<IReadOnlyList<BookableEmployeeDto>> Bookable(
         [FromQuery] string branchId,
+        [FromQuery] string? packageId,
         CancellationToken cancellationToken) =>
-        mediator.Send(new GetBookableEmployeesQuery(branchId), cancellationToken);
+        mediator.Send(new GetBookableEmployeesQuery(branchId, packageId), cancellationToken);
 
     [HttpPost]
     [Authorize(Policy = Policies.EmployeesManage)]

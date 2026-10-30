@@ -76,7 +76,25 @@ public static class ApiErrorCodes
         public const string PackagePulseCountMin = "PACKAGE_PULSE_COUNT_MIN";
         public const string PackagePriceRequired = "PACKAGE_PRICE_REQUIRED";
         public const string PackagePriceMin = "PACKAGE_PRICE_MIN";
+        public const string PackageCashPricePositive = "PACKAGE_CASH_PRICE_POSITIVE";
         public const string PackageDiscountPercentRange = "PACKAGE_DISCOUNT_PERCENT_RANGE";
+        public const string PackagePaymentOptionRequired = "PACKAGE_PAYMENT_OPTION_REQUIRED";
+        public const string PackageInstallmentPriceRequired = "PACKAGE_INSTALLMENT_PRICE_REQUIRED";
+        public const string PackageInstallmentPriceMin = "PACKAGE_INSTALLMENT_PRICE_MIN";
+        public const string PackageInstallmentOnlyPackage = "PACKAGE_INSTALLMENT_ONLY_PACKAGE";
+        public const string PackageInstallmentPayloadNotAllowed = "PACKAGE_INSTALLMENT_PAYLOAD_NOT_ALLOWED";
+        public const string PackageFirstPaymentRequired = "PACKAGE_FIRST_PAYMENT_REQUIRED";
+        public const string PackageFirstPaymentRange = "PACKAGE_FIRST_PAYMENT_RANGE";
+        public const string PackageInstallmentCountRange = "PACKAGE_INSTALLMENT_COUNT_RANGE";
+        public const string PackageInstallmentRowsCount = "PACKAGE_INSTALLMENT_ROWS_COUNT";
+        public const string PackageInstallmentAmountInvalid = "PACKAGE_INSTALLMENT_AMOUNT_INVALID";
+        public const string PackageInstallmentTotalMismatch = "PACKAGE_INSTALLMENT_TOTAL_MISMATCH";
+        public const string PackageInstallmentSessionsInvalid = "PACKAGE_INSTALLMENT_SESSIONS_INVALID";
+        public const string PackageInstallmentReleaseCap = "PACKAGE_INSTALLMENT_RELEASE_CAP";
+        public const string PackageCashUnavailable = "PACKAGE_CASH_UNAVAILABLE";
+        public const string PackageStaffInvalid = "PACKAGE_STAFF_INVALID";
+        public const string PackageStaffUnavailable = "PACKAGE_STAFF_UNAVAILABLE";
+        public const string PackageInstallmentUnavailable = "PACKAGE_INSTALLMENT_UNAVAILABLE";
         public const string PackageNotFound = "PACKAGE_NOT_FOUND";
         public const string PackageAlreadyCancelled = "PACKAGE_ALREADY_CANCELLED";
     }
@@ -102,6 +120,9 @@ public static class ApiErrorCodes
         public const string TerminalReadOnly = "BookingTerminalReadOnly";
         public const string PackageEditNotAllowed = "BookingPackageEditNotAllowed";
         public const string PaymentMethodUnavailable = "BookingPaymentMethodUnavailable";
+        public const string InstallmentPurchaseOnly = "BookingInstallmentPurchaseOnly";
+        public const string InstallmentEditNotAllowed = "BookingInstallmentEditNotAllowed";
+        public const string InstallmentCollectionInvalid = "BookingInstallmentCollectionInvalid";
         public const string ItemsRequired = "BookingItemsRequired";
         public const string NotBookedStatus = "BookingNotBookedStatus";
         public const string PulsesExceedRemaining = "PulsesExceedRemaining";

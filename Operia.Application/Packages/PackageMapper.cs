@@ -57,7 +57,8 @@ internal static class PackageMapper
             package.Price,
             ToStatusJson(package.Status),
             package.CreatedAt,
-            package.EndsAt?.ToString("yyyy-MM-dd"));
+            package.EndsAt?.ToString("yyyy-MM-dd"),
+            PackageCashPricing.FinalPrice(package));
 
     public static PackageDetailDto ToDetailDto(Package package) =>
         new(
@@ -77,5 +78,21 @@ internal static class PackageMapper
             package.PulseCount,
             package.PackageExpiryMonths,
             package.DiscountCode,
-            package.DiscountPercent);
+            package.DiscountPercent,
+            package.CashEnabled,
+            package.InstallmentEnabled,
+            package.InstallmentPrice,
+            PackageCashPricing.FinalPrice(package),
+            package.FirstPayment,
+            package.InstallmentCount,
+            package.Installments
+                .OrderBy(row => row.Number)
+                .Select(row => new PackageInstallmentDto(
+                    row.Number,
+                    row.Amount,
+                    row.SessionsUnlocked,
+                    row.CumulativeAvailableSessions))
+                .ToArray(),
+            package.AllStaff,
+            package.AvailableStaff.Select(staff => staff.EmployeeId).OrderBy(id => id).ToArray());
 }

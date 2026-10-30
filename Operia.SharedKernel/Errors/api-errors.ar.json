@@ -276,9 +276,41 @@
     "Value": "لا يمكن أن يكون السعر سالبًا."
   },
   {
+    "Name": "PACKAGE_CASH_PRICE_POSITIVE",
+    "Value": "يجب أن يكون السعر النقدي أكبر من صفر عند تفعيل الدفع النقدي."
+  },
+  {
     "Name": "PACKAGE_DISCOUNT_PERCENT_RANGE",
     "Value": "يجب أن تكون نسبة الخصم بين 0 و 100."
   },
+  {
+    "Name": "PACKAGE_PAYMENT_OPTION_REQUIRED",
+    "Value": "فعّل الدفع النقدي أو التقسيط لبيع هذا العرض."
+  },
+  {
+    "Name": "PACKAGE_INSTALLMENT_PRICE_REQUIRED",
+    "Value": "سعر التقسيط مطلوب عند تفعيل التقسيط."
+  },
+  {
+    "Name": "PACKAGE_INSTALLMENT_PRICE_MIN",
+    "Value": "يجب أن يكون سعر التقسيط أكبر من صفر عند تفعيله، ولا يمكن أن يكون سالبًا."
+  },
+  {
+    "Name": "PACKAGE_CASH_UNAVAILABLE",
+    "Value": "الشراء النقدي غير متاح لهذا العرض."
+  },
+  { "Name": "PACKAGE_INSTALLMENT_ONLY_PACKAGE", "Value": "التقسيط متاح لعروض الباقات فقط." },
+  { "Name": "PACKAGE_INSTALLMENT_PAYLOAD_NOT_ALLOWED", "Value": "احذف تفاصيل خطة التقسيط عند تعطيل التقسيط." },
+  { "Name": "PACKAGE_FIRST_PAYMENT_REQUIRED", "Value": "الدفعة الأولى مطلوبة." },
+  { "Name": "PACKAGE_FIRST_PAYMENT_RANGE", "Value": "يجب أن تكون الدفعة الأولى بين صفر وسعر التقسيط، وبحد أقصى منزلتان عشريتان." },
+  { "Name": "PACKAGE_INSTALLMENT_COUNT_RANGE", "Value": "أدخل قسطًا واحدًا على الأقل." },
+  { "Name": "PACKAGE_INSTALLMENT_ROWS_COUNT", "Value": "يجب أن يساوي عدد صفوف التقسيط عدد الأقساط." },
+  { "Name": "PACKAGE_INSTALLMENT_AMOUNT_INVALID", "Value": "يجب ألا يكون مبلغ القسط سالبًا، وبحد أقصى منزلتان عشريتان." },
+  { "Name": "PACKAGE_INSTALLMENT_TOTAL_MISMATCH", "Value": "يجب أن يساوي مجموع الأقساط سعر التقسيط بعد طرح الدفعة الأولى." },
+  { "Name": "PACKAGE_INSTALLMENT_SESSIONS_INVALID", "Value": "لا يمكن أن تكون الجلسات المحررة سالبة أو تتجاوز عدد جلسات الباقة." },
+  { "Name": "PACKAGE_INSTALLMENT_RELEASE_CAP", "Value": "قبل السداد الكامل، لا يجوز تحرير أكثر من 70٪ من جلسات الباقة بعد التقريب لأقرب جلسة مع تقريب النصف للأسفل." },
+  { "Name": "PACKAGE_STAFF_INVALID", "Value": "اختر موظفين نشطين تابعين لفرع مسموح، أو اختر جميع الموظفين." },
+  { "Name": "PACKAGE_STAFF_UNAVAILABLE", "Value": "الموظف المختار غير متاح لهذه الخدمة أو العرض." },
   {
     "Name": "PACKAGE_NOT_FOUND",
     "Value": "الخدمة أو العرض غير موجود."

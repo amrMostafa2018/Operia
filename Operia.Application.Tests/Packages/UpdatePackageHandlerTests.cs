@@ -5,6 +5,7 @@ using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Packages.Commands.UpdatePackage;
+using Operia.Application.Packages.DTOs;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Enums;
 using Operia.Domain.Exceptions;
@@ -42,7 +43,7 @@ public sealed class UpdatePackageHandlerTests
         _db.ServiceCategories.Add(PackageTestData.ServiceCategory("cat-2", "tenant-1", "Face Laser"));
         await _db.SaveChangesAsync();
 
-        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         var command = new UpdatePackageCommand(
             "pkg-1",
             "Updated Offer",
@@ -78,7 +79,7 @@ public sealed class UpdatePackageHandlerTests
     [Fact]
     public async Task UpdatePackage_PackageNotFound_ThrowsNotFoundException()
     {
-        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         var act = () => handler.Handle(ValidUpdateCommand("missing-pkg", "cat-1"), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
@@ -89,7 +90,7 @@ public sealed class UpdatePackageHandlerTests
     {
         await SeedPackageAsync("pkg-1", "cat-1", PackageStatus.Cancelled);
 
-        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         var act = () => handler.Handle(ValidUpdateCommand("pkg-1", "cat-1"), default);
 
         var exception = await act.Should().ThrowAsync<ConflictException>();
@@ -105,7 +106,7 @@ public sealed class UpdatePackageHandlerTests
         await _db.SaveChangesAsync();
         _tenantId = "tenant-1";
 
-        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         var act = () => handler.Handle(ValidUpdateCommand("pkg-2", "cat-1"), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
@@ -116,7 +117,7 @@ public sealed class UpdatePackageHandlerTests
     {
         await SeedPackageAsync("pkg-1", "cat-1", PackageStatus.Active);
 
-        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
         await handler.Handle(ValidUpdateCommand("pkg-1", "cat-1"), default);
 
         var audit = await _db.AuditLogs.SingleAsync(x => x.Action == AuditActions.PackageUpdated);
@@ -124,6 +125,42 @@ public sealed class UpdatePackageHandlerTests
         audit.DetailsJson.Should().NotBeNullOrWhiteSpace();
         audit.DetailsJson.Should().Contain("\"previous\"");
         audit.DetailsJson.Should().Contain("\"current\"");
+    }
+
+    [Fact]
+    public async Task UpdatePackage_ReplacesPlanRowsWithoutKeepingObsoleteRows()
+    {
+        await SeedPackageAsync("pkg-1", "cat-1", PackageStatus.Active);
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
+        var first = ValidUpdateCommand("pkg-1", "cat-1") with
+        {
+            OfferType = "package",
+            SessionCount = 10,
+            InstallmentEnabled = true,
+            InstallmentPrice = 20000m,
+            FirstPayment = 5000m,
+            InstallmentCount = 3,
+            Installments = [
+                new PackageInstallmentInput(5000m, 3),
+                new PackageInstallmentInput(5000m, 4),
+                new PackageInstallmentInput(5000m, 3)
+            ]
+        };
+        await handler.Handle(first, default);
+
+        var revised = first with
+        {
+            InstallmentCount = 2,
+            Installments = [
+                new PackageInstallmentInput(7000m, 7),
+                new PackageInstallmentInput(8000m, 3)
+            ]
+        };
+        var result = await handler.Handle(revised, default);
+
+        result.Installments.Select(row => row.Number).Should().Equal(1, 2);
+        result.Installments.Select(row => row.CumulativeAvailableSessions).Should().Equal(7, 10);
+        (await _db.PackageInstallments.CountAsync()).Should().Be(2);
     }
 
     private async Task SeedPackageAsync(string packageId, string categoryId, PackageStatus status)

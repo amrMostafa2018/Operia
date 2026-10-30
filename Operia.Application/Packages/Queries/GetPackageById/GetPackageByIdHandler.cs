@@ -17,6 +17,8 @@ public sealed class GetPackageByIdHandler(
         var package = await db.Packages
             .AsNoTracking()
             .Include(item => item.ServiceCategory)
+            .Include(item => item.Installments)
+            .Include(item => item.AvailableStaff)
             .SingleOrDefaultAsync(
                 item => item.Id == request.Id && item.TenantId == tenantId,
                 cancellationToken) ?? throw new Domain.Exceptions.NotFoundException(nameof(Domain.Entities.Package), request.Id);
