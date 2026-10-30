@@ -12,7 +12,11 @@ namespace Operia.Application.Bookings.Common;
 public static class BookingItemPricing
 {
     public static bool IsPackagePurchaseOnly(CreateBookingItemInput item) =>
-        string.Equals(item.Type, "packagePurchase", StringComparison.OrdinalIgnoreCase);
+        string.Equals(item.Type, "packagePurchase", StringComparison.OrdinalIgnoreCase) ||
+        IsExplicitNewPurchase(item);
+
+    public static bool IsExplicitNewPurchase(CreateBookingItemInput item) =>
+        string.Equals(item.Type, "packageNewPurchase", StringComparison.OrdinalIgnoreCase);
 
     public static bool IsInstallmentPurchase(CreateBookingItemInput item) =>
         string.Equals(item.PaymentOption, "installment", StringComparison.OrdinalIgnoreCase);
@@ -23,7 +27,7 @@ public static class BookingItemPricing
     {
         if (IsPackagePurchaseOnly(item))
         {
-            if (IsInstallmentPurchase(item))
+            if (IsInstallmentPurchase(item) || IsExplicitNewPurchase(item))
             {
                 return item.Quantity;
             }
@@ -61,7 +65,7 @@ public static class BookingItemPricing
             return item.CustomerPackageId is not null ? 0 : CashPrice(product);
         }
 
-        return PackageNewPurchaseUnits(item, ownedCatalogPackageIds) > 0 ? SelectedPrice(item, product) : 0;
+        return CalculateItemTotal(item, product, ownedCatalogPackageIds) / item.Quantity;
     }
 
     private static decimal SelectedPrice(CreateBookingItemInput item, Package product)

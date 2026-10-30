@@ -1,5 +1,5 @@
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=Operia;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+    "DefaultConnection": "Server=(localdb)\\OperiaDev;Database=Operia_Dev;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
   }
 }
