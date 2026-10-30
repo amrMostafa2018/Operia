@@ -257,7 +257,8 @@ public sealed class CreateBookingHandler(
                 {
                     for (var unit = 0; unit < Math.Max(0, item.Quantity - 1); unit++)
                     {
-                        newPurchases.Add(BookingItemPricing.CreatePackagePurchase(product, tenantId, customerId, today));
+                        newPurchases.Add(BookingItemPricing.CreatePackagePurchase(
+                            product, tenantId, customerId, today, originBookingId: bookingId));
                     }
                 }
 
@@ -297,7 +298,8 @@ public sealed class CreateBookingHandler(
 
                 for (var unit = 0; unit < item.Quantity; unit++)
                 {
-                    var purchase = BookingItemPricing.CreatePackagePurchase(product, tenantId, customerId, today);
+                    var purchase = BookingItemPricing.CreatePackagePurchase(
+                        product, tenantId, customerId, today, originBookingId: bookingId);
                     newPurchases.Add(purchase);
                     if (unit == 0)
                     {
@@ -316,6 +318,7 @@ public sealed class CreateBookingHandler(
                     TenantId = tenantId,
                     CustomerId = customerId,
                     PackageId = product.Id,
+                    OriginBookingId = bookingId,
                     PurchasePrice = BookingItemPricing.CashPrice(product),
                     AmountDue = BookingItemPricing.CashPrice(product),
                     PurchaseSnapshotJson = PackagePurchaseSnapshot.Capture(
