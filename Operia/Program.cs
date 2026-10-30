@@ -54,6 +54,13 @@ try
 
     await DatabaseInitializer.InitializeAsync(app.Services);
 
+    if (builder.Configuration.GetValue<bool>("E2E:SeedData"))
+    {
+        if (!app.Environment.IsDevelopment())
+            throw new InvalidOperationException("E2E seeding is Development-only.");
+        await E2EDataSeeder.SeedAsync(app.Services);
+    }
+
     app.UseSerilogRequestLogging();
 
     app.UseSwaggerDocumentation();
