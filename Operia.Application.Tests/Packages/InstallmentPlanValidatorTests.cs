@@ -43,6 +43,23 @@ public sealed class InstallmentPlanValidatorTests
     }
 
     [Fact]
+    public async Task PlanThatDoesNotReleaseEverySession_IsRejected()
+    {
+        var command = Plan() with
+        {
+            Installments = [
+                new PackageInstallmentInput(5000m, 2),
+                new PackageInstallmentInput(5000m, 2),
+                new PackageInstallmentInput(5000m, 2)
+            ]
+        };
+
+        var errors = (await _validator.ValidateAsync(command)).Errors;
+        errors.Should().Contain(error => error.ErrorCode ==
+            ApiErrorCodes.Packages.PackageInstallmentSessionsInvalid);
+    }
+
+    [Fact]
     public async Task TenSessions_CannotReleaseEightBeforeFullPayment()
     {
         var command = Plan() with
@@ -95,6 +112,25 @@ public sealed class InstallmentPlanValidatorTests
         var errors = (await _validator.ValidateAsync(command)).Errors;
         errors.Should().Contain(error => error.ErrorCode ==
             ApiErrorCodes.Packages.PackageInstallmentOnlyPackage);
+    }
+
+    [Fact]
+    public async Task PulsePackage_CannotCarrySessionReleasePlan()
+    {
+        var command = Plan() with
+        {
+            SessionCount = null,
+            PulseCount = 1000,
+            Installments = [
+                new PackageInstallmentInput(5000m, 0),
+                new PackageInstallmentInput(5000m, 0),
+                new PackageInstallmentInput(5000m, 0)
+            ]
+        };
+
+        var errors = (await _validator.ValidateAsync(command)).Errors;
+        errors.Should().Contain(error => error.ErrorCode ==
+            ApiErrorCodes.Packages.PackageInstallmentSessionsInvalid);
     }
 
     private static CreatePackageCommand Plan() => new(
