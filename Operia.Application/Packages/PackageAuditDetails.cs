@@ -35,6 +35,23 @@ internal static class PackageAuditDetails
             package.PulseCount,
             package.PackageExpiryMonths,
             package.Price,
+            package.CashEnabled,
+            package.InstallmentEnabled,
+            package.InstallmentPrice,
+            package.FirstPayment,
+            package.InstallmentCount,
+            package.AllStaff,
+            staffIds = package.AvailableStaff.Select(staff => staff.EmployeeId).OrderBy(id => id).ToArray(),
+            installments = package.Installments
+                .OrderBy(row => row.Number)
+                .Select(row => new
+                {
+                    row.Number,
+                    row.Amount,
+                    row.SessionsUnlocked,
+                    row.CumulativeAvailableSessions
+                })
+                .ToArray(),
             package.DiscountCode,
             package.DiscountPercent
         };

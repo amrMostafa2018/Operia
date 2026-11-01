@@ -16,7 +16,12 @@ public sealed class CustomerPackageConfiguration : IEntityTypeConfiguration<Cust
         builder.Property(x => x.TenantId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.CustomerId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.PackageId).IsRequired().HasMaxLength(36);
+        builder.Property(x => x.OriginBookingId).HasMaxLength(36);
+        builder.HasIndex(x => new { x.TenantId, x.OriginBookingId });
         builder.Property(x => x.Total);
+        builder.Property(x => x.PurchasePrice).HasPrecision(18, 2);
+        builder.Property(x => x.AmountDue).HasPrecision(18, 2);
+        builder.Property(x => x.PurchaseSnapshotJson).HasColumnType("nvarchar(max)");
         builder.Property(x => x.Used);
         builder.Property(x => x.CreatedBy).HasMaxLength(450);
         builder.Property(x => x.Version).IsRowVersion();

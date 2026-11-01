@@ -14,6 +14,35 @@ namespace Operia.Application.Tests.Infrastructure;
 public sealed class TenantIsolationTests
 {
     [Fact]
+    public async Task PackageInstallmentRows_AreTenantFilteredAndWriteGuarded()
+    {
+        string? tenantId = null;
+        var currentUser = new Mock<ICurrentUserService>();
+        currentUser.SetupGet(x => x.TenantId).Returns(() => tenantId);
+        var clock = new Mock<IDateTimeProvider>();
+        clock.SetupGet(x => x.UtcNow).Returns(DateTime.UtcNow);
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"InstallmentIsolation_{Guid.NewGuid()}")
+            .Options;
+        await using var db = new TestApplicationDbContext(options, clock.Object, currentUser.Object);
+        db.PackageInstallments.AddRange(
+            new PackageInstallment { TenantId = "tenant-a", PackageId = "package-a", Number = 1 },
+            new PackageInstallment { TenantId = "tenant-b", PackageId = "package-b", Number = 1 });
+        await db.SaveChangesAsync();
+
+        tenantId = "tenant-a";
+        (await db.PackageInstallments.AsNoTracking().ToListAsync())
+            .Select(row => row.TenantId)
+            .Should().Equal("tenant-a");
+
+        var other = await db.PackageInstallments.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == "tenant-b");
+        other.Amount = 10m;
+        await FluentActions.Invoking(() => db.SaveChangesAsync())
+            .Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
     public async Task TenantScopedRecords_AreFilteredAndCannotBeWrittenAcrossTenants()
     {
         string? currentTenantId = null;

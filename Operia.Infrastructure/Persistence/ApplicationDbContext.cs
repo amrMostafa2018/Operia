@@ -47,12 +47,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<ServiceCategory> ServiceCategories => Set<ServiceCategory>();
     public DbSet<SubServiceCategory> SubServiceCategories => Set<SubServiceCategory>();
     public DbSet<Package> Packages => Set<Package>();
+    public DbSet<PackageInstallment> PackageInstallments => Set<PackageInstallment>();
+    public DbSet<PackageStaff> PackageStaff => Set<PackageStaff>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<BookingItem> BookingItems => Set<BookingItem>();
     public DbSet<BookingHistory> BookingHistory => Set<BookingHistory>();
     public DbSet<BookingHold> BookingHolds => Set<BookingHold>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<CustomerPackage> CustomerPackages => Set<CustomerPackage>();
+    public DbSet<CustomerPackageInstallment> CustomerPackageInstallments => Set<CustomerPackageInstallment>();
     public DbSet<BookingPackageReservation> BookingPackageReservations => Set<BookingPackageReservation>();
 
     /// <summary>Applies entity configuration and global tenant query filters.</summary>
@@ -106,12 +109,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
         modelBuilder.Entity<ServiceCategory>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<SubServiceCategory>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<Package>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<PackageInstallment>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<PackageStaff>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<Booking>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<BookingItem>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<BookingHistory>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<BookingHold>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<Customer>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<CustomerPackage>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<CustomerPackageInstallment>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<BookingPackageReservation>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
     }
 

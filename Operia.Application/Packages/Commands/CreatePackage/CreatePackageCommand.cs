@@ -16,4 +16,12 @@ public sealed record CreatePackageCommand(
     int? PackageExpiryMonths,
     decimal Price,
     string DiscountCode,
-    decimal? DiscountPercent) : IRequest<PackageDetailDto>;
+    decimal? DiscountPercent,
+    bool CashEnabled = true,
+    bool InstallmentEnabled = false,
+    decimal? InstallmentPrice = null,
+    decimal? FirstPayment = null,
+    int? InstallmentCount = null,
+    IReadOnlyList<PackageInstallmentInput>? Installments = null,
+    bool AllStaff = true,
+    IReadOnlyList<string>? StaffIds = null) : IRequest<PackageDetailDto>;
