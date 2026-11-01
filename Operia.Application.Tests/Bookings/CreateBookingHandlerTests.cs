@@ -1542,6 +1542,100 @@ public sealed class CreateBookingHandlerTests
             x.CancellationAtUtc == null)).Should().Be(2);
     }
 
+    [Fact]
+    public async Task Update_OrdinaryPackageLine_IncreasingQuantity_ChargesForUnreservedPurchases()
+    {
+        await SeedAsync();
+        var created = await CreateHandler().Handle(
+            new CreateBookingCommand("ordinary-package-increase", "customer-1", "branch-1", "employee-1",
+                _scheduledDate, 600, 660, [new CreateBookingItemInput("package-1", null, 2)]),
+            CancellationToken.None);
+
+        await new UpdateBookingHandler(_db, _user.Object, _branchScope.Object,
+                new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object)
+            .Handle(new UpdateBookingCommand(created.Id, created.Version,
+                [new CreateBookingItemInput("package-1", null, 3)]), CancellationToken.None);
+
+        var updated = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == created.Id);
+        updated.TotalAmount.Should().Be(3600m);
+        updated.Items.Single().UnitPrice.Should().Be(1200m);
+        (await _db.CustomerPackages.CountAsync(x => x.OriginBookingId == created.Id && x.IsActive))
+            .Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Update_OrdinaryPackageLine_DecreasingQuantity_ReleasesUnreservedPurchase()
+    {
+        await SeedAsync();
+        var created = await CreateHandler().Handle(
+            new CreateBookingCommand("ordinary-package-decrease", "customer-1", "branch-1", "employee-1",
+                _scheduledDate, 600, 660, [new CreateBookingItemInput("package-1", null, 3)]),
+            CancellationToken.None);
+
+        await new UpdateBookingHandler(_db, _user.Object, _branchScope.Object,
+                new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object)
+            .Handle(new UpdateBookingCommand(created.Id, created.Version,
+                [new CreateBookingItemInput("package-1", null, 2)]), CancellationToken.None);
+
+        var updated = await _db.Bookings.SingleAsync(x => x.Id == created.Id);
+        updated.TotalAmount.Should().Be(2400m);
+        (await _db.CustomerPackages.CountAsync(x => x.OriginBookingId == created.Id && x.IsActive))
+            .Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Update_RemovingOriginReservation_KeepsPartiallyUsedPackageAvailable()
+    {
+        await SeedAsync();
+        var created = await CreateHandler().Handle(
+            new CreateBookingCommand("used-origin-package", "customer-1", "branch-1", "employee-1",
+                _scheduledDate, 600, 660, [new CreateBookingItemInput("package-1", null, 1)]),
+            CancellationToken.None);
+        var purchase = await _db.CustomerPackages.SingleAsync(x => x.OriginBookingId == created.Id);
+        purchase.Used = 1;
+        await _db.SaveChangesAsync();
+
+        await new UpdateBookingHandler(_db, _user.Object, _branchScope.Object,
+                new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object)
+            .Handle(new UpdateBookingCommand(created.Id, created.Version,
+                [new CreateBookingItemInput("service-1", null, 1)]), CancellationToken.None);
+
+        purchase.ReservedSessions.Should().Be(0);
+        purchase.IsActive.Should().BeTrue();
+        purchase.RemainingBalance.Should().Be(5);
+        var next = await CreateHandler().Handle(
+            new CreateBookingCommand("use-remaining-package-session", "customer-1", "branch-1", "employee-1",
+                _scheduledDate, 720, 780, [new CreateBookingItemInput("package-1", purchase.Id, 1)]),
+            CancellationToken.None);
+        (await _db.BookingPackageReservations.SingleAsync(x => x.BookingId == next.Id))
+            .CustomerPackageId.Should().Be(purchase.Id);
+    }
+
+    [Fact]
+    public async Task Update_MixedPackagePurchase_UsesOriginalPriceForRetainedPurchase()
+    {
+        await SeedAsync();
+        var created = await CreateHandler().Handle(
+            new CreateBookingCommand("mixed-price-change", "customer-1", "branch-1", "employee-1",
+                _scheduledDate, 600, 660,
+                [new CreateBookingItemInput("package-1", null, 2, "packagePurchase")]),
+            CancellationToken.None);
+        var product = await _db.Packages.SingleAsync(x => x.Id == "package-1");
+        product.Price = 1500m;
+        await _db.SaveChangesAsync();
+
+        await new UpdateBookingHandler(_db, _user.Object, _branchScope.Object,
+                new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object)
+            .Handle(new UpdateBookingCommand(created.Id, created.Version,
+                [new CreateBookingItemInput("package-1", null, 3, "packagePurchase")]), CancellationToken.None);
+
+        var updated = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == created.Id);
+        updated.TotalAmount.Should().Be(2700m);
+        updated.Items.Single().UnitPrice.Should().Be(900m);
+        (await _db.CustomerPackages.Where(x => x.OriginBookingId == created.Id)
+            .Select(x => x.PurchasePrice).ToListAsync()).Should().BeEquivalentTo([1200m, 1500m]);
+    }
+
     private async Task SeedAsync()
     {
         var business = new Business
