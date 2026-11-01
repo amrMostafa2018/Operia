@@ -482,6 +482,10 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
 
+                    b.Property<string>("PaymentOption")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
@@ -825,6 +829,10 @@ namespace Operia.Infrastructure.Migrations
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("OriginBookingId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
                     b.Property<string>("PackageId")
                         .IsRequired()
                         .HasMaxLength(36)
@@ -863,9 +871,69 @@ namespace Operia.Infrastructure.Migrations
 
                     b.HasIndex("PackageId");
 
+                    b.HasIndex("TenantId", "OriginBookingId");
+
                     b.HasIndex("TenantId", "CustomerId", "IsActive");
 
                     b.ToTable("CustomerPackages", (string)null);
+                });
+
+            modelBuilder.Entity("Operia.Domain.Entities.CustomerPackageInstallment", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("CollectedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CumulativeAvailableSessions")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CustomerPackageId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<byte[]>("Version")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerPackageId");
+
+                    b.HasIndex("TenantId", "CustomerPackageId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("CustomerPackageInstallments", (string)null);
                 });
 
             modelBuilder.Entity("Operia.Domain.Entities.Employee", b =>
@@ -1967,6 +2035,17 @@ namespace Operia.Infrastructure.Migrations
                     b.Navigation("Package");
                 });
 
+            modelBuilder.Entity("Operia.Domain.Entities.CustomerPackageInstallment", b =>
+                {
+                    b.HasOne("Operia.Domain.Entities.CustomerPackage", "CustomerPackage")
+                        .WithMany("Installments")
+                        .HasForeignKey("CustomerPackageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CustomerPackage");
+                });
+
             modelBuilder.Entity("Operia.Domain.Entities.Employee", b =>
                 {
                     b.HasOne("Operia.Domain.Entities.Business", "Business")
@@ -2199,6 +2278,8 @@ namespace Operia.Infrastructure.Migrations
 
             modelBuilder.Entity("Operia.Domain.Entities.CustomerPackage", b =>
                 {
+                    b.Navigation("Installments");
+
                     b.Navigation("Reservations");
                 });
 
