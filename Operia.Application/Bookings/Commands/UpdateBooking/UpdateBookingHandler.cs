@@ -31,11 +31,14 @@ public sealed class UpdateBookingHandler(
     {
         var tenantId = BookingAccess.RequireTenant(currentUser);
         var booking = await LoadEditableBookingAsync(tenantId, request, cancellationToken);
-        var catalog = await LoadCatalogAsync(tenantId, request.Items, cancellationToken);
-        BookingItemPricing.ValidatePackageSelection(request.Items, catalog);
-
         var itemsChanged = HasItemsChanged(booking.Items, request.Items) ||
             await HasExplicitReservationChangedAsync(booking, request.Items, tenantId, cancellationToken);
+        IReadOnlyDictionary<string, Package> catalog = new Dictionary<string, Package>(StringComparer.Ordinal);
+        if (itemsChanged)
+        {
+            catalog = await LoadCatalogAsync(tenantId, request.Items, cancellationToken);
+            BookingItemPricing.ValidatePackageSelection(request.Items, catalog);
+        }
         var containsInstallment = booking.Items.Any(x =>
             string.Equals(x.PaymentOption, "installment", StringComparison.OrdinalIgnoreCase));
         if ((containsInstallment && itemsChanged) ||

@@ -77,6 +77,52 @@ public sealed class UpdatePackageHandlerTests
     }
 
     [Fact]
+    public async Task UpdatePackage_OmittedStaffFields_PreservesSelectedStaff()
+    {
+        await SeedPackageAsync("pkg-1", "cat-1", PackageStatus.Active);
+        var package = await _db.Packages.SingleAsync(x => x.Id == "pkg-1");
+        package.AllStaff = false;
+        package.AvailableStaff.Add(new Operia.Domain.Entities.PackageStaff
+        {
+            TenantId = "tenant-1",
+            PackageId = package.Id,
+            EmployeeId = "staff-1"
+        });
+        await _db.SaveChangesAsync();
+
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter,
+            new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
+        var result = await handler.Handle(ValidUpdateCommand("pkg-1", "cat-1"), default);
+
+        result.AllStaff.Should().BeFalse();
+        result.StaffIds.Should().Equal("staff-1");
+        (await _db.PackageStaff.SingleAsync()).EmployeeId.Should().Be("staff-1");
+    }
+
+    [Fact]
+    public async Task UpdatePackage_ExplicitAllStaff_RemovesSelectedStaff()
+    {
+        await SeedPackageAsync("pkg-1", "cat-1", PackageStatus.Active);
+        var package = await _db.Packages.SingleAsync(x => x.Id == "pkg-1");
+        package.AllStaff = false;
+        package.AvailableStaff.Add(new Operia.Domain.Entities.PackageStaff
+        {
+            TenantId = "tenant-1",
+            PackageId = package.Id,
+            EmployeeId = "staff-1"
+        });
+        await _db.SaveChangesAsync();
+
+        var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter,
+            new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
+        var result = await handler.Handle(ValidUpdateCommand("pkg-1", "cat-1") with { AllStaff = true }, default);
+
+        result.AllStaff.Should().BeTrue();
+        result.StaffIds.Should().BeEmpty();
+        (await _db.PackageStaff.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
     public async Task UpdatePackage_PackageNotFound_ThrowsNotFoundException()
     {
         var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
