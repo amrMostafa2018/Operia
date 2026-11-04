@@ -8,7 +8,7 @@ namespace Operia.Infrastructure.Identity;
 public static class PermissionClaimBootstrapper
 {
     private const string BaselineVersionClaimType = "operia.permission-baseline";
-    private const string BaselineVersion = "v3";
+    private const string BaselineVersion = "v4";
 
     public static readonly IReadOnlySet<string> AdminExcludedPermissions =
         new HashSet<string>(StringComparer.Ordinal)
@@ -83,13 +83,19 @@ public static class PermissionClaimBootstrapper
                 ?? throw new InvalidOperationException($"Role '{roleName}' was not found.");
             var claims = await roleManager.GetClaimsAsync(role);
 
-            // Once initialized, database role claims may have been customized.
-            if (claims.Any(claim => claim.Type == BaselineVersionClaimType))
+            if (claims.Any(claim => claim.Type == BaselineVersionClaimType &&
+                                    claim.Value == BaselineVersion))
             {
                 continue;
             }
 
-            foreach (var permission in permissions)
+            // Existing roles may have customized claims. Grant only the permission
+            // introduced in v4; initialize the full baseline for a new role.
+            var initialized = claims.Any(claim => claim.Type == BaselineVersionClaimType);
+            var grants = initialized
+                ? permissions.Where(permission => permission == Policies.CustomersCollectInstallment)
+                : permissions;
+            foreach (var permission in grants)
             {
                 if (claims.Any(claim =>
                         claim.Type == Policies.PermissionClaimType

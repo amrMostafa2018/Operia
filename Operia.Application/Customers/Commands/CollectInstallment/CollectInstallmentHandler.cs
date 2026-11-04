@@ -31,6 +31,7 @@ public sealed class CollectInstallmentHandler(
         return await store.ExecuteAsync(tenantId, request.PurchaseId, async token =>
         {
             var purchase = await db.CustomerPackages
+                .Include(x => x.Installments)
                 .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.PurchaseId, token)
                 ?? throw ApiNotFoundException.FromCode(ApiErrorCodes.Customers.PurchaseNotFound);
             var existing = await db.InstallmentCollections.AsNoTracking()
@@ -87,6 +88,11 @@ public sealed class CollectInstallmentHandler(
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Customers.InstallmentAlreadyCollected);
             }
+            var purchaseRow = purchase.Installments.SingleOrDefault(x => x.Number == next.Number);
+            if (purchaseRow is { CollectedAtUtc: not null })
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Customers.InstallmentAlreadyCollected);
+            }
 
             var previous = ordered.LastOrDefault(row => row.Number < next.Number);
             if (previous is not null && purchase.Used < previous.CumulativeAvailableSessions)
@@ -114,6 +120,11 @@ public sealed class CollectInstallmentHandler(
             };
             purchase.AmountDue = remaining;
             purchase.ReleasedSessions = released;
+            if (purchaseRow is not null)
+            {
+                purchaseRow.CollectedAtUtc = collection.ConfirmedAtUtc;
+                purchaseRow.PaymentMethod = request.PaymentMethod;
+            }
             db.InstallmentCollections.Add(collection);
             auditWriter.Write(tenantId, AuditActions.InstallmentCollected,
                 nameof(CustomerPackage), purchase.Id, snapshot.OfferName,

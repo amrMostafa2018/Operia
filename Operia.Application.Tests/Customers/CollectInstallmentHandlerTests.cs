@@ -29,6 +29,16 @@ public sealed class CollectInstallmentHandlerTests
         first.ReleasedSessions.Should().Be(2);
         (await fixture.Collect("first")).CollectionId.Should().Be(first.CollectionId);
         (await fixture.Db.InstallmentCollections.CountAsync()).Should().Be(1);
+        (await fixture.Db.CustomerPackageInstallments.SingleAsync(x => x.Number == 1))
+            .CollectedAtUtc.Should().NotBeNull();
+
+        var legacyRoute = new Operia.Application.Packages.InstallmentPurchases.CollectInstallmentHandler(
+            fixture.Db, fixture.User, new AuditWriter(fixture.Db, fixture.User), fixture.Clock);
+        var repeatedViaLegacyRoute = await legacyRoute.Handle(
+            new Operia.Application.Packages.InstallmentPurchases.CollectInstallmentCommand(
+                "purchase-1", 1, 5m, "cash"), CancellationToken.None);
+        repeatedViaLegacyRoute.AmountDue.Should().Be(5m);
+        (await fixture.Db.CustomerPackages.SingleAsync()).AmountDue.Should().Be(5m);
 
         var tooEarly = () => fixture.Collect("second");
         (await tooEarly.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
@@ -45,6 +55,8 @@ public sealed class CollectInstallmentHandlerTests
         final.ReleasedSessions.Should().Be(5);
         (await fixture.Collect("second")).CollectionId.Should().Be(final.CollectionId);
         (await fixture.Db.InstallmentCollections.CountAsync()).Should().Be(2);
+        (await fixture.Db.CustomerPackageInstallments.CountAsync(x => x.CollectedAtUtc != null))
+            .Should().Be(2);
         (await fixture.Db.AuditLogs.CountAsync(x => x.Action == AuditActions.InstallmentCollected))
             .Should().Be(2);
         purchase.ExpiresOn.Should().Be(new DateOnly(2027, 1, 1));
@@ -90,12 +102,29 @@ public sealed class CollectInstallmentHandlerTests
         (await otherTenant.Revenue()).Total.Should().Be(0);
     }
 
+    [Fact]
+    public async Task LegacyCollectionCannotBeCollectedAgainThroughCustomerRoute()
+    {
+        await using var fixture = await Fixture.CreateAsync("tenant-1");
+        var row = await fixture.Db.CustomerPackageInstallments.SingleAsync(x => x.Number == 1);
+        row.CollectedAtUtc = fixture.Clock.UtcNow;
+        row.PaymentMethod = "cash";
+        await fixture.Db.SaveChangesAsync();
+
+        var repeated = () => fixture.Collect("customer-route");
+        (await repeated.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Customers.InstallmentAlreadyCollected);
+        (await fixture.Db.CustomerPackages.SingleAsync()).AmountDue.Should().Be(10m);
+    }
+
     private sealed class Fixture : IAsyncDisposable
     {
         private readonly Mock<ICurrentUserService> _user;
         private readonly Mock<IDateTimeProvider> _clock;
         public string Database { get; }
         public TestApplicationDbContext Db { get; }
+        public ICurrentUserService User => _user.Object;
+        public IDateTimeProvider Clock => _clock.Object;
 
         private Fixture(string database, TestApplicationDbContext db,
             Mock<ICurrentUserService> user, Mock<IDateTimeProvider> clock)
@@ -145,6 +174,23 @@ public sealed class CollectInstallmentHandlerTests
                 ExpiresOn = new DateOnly(2027, 1, 1),
                 IsActive = true
             });
+            fixture.Db.CustomerPackageInstallments.AddRange(
+                new CustomerPackageInstallment
+                {
+                    TenantId = tenantId,
+                    CustomerPackageId = "purchase-1",
+                    Number = 1,
+                    Amount = 5m,
+                    CumulativeAvailableSessions = 2
+                },
+                new CustomerPackageInstallment
+                {
+                    TenantId = tenantId,
+                    CustomerPackageId = "purchase-1",
+                    Number = 2,
+                    Amount = 5m,
+                    CumulativeAvailableSessions = 2
+                });
             await fixture.Db.SaveChangesAsync();
             return fixture;
         }

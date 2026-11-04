@@ -256,6 +256,9 @@ public sealed class CreateBookingHandlerTests
         var matches = await new SearchBookingCustomersHandler(_db, _user.Object)
             .Handle(new SearchBookingCustomersQuery("Mona"), CancellationToken.None);
         matches.Select(x => x.Id).Should().ContainSingle().Which.Should().Be(created.Id);
+        var matchesByLocalMobile = await new SearchBookingCustomersHandler(_db, _user.Object)
+            .Handle(new SearchBookingCustomersQuery("01098765432"), CancellationToken.None);
+        matchesByLocalMobile.Select(x => x.Id).Should().ContainSingle().Which.Should().Be(created.Id);
         var byMobile = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
             .Handle(new FindBookingCustomerQuery("01098765432"), CancellationToken.None);
         byMobile!.Id.Should().Be(created.Id);

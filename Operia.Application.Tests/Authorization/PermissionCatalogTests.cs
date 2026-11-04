@@ -1,3 +1,7 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Operia.Application.Auth;
 using Operia.Application.Common.Authorization;
 using Operia.Infrastructure.Identity;
@@ -7,6 +11,56 @@ namespace Operia.Application.Tests.Authorization;
 
 public sealed class PermissionCatalogTests
 {
+    [Fact]
+    public async Task V3RolesReceiveOnlyTheNewPermissionOnce()
+    {
+        var names = new[]
+        {
+            Roles.SuperAdmin, Roles.Admin, Roles.Reception, Roles.Staff, Roles.PlatformAdmin
+        };
+        var claims = names.ToDictionary(
+            name => name,
+            _ => (IList<Claim>)new List<Claim>
+            {
+                new("operia.permission-baseline", "v3")
+            });
+        var store = new Mock<IRoleStore<IdentityRole>>();
+        var manager = new Mock<RoleManager<IdentityRole>>(
+            store.Object,
+            Array.Empty<IRoleValidator<IdentityRole>>(),
+            new UpperInvariantLookupNormalizer(),
+            new IdentityErrorDescriber(),
+            NullLogger<RoleManager<IdentityRole>>.Instance);
+        manager.Setup(x => x.FindByNameAsync(It.IsAny<string>()))
+            .ReturnsAsync((string name) => new IdentityRole(name));
+        manager.Setup(x => x.GetClaimsAsync(It.IsAny<IdentityRole>()))
+            .ReturnsAsync((IdentityRole role) => claims[role.Name!]);
+        manager.Setup(x => x.AddClaimAsync(It.IsAny<IdentityRole>(), It.IsAny<Claim>()))
+            .Callback((IdentityRole role, Claim claim) => claims[role.Name!].Add(claim))
+            .ReturnsAsync(IdentityResult.Success);
+
+        await PermissionClaimBootstrapper.EnsureBaselinePermissionsAsync(manager.Object);
+        await PermissionClaimBootstrapper.EnsureBaselinePermissionsAsync(manager.Object);
+
+        foreach (var name in names)
+        {
+            Assert.Single(claims[name], claim => claim.Type == "operia.permission-baseline" &&
+                                                 claim.Value == "v4");
+            var permissions = claims[name]
+                .Where(claim => claim.Type == Policies.PermissionClaimType)
+                .Select(claim => claim.Value)
+                .ToArray();
+            if (name is Roles.SuperAdmin or Roles.Admin or Roles.Reception)
+            {
+                Assert.Equal([Policies.CustomersCollectInstallment], permissions);
+            }
+            else
+            {
+                Assert.Empty(permissions);
+            }
+        }
+    }
+
     [Fact]
     public void PermissionCatalog_HasNoDuplicateValues()
     {
