@@ -750,6 +750,30 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
+    public async Task Update_PaymentMethodOnly_AllowsPreviouslyBookedCancelledOffer()
+    {
+        await SeedAsync();
+        var created = await CreateHandler().Handle(Command("cancelled-offer-payment", 600, 660), CancellationToken.None);
+        var booking = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == created.Id);
+        var originalItemId = booking.Items.Single().Id;
+        var originalTotal = booking.TotalAmount;
+        var product = await _db.Packages.SingleAsync(x => x.Id == "package-1");
+        product.Status = PackageStatus.Cancelled;
+        await _db.SaveChangesAsync();
+
+        await new UpdateBookingHandler(
+                _db, _user.Object, _branchScope.Object,
+                new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object)
+            .Handle(new UpdateBookingCommand(created.Id, created.Version,
+                [new CreateBookingItemInput("package-1", "owned-1", 1)], "cash"), CancellationToken.None);
+
+        var updated = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == created.Id);
+        updated.PaymentMethod.Should().Be("cash");
+        updated.Items.Single().Id.Should().Be(originalItemId);
+        updated.TotalAmount.Should().Be(originalTotal);
+    }
+
+    [Fact]
     public async Task Update_DisabledPaymentMethod_RejectsWithoutSaving()
     {
         await SeedAsync();

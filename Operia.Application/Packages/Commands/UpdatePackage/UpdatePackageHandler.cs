@@ -40,9 +40,17 @@ public sealed class UpdatePackageHandler(
             request.ServiceCategoryId,
             request.SubServiceCategoryId,
             cancellationToken);
-        await PackageStaffEligibility.ValidateSelectionAsync(
-            db, currentUser, branchScope, identity, tenantId,
-            request.AllStaff, request.StaffIds, cancellationToken);
+        var updateStaff = request.AllStaff.HasValue || request.StaffIds is not null;
+        var allStaff = request.AllStaff ?? (request.StaffIds is null && package.AllStaff);
+        var staffIds = request.StaffIds ?? (allStaff
+            ? []
+            : package.AvailableStaff.Select(staff => staff.EmployeeId).ToArray());
+        if (updateStaff)
+        {
+            await PackageStaffEligibility.ValidateSelectionAsync(
+                db, currentUser, branchScope, identity, tenantId,
+                allStaff, staffIds, cancellationToken);
+        }
 
         var previous = PackageAuditDetails.ForPackage(package);
 
@@ -61,27 +69,30 @@ public sealed class UpdatePackageHandler(
         package.InstallmentPrice = request.InstallmentEnabled ? request.InstallmentPrice : null;
         package.FirstPayment = request.InstallmentEnabled ? request.FirstPayment : null;
         package.InstallmentCount = request.InstallmentEnabled ? request.InstallmentCount : null;
-        package.AllStaff = request.AllStaff;
+        if (updateStaff)
+        {
+            package.AllStaff = allStaff;
+            var selectedStaffIds = staffIds.ToHashSet(StringComparer.Ordinal);
+            foreach (var existing in package.AvailableStaff.Where(staff => !selectedStaffIds.Contains(staff.EmployeeId)).ToList())
+            {
+                db.PackageStaff.Remove(existing);
+                package.AvailableStaff.Remove(existing);
+            }
+            var existingStaffIds = package.AvailableStaff.Select(staff => staff.EmployeeId).ToHashSet(StringComparer.Ordinal);
+            foreach (var id in selectedStaffIds.Where(id => !existingStaffIds.Contains(id)))
+            {
+                package.AvailableStaff.Add(new PackageStaff
+                {
+                    TenantId = tenantId,
+                    PackageId = package.Id,
+                    EmployeeId = id
+                });
+            }
+        }
         InstallmentPlanRules.ReplaceRows(
             package,
             tenantId,
             request.InstallmentEnabled ? request.Installments : null);
-        var selectedStaffIds = (request.StaffIds ?? []).ToHashSet(StringComparer.Ordinal);
-        foreach (var existing in package.AvailableStaff.Where(staff => !selectedStaffIds.Contains(staff.EmployeeId)).ToList())
-        {
-            db.PackageStaff.Remove(existing);
-            package.AvailableStaff.Remove(existing);
-        }
-        var existingStaffIds = package.AvailableStaff.Select(staff => staff.EmployeeId).ToHashSet(StringComparer.Ordinal);
-        foreach (var id in selectedStaffIds.Where(id => !existingStaffIds.Contains(id)))
-        {
-            package.AvailableStaff.Add(new PackageStaff
-            {
-                TenantId = tenantId,
-                PackageId = package.Id,
-                EmployeeId = id
-            });
-        }
         package.DiscountCode = request.DiscountCode.Trim();
         package.DiscountPercent = request.DiscountPercent;
         package.Status = PackageMapper.FromIsActive(request.IsActive);
