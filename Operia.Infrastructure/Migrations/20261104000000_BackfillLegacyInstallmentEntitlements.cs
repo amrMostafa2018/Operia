@@ -14,14 +14,14 @@ public sealed class BackfillLegacyInstallmentEntitlements : Migration
         // final purchase row retains the complete entitlement after offer edits.
         migrationBuilder.Sql("""
             UPDATE purchase
-            SET purchase.ReleasedSessions = purchase.Total,
-                purchase.Total = plan.TotalSessions
+            SET ReleasedSessions = purchase.Total,
+                Total = plan.TotalSessions
             FROM dbo.CustomerPackages AS purchase
             CROSS APPLY (
-                SELECT MAX(row.CumulativeAvailableSessions) AS TotalSessions
-                FROM dbo.CustomerPackageInstallments AS row
-                WHERE row.CustomerPackageId = purchase.Id
-                  AND row.TenantId = purchase.TenantId
+                SELECT MAX(installment.CumulativeAvailableSessions) AS TotalSessions
+                FROM dbo.CustomerPackageInstallments AS installment
+                WHERE installment.CustomerPackageId = purchase.Id
+                  AND installment.TenantId = purchase.TenantId
             ) AS plan
             WHERE purchase.ReleasedSessions IS NULL
               AND plan.TotalSessions > 0
