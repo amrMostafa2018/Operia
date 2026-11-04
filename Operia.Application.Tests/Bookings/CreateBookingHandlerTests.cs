@@ -113,7 +113,8 @@ public sealed class CreateBookingHandlerTests
             .Should().BeEquivalentTo(purchaseSnapshot);
 
         var collector = new CollectInstallmentHandler(
-            _db, _user.Object, new AuditWriter(_db, _user.Object), _clock.Object);
+            _db, new InstallmentCollectionStore(_db), _user.Object,
+            new AuditWriter(_db, _user.Object), _clock.Object);
         var beforeRelease = () => CreateHandler().Handle(new CreateBookingCommand(
             "unreleased-session", "customer-1", "branch-1", "employee-1",
             _scheduledDate, 720, 780,
