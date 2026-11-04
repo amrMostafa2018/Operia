@@ -18,6 +18,8 @@ public sealed class BookingItem : Entity, ITenantScoped
     public int DurationMinutes { get; set; }
     /// <summary>Saved price per unit; zero for a reserved Package or reused service session.</summary>
     public decimal UnitPrice { get; set; }
+    /// <summary>How a newly purchased package was priced.</summary>
+    public string? PaymentOption { get; set; }
 
     public Booking? Booking { get; set; }
     public Package? Package { get; set; }

@@ -230,6 +230,8 @@ public static class E2EDataSeeder
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.InstallmentCollections.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
+        await db.CustomerPackageInstallments.IgnoreQueryFilters()
+            .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.BookingItems.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.BookingHistory.IgnoreQueryFilters()
@@ -650,6 +652,12 @@ public static class E2EDataSeeder
                 today.AddMonths(12),
                 releasedSessions: 6));
 
+        db.CustomerPackageInstallments.AddRange(
+            NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000050", 0, 500, 0, DateTime.UtcNow),
+            NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000051", 1, 500, 3),
+            NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000052", 2, 500, 6),
+            NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000053", 3, 500, 10));
+
         db.InstallmentCollections.AddRange(
             NewCollection("e2e70000-0000-4000-8000-000000000086",
                 LockedCollectionPurchaseA, 1, "e2e-us11-locked-prerequisite"),
@@ -690,7 +698,8 @@ public static class E2EDataSeeder
             Name = "E2E Saved Installment Package",
             Quantity = 1,
             DurationMinutes = 30,
-            UnitPrice = 0
+            UnitPrice = 0,
+            PaymentOption = "installment"
         });
         db.BookingPackageReservations.Add(new BookingPackageReservation
         {
@@ -878,6 +887,24 @@ public static class E2EDataSeeder
             ReservedSessions = 0,
             ExpiresOn = expiresOn,
             IsActive = isActive
+        };
+
+    private static CustomerPackageInstallment NewPurchaseInstallment(
+        string id,
+        int number,
+        decimal amount,
+        int cumulativeAvailableSessions,
+        DateTime? collectedAtUtc = null) =>
+        new()
+        {
+            Id = id,
+            TenantId = TenantA,
+            CustomerPackageId = DetailPurchaseA,
+            Number = number,
+            Amount = amount,
+            CumulativeAvailableSessions = cumulativeAvailableSessions,
+            CollectedAtUtc = collectedAtUtc,
+            PaymentMethod = collectedAtUtc is null ? null : "cash"
         };
 
     private static InstallmentCollection NewCollection(

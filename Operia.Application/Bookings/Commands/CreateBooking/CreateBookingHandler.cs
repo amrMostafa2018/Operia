@@ -40,7 +40,9 @@ public sealed class CreateBookingHandler(
             .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.IdempotencyKey == request.IdempotencyKey, cancellationToken);
         if (existing is not null)
         {
-            return ToResult(existing);
+            var previousPurchaseIds = await LoadInstallmentPurchaseIdsAsync(
+                tenantId, existing.Id, cancellationToken);
+            return ToResult(existing, previousPurchaseIds);
         }
 
         Customer customer;
@@ -95,15 +97,21 @@ public sealed class CreateBookingHandler(
         await ValidatePaymentMethodAsync(tenantId, request.PaymentMethod, cancellationToken);
 
         var today = DateOnly.FromDateTime(clock.UtcNow);
-        IReadOnlySet<string> ownedCatalogPackageIds = request.DirectCustomer
-            ? new HashSet<string>(StringComparer.Ordinal)
+        var ownedBalances = request.DirectCustomer
+            ? new List<CustomerPackage>()
             : await db.CustomerPackages.AsNoTracking()
                 .Where(x => x.TenantId == tenantId &&
                             x.CustomerId == customer.Id &&
                             x.IsActive &&
                             (x.ExpiresOn == null || x.ExpiresOn >= today))
-                .Select(x => x.PackageId)
-                .ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
+                .ToListAsync(cancellationToken);
+        IReadOnlySet<string> ownedCatalogPackageIds = ownedBalances
+            .Where(x => catalog.TryGetValue(x.PackageId, out var product) &&
+                        CustomerPackageBalance.HasAvailable(
+                            x.Total, x.Used, x.ReservedSessions, product.OfferType,
+                            product.PulseCount, PurchaseSessionEntitlement.Released(x)))
+            .Select(x => x.PackageId)
+            .ToHashSet(StringComparer.Ordinal);
 
         var booking = BuildBooking(tenantId, customer, request, catalog, ownedCatalogPackageIds);
         var (reservations, newPurchases) = request.DirectCustomer
@@ -126,8 +134,18 @@ public sealed class CreateBookingHandler(
             newPurchases,
             clock.UtcNow,
             cancellationToken);
-        return ToResult(saved);
+        var purchaseIds = await LoadInstallmentPurchaseIdsAsync(tenantId, saved.Id, cancellationToken);
+        return ToResult(saved, purchaseIds);
     }
+
+    private Task<List<string>> LoadInstallmentPurchaseIdsAsync(
+        string tenantId, string bookingId, CancellationToken cancellationToken) =>
+        db.CustomerPackages.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.OriginBookingId == bookingId &&
+                        x.Installments.Any())
+            .OrderBy(x => x.Id)
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
 
     /// <summary>Requires an active employee assigned to the requested tenant branch.</summary>
     private async Task ValidateEmployeeAsync(
@@ -162,6 +180,7 @@ public sealed class CreateBookingHandler(
         var requestedPackageIds = items.Select(x => x.PackageId).Distinct().ToList();
         var catalog = await db.Packages.AsNoTracking()
             .Include(x => x.AvailableStaff)
+            .Include(x => x.Installments)
             .Where(x => x.TenantId == tenantId && requestedPackageIds.Contains(x.Id) && x.Status == PackageStatus.Active)
             .ToDictionaryAsync(x => x.Id, cancellationToken);
         if (catalog.Count != requestedPackageIds.Count)
@@ -277,7 +296,8 @@ public sealed class CreateBookingHandler(
                 {
                     for (var unit = 0; unit < Math.Max(0, item.Quantity - 1); unit++)
                     {
-                        newPurchases.Add(BookingItemPricing.CreatePackagePurchase(product, tenantId, customerId, today));
+                        newPurchases.Add(BookingItemPricing.CreatePackagePurchase(
+                            product, tenantId, customerId, today, originBookingId: bookingId));
                     }
                 }
 
@@ -291,9 +311,14 @@ public sealed class CreateBookingHandler(
                     var newUnits = BookingItemPricing.PackageNewPurchaseUnits(item, ownedCatalogPackageIds);
                     for (var unit = 0; unit < newUnits; unit++)
                     {
-                        var purchase = BookingItemPricing.CreatePackagePurchase(product, tenantId, customerId, today);
+                        var installment = BookingItemPricing.IsInstallmentPurchase(item);
+                        var purchase = BookingItemPricing.CreatePackagePurchase(
+                            product, tenantId, customerId, today, installment, bookingId);
                         newPurchases.Add(purchase);
-                        reservations.Add(NewReservation(tenantId, bookingId, purchase.Id));
+                        if (!installment)
+                        {
+                            reservations.Add(NewReservation(tenantId, bookingId, purchase.Id));
+                        }
                     }
 
                     await AddOwnedPackageReservationForPurchaseOnlyAsync(
@@ -312,7 +337,8 @@ public sealed class CreateBookingHandler(
 
                 for (var unit = 0; unit < item.Quantity; unit++)
                 {
-                    var purchase = BookingItemPricing.CreatePackagePurchase(product, tenantId, customerId, today);
+                    var purchase = BookingItemPricing.CreatePackagePurchase(
+                        product, tenantId, customerId, today, originBookingId: bookingId);
                     newPurchases.Add(purchase);
                     if (unit == 0)
                     {
@@ -331,6 +357,7 @@ public sealed class CreateBookingHandler(
                     TenantId = tenantId,
                     CustomerId = customerId,
                     PackageId = product.Id,
+                    OriginBookingId = bookingId,
                     PurchasePrice = BookingItemPricing.CashPrice(product),
                     AmountDue = BookingItemPricing.CashPrice(product),
                     PurchaseSnapshotJson = PackagePurchaseSnapshot.Capture(
@@ -403,6 +430,11 @@ public sealed class CreateBookingHandler(
             alreadyReserved.Add(owned.Id);
             reservedCount++;
         }
+
+        if (reservedCount != ownedUnits)
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");
+        }
     }
 
     /// <summary>Creates an unsaved reservation for a customer purchase.</summary>
@@ -474,7 +506,8 @@ public sealed class CreateBookingHandler(
                 Name = product.Name,
                 Quantity = input.Quantity,
                 DurationMinutes = product.SessionDurationMinutes,
-                UnitPrice = BookingItemPricing.CalculateUnitPrice(input, product, ownedCatalogPackageIds)
+                UnitPrice = BookingItemPricing.CalculateUnitPrice(input, product, ownedCatalogPackageIds),
+                PaymentOption = input.PaymentOption
             };
         }).ToList();
         return booking;
@@ -485,6 +518,7 @@ public sealed class CreateBookingHandler(
         new([new ValidationFailure(field, code) { ErrorCode = code }]);
 
     /// <summary>Returns the persisted identity, status, and concurrency version.</summary>
-    private static CreateBookingResult ToResult(Booking booking) =>
-        new(booking.Id, booking.BookingNumber, booking.Status.ToString(), Convert.ToBase64String(booking.Version));
+    private static CreateBookingResult ToResult(Booking booking, IReadOnlyList<string> installmentPurchaseIds) =>
+        new(booking.Id, booking.BookingNumber, booking.Status.ToString(),
+            Convert.ToBase64String(booking.Version), installmentPurchaseIds);
 }

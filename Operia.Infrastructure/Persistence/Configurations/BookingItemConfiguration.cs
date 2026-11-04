@@ -18,6 +18,7 @@ public sealed class BookingItemConfiguration : IEntityTypeConfiguration<BookingI
         builder.Property(x => x.PackageId).HasMaxLength(36);
         builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
         builder.Property(x => x.UnitPrice).HasPrecision(18, 2);
+        builder.Property(x => x.PaymentOption).HasMaxLength(20);
         builder.Property(x => x.CreatedBy).HasMaxLength(450);
         builder.HasOne(x => x.Booking).WithMany(x => x.Items).HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne(x => x.Package).WithMany().HasForeignKey(x => x.PackageId).OnDelete(DeleteBehavior.Restrict);
