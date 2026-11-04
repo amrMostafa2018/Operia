@@ -15,7 +15,7 @@ using Operia.Infrastructure.Identity;
 
 namespace Operia.Infrastructure.Persistence;
 
-/// <summary>Restores the US-07 through US-10 prerequisites in reserved local development tenants.</summary>
+/// <summary>Restores the US-07 through US-12 prerequisites in reserved local development tenants.</summary>
 public static class E2EDataSeeder
 {
     private const string TenantA = "e2e70000-0000-4000-8000-000000000001";
@@ -36,6 +36,16 @@ public static class E2EDataSeeder
     private const string PulsePurchaseA = "e2e70000-0000-4000-8000-000000000043";
     private const string CompletedBookingA = "e2e70000-0000-4000-8000-000000000060";
     private const string CompletedBookingItemA = "e2e70000-0000-4000-8000-000000000061";
+    private const string CashServiceOfferA = "e2e70000-0000-4000-8000-000000000070";
+    private const string SaleInstallmentOfferA = "e2e70000-0000-4000-8000-000000000071";
+    private const string StaleSaleOfferA = "e2e70000-0000-4000-8000-000000000072";
+    private const string OwnedSessionOfferA = "e2e70000-0000-4000-8000-000000000073";
+    private const string CollectionOfferA = "e2e70000-0000-4000-8000-000000000074";
+    private const string OwnedSessionPurchaseA = "e2e70000-0000-4000-8000-000000000081";
+    private const string UiCollectionPurchaseA = "e2e70000-0000-4000-8000-000000000082";
+    private const string ApiCollectionPurchaseA = "e2e70000-0000-4000-8000-000000000083";
+    private const string LockedCollectionPurchaseA = "e2e70000-0000-4000-8000-000000000084";
+    private const string FinalCollectionPurchaseA = "e2e70000-0000-4000-8000-000000000085";
     private const string TenantB = "e2e70000-0000-4000-8000-000000000101";
     private const string UserB = "e2e70000-0000-4000-8000-000000000102";
     private const string BusinessB = "e2e70000-0000-4000-8000-000000000103";
@@ -210,6 +220,8 @@ public static class E2EDataSeeder
             .ExecuteDeleteAsync();
         await db.BookingPackageReservations.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
+        await db.InstallmentCollections.IgnoreQueryFilters()
+            .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.CustomerPackageInstallments.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.BookingItems.IgnoreQueryFilters()
@@ -221,6 +233,8 @@ public static class E2EDataSeeder
         await db.CustomerPackages.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.Bookings.IgnoreQueryFilters()
+            .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
+        await db.Sales.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.PackageInstallments.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
@@ -240,7 +254,7 @@ public static class E2EDataSeeder
             Id = CategoryA,
             TenantId = TenantA,
             BusinessId = BusinessA,
-            Name = "US-07 to US-10 E2E Category",
+            Name = "US-07 to US-12 E2E Category",
             Icon = "pi pi-box"
         };
         db.ServiceCategories.Add(category);
@@ -287,9 +301,12 @@ public static class E2EDataSeeder
             Status = PackageStatus.Active,
             Installments =
             [
-                NewOfferInstallment("e2e70000-0000-4000-8000-000000000034", 1, 500, 3, 3),
-                NewOfferInstallment("e2e70000-0000-4000-8000-000000000035", 2, 500, 3, 6),
-                NewOfferInstallment("e2e70000-0000-4000-8000-000000000036", 3, 500, 4, 10)
+                NewOfferInstallment("e2e70000-0000-4000-8000-000000000034",
+                    SelectedStaffOfferA, 1, 500, 3, 3),
+                NewOfferInstallment("e2e70000-0000-4000-8000-000000000035",
+                    SelectedStaffOfferA, 2, 500, 3, 6),
+                NewOfferInstallment("e2e70000-0000-4000-8000-000000000036",
+                    SelectedStaffOfferA, 3, 500, 4, 10)
             ],
             AvailableStaff =
             [
@@ -323,6 +340,126 @@ public static class E2EDataSeeder
             Status = PackageStatus.Active
         };
         db.Packages.Add(pulseOffer);
+
+        var cashServiceOffer = new Package
+        {
+            Id = CashServiceOfferA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            Name = "E2E Sale Cash Service",
+            Description = "Cash service for US-12 sale composition.",
+            OfferType = OfferType.SingleSession,
+            ServiceCategoryId = CategoryA,
+            SessionDurationMinutes = 45,
+            Price = 300,
+            CashEnabled = true,
+            InstallmentEnabled = false,
+            AllStaff = true,
+            Status = PackageStatus.Active
+        };
+        db.Packages.Add(cashServiceOffer);
+
+        var saleInstallmentOffer = new Package
+        {
+            Id = SaleInstallmentOfferA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            Name = "E2E Sale Installment Package",
+            Description = "Installment package for US-12 sale composition.",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = CategoryA,
+            SessionDurationMinutes = 30,
+            SessionCount = 10,
+            PackageExpiryMonths = 12,
+            Price = 1800,
+            CashEnabled = true,
+            InstallmentEnabled = true,
+            InstallmentPrice = 2000,
+            FirstPayment = 500,
+            InstallmentCount = 3,
+            AllStaff = true,
+            Status = PackageStatus.Active,
+            Installments =
+            [
+                NewOfferInstallment("e2e70000-0000-4000-8000-000000000075",
+                    SaleInstallmentOfferA, 1, 500, 3, 3),
+                NewOfferInstallment("e2e70000-0000-4000-8000-000000000076",
+                    SaleInstallmentOfferA, 2, 500, 3, 6),
+                NewOfferInstallment("e2e70000-0000-4000-8000-000000000077",
+                    SaleInstallmentOfferA, 3, 500, 4, 10)
+            ]
+        };
+        db.Packages.Add(saleInstallmentOffer);
+
+        var staleSaleOffer = new Package
+        {
+            Id = StaleSaleOfferA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            Name = "E2E Sale Stale Draft Service",
+            Description = "Dedicated offer disabled after a US-12 quote.",
+            OfferType = OfferType.SingleSession,
+            ServiceCategoryId = CategoryA,
+            SessionDurationMinutes = 20,
+            Price = 225,
+            CashEnabled = true,
+            InstallmentEnabled = false,
+            AllStaff = true,
+            Status = PackageStatus.Active
+        };
+        db.Packages.Add(staleSaleOffer);
+
+        var ownedSessionOffer = new Package
+        {
+            Id = OwnedSessionOfferA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            Name = "E2E Owned Session Package",
+            Description = "Owned-session choice for the US-12 sale builder.",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = CategoryA,
+            SessionDurationMinutes = 40,
+            SessionCount = 4,
+            PackageExpiryMonths = 12,
+            Price = 1000,
+            CashEnabled = true,
+            InstallmentEnabled = false,
+            AllStaff = true,
+            Status = PackageStatus.Active
+        };
+        db.Packages.Add(ownedSessionOffer);
+
+        var collectionOffer = new Package
+        {
+            Id = CollectionOfferA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            Name = "E2E US-11 Collection Package",
+            Description = "Saved-plan source for independent US-11 purchase states.",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = CategoryA,
+            SessionDurationMinutes = 30,
+            SessionCount = 10,
+            PackageExpiryMonths = 12,
+            Price = 1800,
+            CashEnabled = true,
+            InstallmentEnabled = true,
+            InstallmentPrice = 2000,
+            FirstPayment = 500,
+            InstallmentCount = 3,
+            AllStaff = true,
+            Status = PackageStatus.Active,
+            Installments =
+            [
+                NewOfferInstallment("e2e70000-0000-4000-8000-000000000078",
+                    CollectionOfferA, 1, 500, 3, 3),
+                NewOfferInstallment("e2e70000-0000-4000-8000-000000000079",
+                    CollectionOfferA, 2, 500, 3, 6),
+                NewOfferInstallment("e2e70000-0000-4000-8000-000000000080",
+                    CollectionOfferA, 3, 500, 4, 10)
+            ]
+        };
+        db.Packages.Add(collectionOffer);
 
         db.CustomerPackages.AddRange(
             NewPurchase(
@@ -364,13 +501,88 @@ public static class E2EDataSeeder
                 8000,
                 2500,
                 isActive: true,
-                today.AddMonths(12)));
+                today.AddMonths(12)),
+            NewPurchase(
+                OwnedSessionPurchaseA,
+                OwnedSessionOfferA,
+                PackagePurchaseSnapshot.Capture(ownedSessionOffer, "cash", 1000),
+                1000,
+                0,
+                4,
+                1,
+                isActive: true,
+                today.AddMonths(12),
+                releasedSessions: 4),
+            NewPurchase(
+                UiCollectionPurchaseA,
+                CollectionOfferA,
+                PackagePurchaseSnapshot.Capture(collectionOffer, "installment", 2000) with
+                {
+                    OfferName = "E2E Collect in UI"
+                },
+                2000,
+                1500,
+                10,
+                0,
+                isActive: true,
+                today.AddMonths(12),
+                releasedSessions: 0),
+            NewPurchase(
+                ApiCollectionPurchaseA,
+                CollectionOfferA,
+                PackagePurchaseSnapshot.Capture(collectionOffer, "installment", 2000) with
+                {
+                    OfferName = "E2E Collect Idempotently"
+                },
+                2000,
+                1500,
+                10,
+                0,
+                isActive: true,
+                today.AddMonths(12),
+                releasedSessions: 0),
+            NewPurchase(
+                LockedCollectionPurchaseA,
+                CollectionOfferA,
+                PackagePurchaseSnapshot.Capture(collectionOffer, "installment", 2000) with
+                {
+                    OfferName = "E2E Progress Locked"
+                },
+                2000,
+                1000,
+                10,
+                2,
+                isActive: true,
+                today.AddMonths(12),
+                releasedSessions: 3),
+            NewPurchase(
+                FinalCollectionPurchaseA,
+                CollectionOfferA,
+                PackagePurchaseSnapshot.Capture(collectionOffer, "installment", 2000) with
+                {
+                    OfferName = "E2E Final Installment"
+                },
+                2000,
+                500,
+                10,
+                6,
+                isActive: true,
+                today.AddMonths(12),
+                releasedSessions: 6));
 
         db.CustomerPackageInstallments.AddRange(
             NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000050", 0, 500, 0, DateTime.UtcNow),
             NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000051", 1, 500, 3),
             NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000052", 2, 500, 6),
             NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000053", 3, 500, 10));
+
+        db.InstallmentCollections.AddRange(
+            NewCollection("e2e70000-0000-4000-8000-000000000086",
+                LockedCollectionPurchaseA, 1, "e2e-us11-locked-prerequisite"),
+            NewCollection("e2e70000-0000-4000-8000-000000000087",
+                FinalCollectionPurchaseA, 1, "e2e-us11-final-prerequisite-1"),
+            NewCollection("e2e70000-0000-4000-8000-000000000088",
+                FinalCollectionPurchaseA, 2, "e2e-us11-final-prerequisite-2"));
 
         var completedBooking = new Booking
         {
@@ -431,7 +643,7 @@ public static class E2EDataSeeder
 
         await transaction.CommitAsync();
         logger.LogInformation(
-            "Restored US-07 through US-10 E2E prerequisites in the local development database");
+            "Restored US-07 through US-12 E2E prerequisites in the local development database");
     }
 
     private static void AssertLocalDevelopmentDatabase(ApplicationDbContext db)
@@ -551,6 +763,7 @@ public static class E2EDataSeeder
 
     private static PackageInstallment NewOfferInstallment(
         string id,
+        string packageId,
         int number,
         decimal amount,
         int sessionsUnlocked,
@@ -559,7 +772,7 @@ public static class E2EDataSeeder
         {
             Id = id,
             TenantId = TenantA,
-            PackageId = SelectedStaffOfferA,
+            PackageId = packageId,
             Number = number,
             Amount = amount,
             SessionsUnlocked = sessionsUnlocked,
@@ -575,7 +788,8 @@ public static class E2EDataSeeder
         int total,
         int used,
         bool isActive,
-        DateOnly expiresOn) =>
+        DateOnly expiresOn,
+        int? releasedSessions = null) =>
         new()
         {
             Id = id,
@@ -584,6 +798,7 @@ public static class E2EDataSeeder
             PackageId = packageId,
             PurchasePrice = purchasePrice,
             AmountDue = amountDue,
+            ReleasedSessions = releasedSessions,
             PurchaseSnapshotJson = snapshot.ToJson(),
             Total = total,
             Used = used,
@@ -608,6 +823,24 @@ public static class E2EDataSeeder
             CumulativeAvailableSessions = cumulativeAvailableSessions,
             CollectedAtUtc = collectedAtUtc,
             PaymentMethod = collectedAtUtc is null ? null : "cash"
+        };
+
+    private static InstallmentCollection NewCollection(
+        string id,
+        string purchaseId,
+        int installmentNumber,
+        string idempotencyKey) =>
+        new()
+        {
+            Id = id,
+            TenantId = TenantA,
+            CustomerPackageId = purchaseId,
+            InstallmentNumber = installmentNumber,
+            Amount = 500,
+            PaymentMethod = "cash",
+            IdempotencyKey = idempotencyKey,
+            CollectedByUserId = UserA,
+            ConfirmedAtUtc = DateTime.UtcNow.AddDays(-installmentNumber)
         };
 
     private static async Task UpsertAsync<TEntity>(ApplicationDbContext db, TEntity value)

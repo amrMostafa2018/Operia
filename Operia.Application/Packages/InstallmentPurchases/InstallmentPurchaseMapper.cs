@@ -10,7 +10,7 @@ internal static class InstallmentPurchaseMapper
         return new InstallmentPurchaseDto(
             purchase.Id, purchase.PackageId, purchase.CustomerId,
             purchase.PurchasePrice ?? 0, purchase.AmountDue ?? 0,
-            purchase.Total, rows.Last().CumulativeAvailableSessions,
+            PurchaseSessionEntitlement.Released(purchase), purchase.Total,
             rows.Select(x => new InstallmentRowDto(
                 x.Number, x.Amount, x.CumulativeAvailableSessions,
                 x.CollectedAtUtc, x.PaymentMethod)).ToList());

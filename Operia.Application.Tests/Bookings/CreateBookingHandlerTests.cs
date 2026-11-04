@@ -92,7 +92,8 @@ public sealed class CreateBookingHandlerTests
             .SingleAsync(x => x.Id == purchaseId);
         purchase.PurchasePrice.Should().Be(1500m);
         purchase.AmountDue.Should().Be(1500m);
-        purchase.Total.Should().Be(0);
+        purchase.Total.Should().Be(6);
+        purchase.ReleasedSessions.Should().Be(0);
         var purchaseSnapshot = PackagePurchaseSnapshot.FromJson(purchase.PurchaseSnapshotJson);
         purchaseSnapshot.Should().NotBeNull();
         purchaseSnapshot!.PaymentOption.Should().Be("installment");

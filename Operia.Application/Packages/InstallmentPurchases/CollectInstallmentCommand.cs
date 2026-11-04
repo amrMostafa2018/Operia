@@ -65,9 +65,9 @@ public sealed class CollectInstallmentHandler(
         row.PaymentMethod = request.PaymentMethod;
         purchase.AmountDue -= row.Amount;
         var fullyPaid = purchase.AmountDue == 0;
-        purchase.Total = InstallmentSessionRelease.AvailableAfterPayment(
-            rows.Last().CumulativeAvailableSessions,
+        purchase.ReleasedSessions = InstallmentSessionRelease.AvailableAfterPayment(
             purchase.Total,
+            purchase.ReleasedSessions ?? 0,
             row.CumulativeAvailableSessions,
             paymentConfirmed: true,
             fullyPaid);
@@ -84,7 +84,14 @@ public sealed class CollectInstallmentHandler(
         }
         auditWriter.Write(tenantId, AuditActions.PackageInstallmentCollected,
             nameof(CustomerPackage), purchase.Id, purchase.Id,
-            new { row.Number, row.Amount, row.PaymentMethod, purchase.AmountDue, purchase.Total });
+            new
+            {
+                row.Number,
+                row.Amount,
+                row.PaymentMethod,
+                purchase.AmountDue,
+                purchase.ReleasedSessions
+            });
         try
         {
             await db.SaveChangesAsync(cancellationToken);

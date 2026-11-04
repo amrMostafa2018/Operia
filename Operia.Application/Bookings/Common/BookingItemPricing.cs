@@ -160,7 +160,8 @@ public static class BookingItemPricing
             AmountDue = price,
             PurchaseSnapshotJson = PackagePurchaseSnapshot.Capture(
                 product, installment ? "installment" : "cash", price).ToJson(),
-            Total = installment ? 0 : total,
+            Total = total,
+            ReleasedSessions = installment ? 0 : null,
             ReservedSessions = 0,
             ExpiresOn = expiresOn,
             IsActive = true
