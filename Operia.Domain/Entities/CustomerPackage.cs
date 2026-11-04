@@ -14,6 +14,8 @@ public sealed class CustomerPackage : Entity, ITenantScoped
     public string? OriginBookingId { get; set; }
     public decimal? PurchasePrice { get; set; }
     public decimal? AmountDue { get; set; }
+    /// <summary>Immutable sale terms captured when this purchase was created.</summary>
+    public string? PurchaseSnapshotJson { get; set; }
 
     /// <summary>Released sessions or pulses; installment purchases grow this balance as collections are confirmed.</summary>
     public int Total { get; set; }

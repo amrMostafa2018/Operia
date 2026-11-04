@@ -3,9 +3,11 @@ using FluentValidation.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Bookings.Common;
+using Operia.Application.Common.Authorization;
 using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Packages;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
 using Operia.SharedKernel.Errors;
@@ -22,6 +24,7 @@ public sealed class CreateBookingHandler(
     IBranchScope branchScope,
     IAuditWriter auditWriter,
     IBookingConcurrencyStore concurrencyStore,
+    IIdentityService identity,
     IDateTimeProvider clock) : IRequestHandler<CreateBookingCommand, CreateBookingResult>
 {
     /// <summary>
@@ -50,6 +53,13 @@ public sealed class CreateBookingHandler(
         await ValidateWorkingHoursAsync(tenantId, request, cancellationToken);
 
         var catalog = await LoadCatalogAsync(tenantId, request.Items, cancellationToken);
+        foreach (var product in catalog.Values)
+        {
+            if (!product.AllStaff && product.AvailableStaff.All(staff => staff.EmployeeId != request.EmployeeId))
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageStaffUnavailable, "employeeId");
+            }
+        }
         BookingItemPricing.ValidatePackageSelection(request.Items, catalog);
         await ValidatePaymentMethodAsync(tenantId, request.PaymentMethod, cancellationToken);
 
@@ -115,6 +125,12 @@ public sealed class CreateBookingHandler(
         {
             throw Invalid(ApiErrorCodes.Bookings.EmployeeNotInBranch, "employeeId");
         }
+        var roles = await identity.GetRolesAsync([employee.IdentityUserId], cancellationToken);
+        if (!string.Equals(roles.GetValueOrDefault(employee.IdentityUserId), Roles.Staff,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageStaffUnavailable, "employeeId");
+        }
     }
 
     /// <summary>Loads every requested active catalog item within the current tenant.</summary>
@@ -125,6 +141,7 @@ public sealed class CreateBookingHandler(
     {
         var requestedPackageIds = items.Select(x => x.PackageId).Distinct().ToList();
         var catalog = await db.Packages.AsNoTracking()
+            .Include(x => x.AvailableStaff)
             .Include(x => x.Installments)
             .Where(x => x.TenantId == tenantId && requestedPackageIds.Contains(x.Id) && x.Status == PackageStatus.Active)
             .ToDictionaryAsync(x => x.Id, cancellationToken);
@@ -240,7 +257,8 @@ public sealed class CreateBookingHandler(
                 {
                     for (var unit = 0; unit < Math.Max(0, item.Quantity - 1); unit++)
                     {
-                        newPurchases.Add(BookingItemPricing.CreatePackagePurchase(product, tenantId, customerId, today));
+                        newPurchases.Add(BookingItemPricing.CreatePackagePurchase(
+                            product, tenantId, customerId, today, originBookingId: bookingId));
                     }
                 }
 
@@ -280,7 +298,8 @@ public sealed class CreateBookingHandler(
 
                 for (var unit = 0; unit < item.Quantity; unit++)
                 {
-                    var purchase = BookingItemPricing.CreatePackagePurchase(product, tenantId, customerId, today);
+                    var purchase = BookingItemPricing.CreatePackagePurchase(
+                        product, tenantId, customerId, today, originBookingId: bookingId);
                     newPurchases.Add(purchase);
                     if (unit == 0)
                     {
@@ -299,8 +318,11 @@ public sealed class CreateBookingHandler(
                     TenantId = tenantId,
                     CustomerId = customerId,
                     PackageId = product.Id,
+                    OriginBookingId = bookingId,
                     PurchasePrice = BookingItemPricing.CashPrice(product),
                     AmountDue = BookingItemPricing.CashPrice(product),
+                    PurchaseSnapshotJson = PackagePurchaseSnapshot.Capture(
+                        product, "cash", BookingItemPricing.CashPrice(product)).ToJson(),
                     Total = 1,
                     ReservedSessions = 0,
                     IsActive = true

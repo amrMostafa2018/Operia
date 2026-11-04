@@ -5,6 +5,7 @@ using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Employees.Common;
 using Operia.SharedKernel.Errors;
+using Operia.Domain.Enums;
 
 namespace Operia.Application.Employees.Queries.GetBookableEmployees;
 
@@ -75,6 +76,26 @@ public sealed class GetBookableEmployeesHandler
                     Roles.Staff,
                     StringComparison.OrdinalIgnoreCase))
             .ToList();
+
+        if (!string.IsNullOrWhiteSpace(request.PackageId))
+        {
+            var offer = await _db.Packages.AsNoTracking()
+                .Include(package => package.AvailableStaff)
+                .SingleOrDefaultAsync(package =>
+                    package.TenantId == tenantId && package.Id == request.PackageId &&
+                    package.Status == PackageStatus.Active,
+                    cancellationToken);
+            if (offer is null)
+            {
+                return [];
+            }
+            if (!offer.AllStaff)
+            {
+                var assignedIds = offer.AvailableStaff.Select(item => item.EmployeeId)
+                    .ToHashSet(StringComparer.Ordinal);
+                staff = staff.Where(employee => assignedIds.Contains(employee.Id)).ToList();
+            }
+        }
 
         var staffIds = staff.Select(employee => employee.Id).ToList();
         var workingDays = await _db.EmployeeWorkingDays

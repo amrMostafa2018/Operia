@@ -36,6 +36,11 @@ public static class ApiErrorCodes
         public const string TenantAccessDenied = "TenantAccessDenied";
     }
 
+    public static class Customers
+    {
+        public const string PurchaseNotFound = "CustomerPurchaseNotFound";
+    }
+
     /// <summary>Employee working-day and branch schedule failures.</summary>
     public static class EmployeeSchedule
     {
@@ -92,7 +97,9 @@ public static class ApiErrorCodes
         public const string PackageInstallmentSessionsInvalid = "PACKAGE_INSTALLMENT_SESSIONS_INVALID";
         public const string PackageInstallmentReleaseCap = "PACKAGE_INSTALLMENT_RELEASE_CAP";
         public const string PackageCashUnavailable = "PACKAGE_CASH_UNAVAILABLE";
-          public const string PackageInstallmentUnavailable = "PACKAGE_INSTALLMENT_UNAVAILABLE";
+        public const string PackageStaffInvalid = "PACKAGE_STAFF_INVALID";
+        public const string PackageStaffUnavailable = "PACKAGE_STAFF_UNAVAILABLE";
+        public const string PackageInstallmentUnavailable = "PACKAGE_INSTALLMENT_UNAVAILABLE";
         public const string PackageNotFound = "PACKAGE_NOT_FOUND";
         public const string PackageAlreadyCancelled = "PACKAGE_ALREADY_CANCELLED";
     }
@@ -118,9 +125,9 @@ public static class ApiErrorCodes
         public const string TerminalReadOnly = "BookingTerminalReadOnly";
         public const string PackageEditNotAllowed = "BookingPackageEditNotAllowed";
         public const string PaymentMethodUnavailable = "BookingPaymentMethodUnavailable";
-          public const string InstallmentPurchaseOnly = "BookingInstallmentPurchaseOnly";
-          public const string InstallmentEditNotAllowed = "BookingInstallmentEditNotAllowed";
-          public const string InstallmentCollectionInvalid = "BookingInstallmentCollectionInvalid";
+        public const string InstallmentPurchaseOnly = "BookingInstallmentPurchaseOnly";
+        public const string InstallmentEditNotAllowed = "BookingInstallmentEditNotAllowed";
+        public const string InstallmentCollectionInvalid = "BookingInstallmentCollectionInvalid";
         public const string ItemsRequired = "BookingItemsRequired";
         public const string NotBookedStatus = "BookingNotBookedStatus";
         public const string PulsesExceedRemaining = "PulsesExceedRemaining";

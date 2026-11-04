@@ -21,6 +21,7 @@ public sealed class PackageConfiguration : IEntityTypeConfiguration<Package>
         builder.Property(x => x.CashEnabled).HasDefaultValue(true).HasSentinel(true);
         builder.Property(x => x.InstallmentPrice).HasPrecision(18, 2);
         builder.Property(x => x.FirstPayment).HasPrecision(18, 2);
+        builder.Property(x => x.AllStaff).HasDefaultValue(true).HasSentinel(true);
         builder.Property(x => x.DiscountCode).HasMaxLength(50);
         builder.Property(x => x.DiscountPercent).HasPrecision(5, 2);
         builder.Property(x => x.CreatedBy).HasMaxLength(450);

@@ -22,4 +22,6 @@ public sealed record CreatePackageCommand(
     decimal? InstallmentPrice = null,
     decimal? FirstPayment = null,
     int? InstallmentCount = null,
-    IReadOnlyList<PackageInstallmentInput>? Installments = null) : IRequest<PackageDetailDto>;
+    IReadOnlyList<PackageInstallmentInput>? Installments = null,
+    bool AllStaff = true,
+    IReadOnlyList<string>? StaffIds = null) : IRequest<PackageDetailDto>;

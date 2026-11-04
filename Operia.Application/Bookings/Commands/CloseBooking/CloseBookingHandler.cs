@@ -150,7 +150,8 @@ public sealed class CloseBookingHandler(
                 FirstName(item.Name, item.Package?.Name),
                 input.Status,
                 input.PulsesUsed,
-                input.Notes));
+                input.Notes,
+                reservations.Select(x => x.CustomerPackageId).Distinct().ToArray()));
         }
 
         if (assignedReservations.Count != activeReservations.Count)
@@ -386,7 +387,8 @@ public sealed class CloseBookingHandler(
                 Name = x.Name,
                 Status = x.Status,
                 PulsesUsed = x.PulsesUsed,
-                Notes = x.Notes
+                Notes = x.Notes,
+                x.CustomerPackageIds
             })
         };
 
@@ -424,5 +426,6 @@ public sealed class CloseBookingHandler(
         string Name,
         string Status,
         int? PulsesUsed,
-        string? Notes);
+        string? Notes,
+        IReadOnlyList<string> CustomerPackageIds);
 }

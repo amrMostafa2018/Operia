@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Operia.Application.Auth;
 using Operia.Application.Common.Authorization;
+using Operia.Application.Packages;
 using Operia.Domain.Common;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
@@ -14,7 +15,7 @@ using Operia.Infrastructure.Identity;
 
 namespace Operia.Infrastructure.Persistence;
 
-/// <summary>Restores the US-07 prerequisites in reserved local development tenants.</summary>
+/// <summary>Restores the US-07 through US-10 prerequisites in reserved local development tenants.</summary>
 public static class E2EDataSeeder
 {
     private const string TenantA = "e2e70000-0000-4000-8000-000000000001";
@@ -24,6 +25,17 @@ public static class E2EDataSeeder
     private const string EmployeeA = "e2e70000-0000-4000-8000-000000000005";
     private const string CustomerA = "e2e70000-0000-4000-8000-000000000006";
     private const string CategoryA = "e2e70000-0000-4000-8000-000000000017";
+    private const string StaffUserA = "e2e70000-0000-4000-8000-000000000018";
+    private const string StaffEmployeeA = "e2e70000-0000-4000-8000-000000000019";
+    private const string AllStaffOfferA = "e2e70000-0000-4000-8000-000000000030";
+    private const string SelectedStaffOfferA = "e2e70000-0000-4000-8000-000000000031";
+    private const string PulseOfferA = "e2e70000-0000-4000-8000-000000000032";
+    private const string InquiryPurchaseA = "e2e70000-0000-4000-8000-000000000040";
+    private const string InquiryPurchaseB = "e2e70000-0000-4000-8000-000000000041";
+    private const string DetailPurchaseA = "e2e70000-0000-4000-8000-000000000042";
+    private const string PulsePurchaseA = "e2e70000-0000-4000-8000-000000000043";
+    private const string CompletedBookingA = "e2e70000-0000-4000-8000-000000000060";
+    private const string CompletedBookingItemA = "e2e70000-0000-4000-8000-000000000061";
     private const string TenantB = "e2e70000-0000-4000-8000-000000000101";
     private const string UserB = "e2e70000-0000-4000-8000-000000000102";
     private const string BusinessB = "e2e70000-0000-4000-8000-000000000103";
@@ -47,8 +59,33 @@ public static class E2EDataSeeder
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         await using var transaction = await db.Database.BeginTransactionAsync();
 
-        await SeedUserAsync(users, UserA, TenantA, "+201000000071", password);
-        await SeedUserAsync(users, UserB, TenantB, "+201000000072", password);
+        await SeedUserAsync(
+            users,
+            UserA,
+            TenantA,
+            "+201000000071",
+            "US-07 E2E Owner",
+            Roles.SuperAdmin,
+            password,
+            grantAllTenantPermissions: true);
+        await SeedUserAsync(
+            users,
+            UserB,
+            TenantB,
+            "+201000000072",
+            "US-07 E2E Tenant B Owner",
+            Roles.SuperAdmin,
+            password,
+            grantAllTenantPermissions: true);
+        await SeedUserAsync(
+            users,
+            StaffUserA,
+            TenantA,
+            "+201000000075",
+            "US-08 E2E Staff User",
+            Roles.Staff,
+            password,
+            grantAllTenantPermissions: false);
         await SeedTenantAsync(db, TenantA, UserA, NameA);
         await SeedTenantAsync(db, TenantB, UserB, NameB);
         await UpsertAsync(db, new Business
@@ -101,11 +138,31 @@ public static class E2EDataSeeder
             JoiningDate = today.AddDays(-30),
             IsActive = true
         });
+        await UpsertAsync(db, new Employee
+        {
+            Id = StaffEmployeeA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            IdentityUserId = StaffUserA,
+            Code = "E2E08",
+            FullName = "US-08 Test Staff",
+            Email = "e2e-us08-staff@operia.example",
+            MobileNumber = "+201000000075",
+            JoiningDate = today.AddDays(-20),
+            IsActive = true
+        });
         await UpsertAsync(db, new UserBranch
         {
             Id = "e2e70000-0000-4000-8000-000000000009",
             TenantId = TenantA,
             EmployeeId = EmployeeA,
+            BranchId = BranchA
+        });
+        await UpsertAsync(db, new UserBranch
+        {
+            Id = "e2e70000-0000-4000-8000-000000000020",
+            TenantId = TenantA,
+            EmployeeId = StaffEmployeeA,
             BranchId = BranchA
         });
         await UpsertAsync(db, new Customer
@@ -114,7 +171,7 @@ public static class E2EDataSeeder
             TenantId = TenantA,
             FullName = "US-07 Test Customer",
             MobileNumber = "+201000000074",
-            NormalizedMobileNumber = "+201000000074",
+            NormalizedMobileNumber = "201000000074",
             IsActive = true
         });
         var days = new[] { "sun", "mon", "tue", "wed", "thu", "fri", "sat" };
@@ -131,13 +188,24 @@ public static class E2EDataSeeder
                 FromTime = new TimeOnly(8, 0),
                 ToTime = new TimeOnly(18, 0)
             });
+            await UpsertAsync(db, new EmployeeWorkingDay
+            {
+                Id = $"e2e70000-0000-4000-8000-{index + 21:000000000000}",
+                TenantId = TenantA,
+                EmployeeId = StaffEmployeeA,
+                BranchId = BranchA,
+                Day = days[index],
+                Enabled = true,
+                FromTime = new TimeOnly(8, 0),
+                ToTime = new TimeOnly(18, 0)
+            });
         }
         await db.SaveChangesAsync();
 
         // Only the reserved E2E tenants are cleared. Every test-created offer,
         // booking and purchase starts fresh on the next Playwright run.
         var tenantIds = new[] { TenantA, TenantB };
-        var userIds = new[] { UserA, UserB };
+        var userIds = new[] { UserA, UserB, StaffUserA };
         await db.RefreshTokens.Where(x => userIds.Contains(x.UserId))
             .ExecuteDeleteAsync();
         await db.BookingPackageReservations.IgnoreQueryFilters()
@@ -156,6 +224,8 @@ public static class E2EDataSeeder
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.PackageInstallments.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
+        await db.PackageStaff.IgnoreQueryFilters()
+            .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.Packages.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.SubServiceCategories.IgnoreQueryFilters()
@@ -165,18 +235,203 @@ public static class E2EDataSeeder
         await db.AuditLogs.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
 
-        db.ServiceCategories.Add(new ServiceCategory
+        var category = new ServiceCategory
         {
             Id = CategoryA,
             TenantId = TenantA,
             BusinessId = BusinessA,
-            Name = "US-07 E2E Category",
+            Name = "US-07 to US-10 E2E Category",
             Icon = "pi pi-box"
+        };
+        db.ServiceCategories.Add(category);
+
+        var allStaffOffer = new Package
+        {
+            Id = AllStaffOfferA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            Name = "E2E Inquiry Package",
+            Description = "All Staff offer used by the US-09 inquiry fixtures.",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = CategoryA,
+            SessionDurationMinutes = 30,
+            SessionCount = 4,
+            PackageExpiryMonths = 12,
+            Price = 1200,
+            CashEnabled = true,
+            InstallmentEnabled = false,
+            AllStaff = true,
+            Status = PackageStatus.Active
+        };
+        db.Packages.Add(allStaffOffer);
+
+        var selectedStaffOffer = new Package
+        {
+            Id = SelectedStaffOfferA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            Name = "E2E Saved Installment Package",
+            Description = "Selected Staff offer used by the US-10 detail fixture.",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = CategoryA,
+            SessionDurationMinutes = 30,
+            SessionCount = 10,
+            PackageExpiryMonths = 12,
+            Price = 1800,
+            CashEnabled = true,
+            InstallmentEnabled = true,
+            InstallmentPrice = 2000,
+            FirstPayment = 500,
+            InstallmentCount = 3,
+            AllStaff = false,
+            Status = PackageStatus.Active,
+            Installments =
+            [
+                NewOfferInstallment("e2e70000-0000-4000-8000-000000000034", 1, 500, 3, 3),
+                NewOfferInstallment("e2e70000-0000-4000-8000-000000000035", 2, 500, 3, 6),
+                NewOfferInstallment("e2e70000-0000-4000-8000-000000000036", 3, 500, 4, 10)
+            ],
+            AvailableStaff =
+            [
+                new PackageStaff
+                {
+                    Id = "e2e70000-0000-4000-8000-000000000033",
+                    TenantId = TenantA,
+                    PackageId = SelectedStaffOfferA,
+                    EmployeeId = StaffEmployeeA
+                }
+            ]
+        };
+        db.Packages.Add(selectedStaffOffer);
+
+        var pulseOffer = new Package
+        {
+            Id = PulseOfferA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            Name = "E2E Pulse Package",
+            Description = "Pulse balance fixture for US-10.",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = CategoryA,
+            SessionDurationMinutes = 30,
+            PulseCount = 8000,
+            PackageExpiryMonths = 12,
+            Price = 800,
+            CashEnabled = true,
+            InstallmentEnabled = false,
+            AllStaff = true,
+            Status = PackageStatus.Active
+        };
+        db.Packages.Add(pulseOffer);
+
+        db.CustomerPackages.AddRange(
+            NewPurchase(
+                InquiryPurchaseA,
+                AllStaffOfferA,
+                PackagePurchaseSnapshot.Capture(allStaffOffer, "cash", 1200),
+                1200,
+                0,
+                4,
+                0,
+                isActive: true,
+                today.AddMonths(12)),
+            NewPurchase(
+                InquiryPurchaseB,
+                AllStaffOfferA,
+                PackagePurchaseSnapshot.Capture(allStaffOffer, "cash", 1200),
+                1200,
+                0,
+                4,
+                0,
+                isActive: false,
+                today.AddMonths(12)),
+            NewPurchase(
+                DetailPurchaseA,
+                SelectedStaffOfferA,
+                PackagePurchaseSnapshot.Capture(selectedStaffOffer, "installment", 2000),
+                2000,
+                1500,
+                3,
+                1,
+                isActive: true,
+                today.AddMonths(12)),
+            NewPurchase(
+                PulsePurchaseA,
+                PulseOfferA,
+                PackagePurchaseSnapshot.Capture(pulseOffer, "cash", 800),
+                800,
+                0,
+                8000,
+                2500,
+                isActive: true,
+                today.AddMonths(12)));
+
+        db.CustomerPackageInstallments.AddRange(
+            NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000050", 0, 500, 0, DateTime.UtcNow),
+            NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000051", 1, 500, 3),
+            NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000052", 2, 500, 6),
+            NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000053", 3, 500, 10));
+
+        var completedBooking = new Booking
+        {
+            Id = CompletedBookingA,
+            TenantId = TenantA,
+            BookingNumber = "E2E-US10-0001",
+            IdempotencyKey = "e2e-us10-completed-booking",
+            BranchId = BranchA,
+            EmployeeId = StaffEmployeeA,
+            CustomerId = CustomerA,
+            CustomerName = "US-07 Test Customer",
+            CustomerMobile = "+201000000074",
+            ScheduledDate = today.AddDays(-7),
+            StartMinutes = 600,
+            EndMinutes = 630,
+            Status = BookingStatus.Completed,
+            Source = "AdminPortal",
+            PaymentMethod = "cash",
+            TotalAmount = 0,
+            PaidAmount = 0,
+            DiscountAmount = 0
+        };
+        db.Bookings.Add(completedBooking);
+        db.BookingItems.Add(new BookingItem
+        {
+            Id = CompletedBookingItemA,
+            TenantId = TenantA,
+            BookingId = CompletedBookingA,
+            Type = BookingItemType.PackageSession,
+            PackageId = SelectedStaffOfferA,
+            Name = "E2E Saved Installment Package",
+            Quantity = 1,
+            DurationMinutes = 30,
+            UnitPrice = 0,
+            PaymentOption = "installment"
+        });
+        db.BookingPackageReservations.Add(new BookingPackageReservation
+        {
+            Id = "e2e70000-0000-4000-8000-000000000062",
+            TenantId = TenantA,
+            BookingId = CompletedBookingA,
+            CustomerPackageId = DetailPurchaseA,
+            SessionNumber = 1
+        });
+        db.BookingHistory.Add(new BookingHistory
+        {
+            Id = "e2e70000-0000-4000-8000-000000000063",
+            TenantId = TenantA,
+            BookingId = CompletedBookingA,
+            Action = "Closed",
+            ChangedByUserId = UserA,
+            ChangedByDisplayName = "US-07 E2E Owner",
+            ChangesJson = $$"""
+                {"Items":[{"BookingItemId":"{{CompletedBookingItemA}}","Name":"E2E Saved Installment Package","Status":"complete","PulsesUsed":null,"Notes":"US-10 seeded execution","CustomerPackageIds":["{{DetailPurchaseA}}"]}]}
+                """
         });
         await db.SaveChangesAsync();
 
         await transaction.CommitAsync();
-        logger.LogInformation("Restored US-07 E2E prerequisites in the local development database");
+        logger.LogInformation(
+            "Restored US-07 through US-10 E2E prerequisites in the local development database");
     }
 
     private static void AssertLocalDevelopmentDatabase(ApplicationDbContext db)
@@ -190,8 +445,15 @@ public static class E2EDataSeeder
         }
     }
 
-    private static async Task SeedUserAsync(UserManager<ApplicationUser> users,
-        string userId, string tenantId, string phone, string password)
+    private static async Task SeedUserAsync(
+        UserManager<ApplicationUser> users,
+        string userId,
+        string tenantId,
+        string phone,
+        string fullName,
+        string role,
+        string password,
+        bool grantAllTenantPermissions)
     {
         var user = await users.Users.SingleOrDefaultAsync(x => x.Id == userId);
         if (user is null)
@@ -204,7 +466,7 @@ public static class E2EDataSeeder
                 UserName = phone,
                 PhoneNumber = phone,
                 Email = $"{userId}@operia.example",
-                FullName = "US-07 E2E Owner",
+                FullName = fullName,
                 TenantId = tenantId,
                 EmailConfirmed = true,
                 PhoneNumberConfirmed = true
@@ -220,10 +482,27 @@ public static class E2EDataSeeder
                 "reset E2E password");
         }
 
-        if (!await users.IsInRoleAsync(user, Roles.SuperAdmin))
-            RequireSuccess(await users.AddToRoleAsync(user, Roles.SuperAdmin),
-                "grant E2E owner role");
+        var existingRoles = await users.GetRolesAsync(user);
+        foreach (var existingRole in existingRoles.Where(existingRole => existingRole != role))
+        {
+            RequireSuccess(await users.RemoveFromRoleAsync(user, existingRole),
+                $"remove E2E role {existingRole}");
+        }
+        if (!await users.IsInRoleAsync(user, role))
+        {
+            RequireSuccess(await users.AddToRoleAsync(user, role), $"grant E2E role {role}");
+        }
         var existingClaims = await users.GetClaimsAsync(user);
+        if (!grantAllTenantPermissions)
+        {
+            foreach (var claim in existingClaims.Where(claim =>
+                         claim.Type == Policies.PermissionClaimType))
+            {
+                RequireSuccess(await users.RemoveClaimAsync(user, claim),
+                    $"remove E2E permission {claim.Value}");
+            }
+            return;
+        }
         foreach (var permission in Policies.TenantPermissionValues)
         {
             if (existingClaims.Any(x => x.Type == Policies.PermissionClaimType &&
@@ -269,6 +548,67 @@ public static class E2EDataSeeder
             EndDate = today.AddYears(1),
             Status = SubscriptionStatus.Active
         });
+
+    private static PackageInstallment NewOfferInstallment(
+        string id,
+        int number,
+        decimal amount,
+        int sessionsUnlocked,
+        int cumulativeAvailableSessions) =>
+        new()
+        {
+            Id = id,
+            TenantId = TenantA,
+            PackageId = SelectedStaffOfferA,
+            Number = number,
+            Amount = amount,
+            SessionsUnlocked = sessionsUnlocked,
+            CumulativeAvailableSessions = cumulativeAvailableSessions
+        };
+
+    private static CustomerPackage NewPurchase(
+        string id,
+        string packageId,
+        PackagePurchaseSnapshot snapshot,
+        decimal purchasePrice,
+        decimal amountDue,
+        int total,
+        int used,
+        bool isActive,
+        DateOnly expiresOn) =>
+        new()
+        {
+            Id = id,
+            TenantId = TenantA,
+            CustomerId = CustomerA,
+            PackageId = packageId,
+            PurchasePrice = purchasePrice,
+            AmountDue = amountDue,
+            PurchaseSnapshotJson = snapshot.ToJson(),
+            Total = total,
+            Used = used,
+            ReservedSessions = 0,
+            ExpiresOn = expiresOn,
+            IsActive = isActive
+        };
+
+    private static CustomerPackageInstallment NewPurchaseInstallment(
+        string id,
+        int number,
+        decimal amount,
+        int cumulativeAvailableSessions,
+        DateTime? collectedAtUtc = null) =>
+        new()
+        {
+            Id = id,
+            TenantId = TenantA,
+            CustomerPackageId = DetailPurchaseA,
+            Number = number,
+            Amount = amount,
+            CumulativeAvailableSessions = cumulativeAvailableSessions,
+            CollectedAtUtc = collectedAtUtc,
+            PaymentMethod = collectedAtUtc is null ? null : "cash"
+        };
 
     private static async Task UpsertAsync<TEntity>(ApplicationDbContext db, TEntity value)
         where TEntity : Entity

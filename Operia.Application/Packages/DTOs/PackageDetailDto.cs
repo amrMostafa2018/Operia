@@ -24,4 +24,6 @@ public sealed record PackageDetailDto(
     decimal CashPriceAfterDiscount,
     decimal? FirstPayment,
     int? InstallmentCount,
-    IReadOnlyList<PackageInstallmentDto> Installments);
+    IReadOnlyList<PackageInstallmentDto> Installments,
+    bool AllStaff,
+    IReadOnlyList<string> StaffIds);

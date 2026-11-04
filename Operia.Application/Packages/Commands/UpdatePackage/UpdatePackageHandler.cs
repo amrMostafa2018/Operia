@@ -14,14 +14,17 @@ namespace Operia.Application.Packages.Commands.UpdatePackage;
 public sealed class UpdatePackageHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
-    IAuditWriter auditWriter) : IRequestHandler<UpdatePackageCommand, PackageDetailDto>
+    IAuditWriter auditWriter,
+    IBranchScope branchScope,
+    IIdentityService identity) : IRequestHandler<UpdatePackageCommand, PackageDetailDto>
 {
     public async Task<PackageDetailDto> Handle(
         UpdatePackageCommand request,
         CancellationToken cancellationToken)
     {
         var tenantId = PackageMapper.RequireTenant(currentUser);
-        var package = await db.Packages.Include(item => item.Installments).SingleOrDefaultAsync(
+        var package = await db.Packages.Include(item => item.Installments)
+            .Include(item => item.AvailableStaff).SingleOrDefaultAsync(
             item => item.Id == request.Id && item.TenantId == tenantId,
             cancellationToken) ?? throw new NotFoundException(nameof(Package), request.Id);
 
@@ -37,6 +40,17 @@ public sealed class UpdatePackageHandler(
             request.ServiceCategoryId,
             request.SubServiceCategoryId,
             cancellationToken);
+        var updateStaff = request.AllStaff.HasValue || request.StaffIds is not null;
+        var allStaff = request.AllStaff ?? (request.StaffIds is null && package.AllStaff);
+        var staffIds = request.StaffIds ?? (allStaff
+            ? []
+            : package.AvailableStaff.Select(staff => staff.EmployeeId).ToArray());
+        if (updateStaff)
+        {
+            await PackageStaffEligibility.ValidateSelectionAsync(
+                db, currentUser, branchScope, identity, tenantId,
+                allStaff, staffIds, cancellationToken);
+        }
 
         var previous = PackageAuditDetails.ForPackage(package);
 
@@ -55,6 +69,26 @@ public sealed class UpdatePackageHandler(
         package.InstallmentPrice = request.InstallmentEnabled ? request.InstallmentPrice : null;
         package.FirstPayment = request.InstallmentEnabled ? request.FirstPayment : null;
         package.InstallmentCount = request.InstallmentEnabled ? request.InstallmentCount : null;
+        if (updateStaff)
+        {
+            package.AllStaff = allStaff;
+            var selectedStaffIds = staffIds.ToHashSet(StringComparer.Ordinal);
+            foreach (var existing in package.AvailableStaff.Where(staff => !selectedStaffIds.Contains(staff.EmployeeId)).ToList())
+            {
+                db.PackageStaff.Remove(existing);
+                package.AvailableStaff.Remove(existing);
+            }
+            var existingStaffIds = package.AvailableStaff.Select(staff => staff.EmployeeId).ToHashSet(StringComparer.Ordinal);
+            foreach (var id in selectedStaffIds.Where(id => !existingStaffIds.Contains(id)))
+            {
+                package.AvailableStaff.Add(new PackageStaff
+                {
+                    TenantId = tenantId,
+                    PackageId = package.Id,
+                    EmployeeId = id
+                });
+            }
+        }
         InstallmentPlanRules.ReplaceRows(
             package,
             tenantId,
@@ -76,6 +110,7 @@ public sealed class UpdatePackageHandler(
             .AsNoTracking()
             .Include(item => item.ServiceCategory)
             .Include(item => item.Installments)
+            .Include(item => item.AvailableStaff)
             .SingleAsync(item => item.Id == package.Id, cancellationToken);
 
         return PackageMapper.ToDetailDto(updated);

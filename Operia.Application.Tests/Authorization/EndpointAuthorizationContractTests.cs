@@ -51,6 +51,9 @@ public sealed class EndpointAuthorizationContractTests
             ["BookingsController.PaymentMethods"] = Policies.BookingsRead,
             ["BookingsController.Export"] = Policies.BookingsExport,
 
+            ["CustomersController.Inquiry"] = Policies.CustomersRead,
+            ["CustomersController.PurchaseInquiry"] = Policies.CustomersRead,
+
             ["EmployeesController.List"] = Policies.EmployeesRead,
             ["EmployeesController.Get"] = Policies.EmployeesRead,
             ["EmployeesController.GetSchedule"] = Policies.EmployeesRead,
@@ -70,6 +73,7 @@ public sealed class EndpointAuthorizationContractTests
             ["PackagesController.CollectInstallment"] = Policies.PackagesSell,
             ["PackagesController.ListServiceCategories"] = Policies.PackagesRead,
             ["PackagesController.ListSubServiceCategories"] = Policies.PackagesRead,
+            ["PackagesController.ListAvailableStaff"] = Policies.PackagesRead,
             ["PackagesController.Create"] = Policies.PackagesManage,
             ["PackagesController.Update"] = Policies.PackagesManage,
             ["PackagesController.Delete"] = Policies.PackagesManage,
