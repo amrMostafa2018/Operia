@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Operia.Application.Auth;
 using Operia.Application.Customers.Queries.FindCustomerPurchases;
 using Operia.Application.Customers.Queries.GetCustomerPurchaseDetails;
+using Operia.Application.Customers.Commands.CollectInstallment;
 
 namespace Operia.Controllers;
 
@@ -24,4 +25,13 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
         string purchaseId,
         CancellationToken cancellationToken) =>
         mediator.Send(new GetCustomerPurchaseDetailsQuery(purchaseId), cancellationToken);
+
+    [HttpPost("purchases/{purchaseId}/installments")]
+    [Authorize(Policy = Policies.CustomersCollectInstallment)]
+    public Task<CollectInstallmentResult> CollectInstallment(
+        string purchaseId,
+        [FromBody] CollectInstallmentRequest request,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new CollectInstallmentCommand(
+            purchaseId, request.PaymentMethod, request.IdempotencyKey), cancellationToken);
 }

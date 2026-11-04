@@ -92,7 +92,8 @@ public sealed class CreateBookingHandlerTests
             .SingleAsync(x => x.Id == purchaseId);
         purchase.PurchasePrice.Should().Be(1500m);
         purchase.AmountDue.Should().Be(1500m);
-        purchase.Total.Should().Be(0);
+        purchase.Total.Should().Be(6);
+        purchase.ReleasedSessions.Should().Be(0);
         var purchaseSnapshot = PackagePurchaseSnapshot.FromJson(purchase.PurchaseSnapshotJson);
         purchaseSnapshot.Should().NotBeNull();
         purchaseSnapshot!.PaymentOption.Should().Be("installment");
@@ -112,7 +113,8 @@ public sealed class CreateBookingHandlerTests
             .Should().BeEquivalentTo(purchaseSnapshot);
 
         var collector = new CollectInstallmentHandler(
-            _db, _user.Object, new AuditWriter(_db, _user.Object), _clock.Object);
+            _db, new InstallmentCollectionStore(_db), _user.Object,
+            new AuditWriter(_db, _user.Object), _clock.Object);
         var beforeRelease = () => CreateHandler().Handle(new CreateBookingCommand(
             "unreleased-session", "customer-1", "branch-1", "employee-1",
             _scheduledDate, 720, 780,
@@ -172,6 +174,32 @@ public sealed class CreateBookingHandlerTests
         (await _db.AuditLogs.CountAsync()).Should().Be(1);
         (await _db.BookingPackageReservations.CountAsync()).Should().Be(1);
         (await _db.CustomerPackages.SingleAsync()).ReservedSessions.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task InstallmentPurchase_OnlyReleasedSessionCanBeReserved()
+    {
+        await SeedAsync();
+        var owned = await _db.CustomerPackages.SingleAsync();
+        owned.PurchasePrice = 1200m;
+        owned.AmountDue = 800m;
+        owned.ReleasedSessions = 3;
+        owned.PurchaseSnapshotJson = new PackagePurchaseSnapshot(
+            "Laser Package", OfferType.Package, 60, 6, null, 12, "category-1", null,
+            "installment", 1200m, 1200m, null, 400m,
+            [new PurchaseInstallmentSnapshot(1, 400m, 3, 3),
+             new PurchaseInstallmentSnapshot(2, 400m, 0, 3)]).ToJson();
+        await _db.SaveChangesAsync();
+
+        var before = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
+            .Handle(new FindBookingCustomerQuery("01012345678"), CancellationToken.None);
+        before!.Packages.Single(x => x.CustomerPackageId == owned.Id).AvailableSessions.Should().Be(1);
+        await CreateHandler().Handle(Command("released-one", 600, 660), CancellationToken.None);
+
+        var second = () => CreateHandler().Handle(Command("locked-next", 720, 780), CancellationToken.None);
+        (await second.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Bookings.PackageSessionUnavailable);
+        (await _db.BookingPackageReservations.CountAsync()).Should().Be(1);
     }
 
     [Fact]

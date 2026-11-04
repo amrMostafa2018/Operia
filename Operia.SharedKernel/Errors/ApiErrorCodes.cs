@@ -39,6 +39,12 @@ public static class ApiErrorCodes
     public static class Customers
     {
         public const string PurchaseNotFound = "CustomerPurchaseNotFound";
+        public const string InstallmentUnavailable = "CustomerInstallmentUnavailable";
+        public const string InstallmentNotEligible = "CustomerInstallmentNotEligible";
+        public const string InstallmentAlreadyCollected = "CustomerInstallmentAlreadyCollected";
+        public const string InstallmentPaymentMethodUnavailable = "CustomerInstallmentPaymentMethodUnavailable";
+        public const string InstallmentIdempotencyConflict = "CustomerInstallmentIdempotencyConflict";
+        public const string InstallmentPurchaseInactive = "CustomerInstallmentPurchaseInactive";
     }
 
     /// <summary>Employee working-day and branch schedule failures.</summary>
@@ -102,6 +108,28 @@ public static class ApiErrorCodes
         public const string PackageInstallmentUnavailable = "PACKAGE_INSTALLMENT_UNAVAILABLE";
         public const string PackageNotFound = "PACKAGE_NOT_FOUND";
         public const string PackageAlreadyCancelled = "PACKAGE_ALREADY_CANCELLED";
+    }
+
+    /// <summary>Sale draft validation and current-offer conflicts.</summary>
+    public static class Sales
+    {
+        public const string ItemsRequired = "SaleItemsRequired";
+        public const string QuantityInvalid = "SaleQuantityInvalid";
+        public const string PaymentOptionInvalid = "SalePaymentOptionInvalid";
+        public const string PaymentOptionUnavailable = "SalePaymentOptionUnavailable";
+        public const string OfferUnavailable = "SaleOfferUnavailable";
+        public const string BranchUnavailable = "SaleBranchUnavailable";
+        public const string CustomerUnavailable = "SaleCustomerUnavailable";
+        public const string OwnedSessionUnavailable = "SaleOwnedSessionUnavailable";
+        public const string UnlistedNameInvalid = "SaleUnlistedNameInvalid";
+        public const string UnlistedPriceInvalid = "SaleUnlistedPriceInvalid";
+        public const string UnlistedDurationInvalid = "SaleUnlistedDurationInvalid";
+        public const string UnlistedMatchesCatalogOffer = "SaleUnlistedMatchesCatalogOffer";
+        public const string UnlistedLimit = "SaleUnlistedLimit";
+        public const string PaymentMethodUnavailable = "SalePaymentMethodUnavailable";
+        public const string QuoteChanged = "SaleQuoteChanged";
+        public const string IdempotencyKeyInvalid = "SaleIdempotencyKeyInvalid";
+        public const string IdempotencyConflict = "SaleIdempotencyConflict";
     }
 
     /// <summary>Booking access, availability, state, and reservation failures.</summary>

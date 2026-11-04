@@ -34,6 +34,8 @@ public interface IApplicationDbContext
     DbSet<BookingHold> BookingHolds { get; }
     DbSet<Customer> Customers { get; }
     DbSet<CustomerPackage> CustomerPackages { get; }
+    DbSet<InstallmentCollection> InstallmentCollections { get; }
+    DbSet<Sale> Sales { get; }
     DbSet<CustomerPackageInstallment> CustomerPackageInstallments { get; }
     DbSet<BookingPackageReservation> BookingPackageReservations { get; }
 

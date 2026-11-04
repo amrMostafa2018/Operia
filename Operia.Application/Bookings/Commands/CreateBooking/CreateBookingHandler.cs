@@ -246,7 +246,8 @@ public sealed class CreateBookingHandler(
                         owned.Used,
                         owned.ReservedSessions,
                         product.OfferType,
-                        product.PulseCount))
+                        product.PulseCount,
+                        PurchaseSessionEntitlement.Released(owned)))
                 {
                     throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");
                 }
@@ -381,7 +382,8 @@ public sealed class CreateBookingHandler(
                     owned.Used,
                     owned.ReservedSessions,
                     product.OfferType,
-                    product.PulseCount))
+                    product.PulseCount,
+                    PurchaseSessionEntitlement.Released(owned)))
             {
                 continue;
             }

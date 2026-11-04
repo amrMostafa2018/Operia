@@ -27,6 +27,7 @@ public static class AuditActions
     public const string PackageCreated = "PackageCreated";
     public const string PackageUpdated = "PackageUpdated";
     public const string PackageDeleted = "PackageDeleted";
+    public const string SaleConfirmed = "SaleConfirmed";
     public const string PackageInstallmentCollected = "PackageInstallmentCollected";
 
     /// <summary>Booking creation committed with its reservations.</summary>
@@ -37,4 +38,5 @@ public static class AuditActions
     public const string BookingCancelled = "BookingCancelled";
     /// <summary>Booking closed with per-item usage confirmed.</summary>
     public const string BookingClosed = "BookingClosed";
+    public const string InstallmentCollected = "InstallmentCollected";
 }

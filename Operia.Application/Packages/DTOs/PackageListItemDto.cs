@@ -11,4 +11,9 @@ public sealed record PackageListItemDto(
     string Status,
     DateTime CreatedAt,
     string? EndsAt,
-    decimal CashPriceAfterDiscount = 0m);
+    decimal CashPriceAfterDiscount = 0m,
+    bool CashEnabled = true,
+    bool InstallmentEnabled = false,
+    decimal? InstallmentPrice = null,
+    decimal? FirstPayment = null,
+    int? SessionCount = null);

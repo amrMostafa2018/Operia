@@ -8,7 +8,7 @@ namespace Operia.Infrastructure.Identity;
 public static class PermissionClaimBootstrapper
 {
     private const string BaselineVersionClaimType = "operia.permission-baseline";
-    private const string BaselineVersion = "v3";
+    private const string BaselineVersion = "v4";
 
     public static readonly IReadOnlySet<string> AdminExcludedPermissions =
         new HashSet<string>(StringComparer.Ordinal)
@@ -44,6 +44,7 @@ public static class PermissionClaimBootstrapper
         Policies.CustomersActivatePackage,
         Policies.CustomersCancelPackage,
         Policies.CustomersAddPackage,
+        Policies.CustomersCollectInstallment,
         Policies.PackagesRead,
         Policies.PackagesSell,
         Policies.OffersRead,
@@ -82,6 +83,33 @@ public static class PermissionClaimBootstrapper
                 ?? throw new InvalidOperationException($"Role '{roleName}' was not found.");
             var claims = await roleManager.GetClaimsAsync(role);
 
+            var priorBaseline = claims.FirstOrDefault(claim => claim.Type == BaselineVersionClaimType);
+            if (priorBaseline?.Value == BaselineVersion)
+            {
+                continue;
+            }
+
+            // Only the new permission is added to an initialized role. Other role
+            // permissions may have been customized since the v3 baseline.
+            if (priorBaseline is not null)
+            {
+                if (priorBaseline.Value != "v3")
+                {
+                    continue;
+                }
+                if (permissions.Contains(Policies.CustomersCollectInstallment) &&
+                    !claims.Any(claim => claim.Type == Policies.PermissionClaimType &&
+                                         claim.Value == Policies.CustomersCollectInstallment))
+                {
+                    await roleManager.AddClaimAsync(role,
+                        new Claim(Policies.PermissionClaimType, Policies.CustomersCollectInstallment));
+                }
+                await roleManager.RemoveClaimAsync(role, priorBaseline);
+                await roleManager.AddClaimAsync(role,
+                    new Claim(BaselineVersionClaimType, BaselineVersion));
+                continue;
+            }
+
             foreach (var permission in permissions)
             {
                 if (claims.Any(claim =>
@@ -96,14 +124,9 @@ public static class PermissionClaimBootstrapper
                     new Claim(Policies.PermissionClaimType, permission));
             }
 
-            if (!claims.Any(claim =>
-                    claim.Type == BaselineVersionClaimType
-                    && claim.Value == BaselineVersion))
-            {
-                await roleManager.AddClaimAsync(
-                    role,
-                    new Claim(BaselineVersionClaimType, BaselineVersion));
-            }
+            await roleManager.AddClaimAsync(
+                role,
+                new Claim(BaselineVersionClaimType, BaselineVersion));
         }
     }
 

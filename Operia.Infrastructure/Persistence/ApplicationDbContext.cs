@@ -55,6 +55,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<BookingHold> BookingHolds => Set<BookingHold>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<CustomerPackage> CustomerPackages => Set<CustomerPackage>();
+    public DbSet<InstallmentCollection> InstallmentCollections => Set<InstallmentCollection>();
+    public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<CustomerPackageInstallment> CustomerPackageInstallments => Set<CustomerPackageInstallment>();
     public DbSet<BookingPackageReservation> BookingPackageReservations => Set<BookingPackageReservation>();
 
@@ -117,6 +119,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
         modelBuilder.Entity<BookingHold>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<Customer>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<CustomerPackage>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<InstallmentCollection>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
+        modelBuilder.Entity<Sale>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<CustomerPackageInstallment>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
         modelBuilder.Entity<BookingPackageReservation>().HasQueryFilter(x => x.TenantId == CurrentTenantId);
     }

@@ -53,6 +53,9 @@ public sealed class EndpointAuthorizationContractTests
 
             ["CustomersController.Inquiry"] = Policies.CustomersRead,
             ["CustomersController.PurchaseInquiry"] = Policies.CustomersRead,
+            ["CustomersController.CollectInstallment"] = Policies.CustomersCollectInstallment,
+
+            ["RevenueController.InstallmentCollections"] = Policies.RevenueRead,
 
             ["EmployeesController.List"] = Policies.EmployeesRead,
             ["EmployeesController.Get"] = Policies.EmployeesRead,
@@ -79,6 +82,14 @@ public sealed class EndpointAuthorizationContractTests
             ["PackagesController.Delete"] = Policies.PackagesManage,
             ["PackagesController.CreateServiceCategory"] = Policies.PackagesManage,
             ["PackagesController.CreateSubServiceCategory"] = Policies.PackagesManage,
+
+            ["SalesController.Quote"] = Policies.PackagesSell,
+            ["SalesController.Confirm"] = Policies.PackagesSell,
+            ["SalesController.Catalog"] = Policies.PackagesSell,
+            ["SalesController.Categories"] = Policies.PackagesSell,
+            ["SalesController.Branches"] = Policies.PackagesSell,
+            ["SalesController.Customer"] = Policies.PackagesSell,
+            ["SalesController.PaymentMethods"] = Policies.PackagesSell,
 
             ["OnboardingController.GetStatus"] = Policies.AuthenticatedUser,
             ["OnboardingController.GetPlans"] = null,

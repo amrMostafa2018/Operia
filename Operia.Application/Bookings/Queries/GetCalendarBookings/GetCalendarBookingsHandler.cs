@@ -101,6 +101,9 @@ public sealed class GetCalendarBookingsHandler(
                 x.CustomerPackage.Total,
                 x.CustomerPackage.Used,
                 x.CustomerPackage.ReservedSessions,
+                x.CustomerPackage.ReleasedSessions,
+                x.CustomerPackage.AmountDue,
+                x.CustomerPackage.PurchaseSnapshotJson,
                 x.CustomerPackage.Package != null ? x.CustomerPackage.Package.OfferType : OfferType.SingleSession,
                 x.CustomerPackage.Package != null ? x.CustomerPackage.Package.PulseCount : null))
             .ToListAsync(cancellationToken);
@@ -135,6 +138,9 @@ public sealed class GetCalendarBookingsHandler(
                     x.Total,
                     x.Used,
                     x.ReservedSessions,
+                    x.ReleasedSessions,
+                    x.AmountDue,
+                    x.PurchaseSnapshotJson,
                     x.Package != null ? x.Package.OfferType : OfferType.SingleSession,
                     x.Package != null ? x.Package.PulseCount : null))
                 .ToListAsync(cancellationToken);
@@ -231,7 +237,8 @@ public sealed class GetCalendarBookingsHandler(
                 balance.Used,
                 balance.ReservedSessions,
                 balance.OfferType,
-                balance.PulseCount),
+                balance.PulseCount,
+                EffectiveReleased(balance)),
             PackagePulseCount = balance.PulseCount,
             PackageTotal = balance.Total,
             PackageUsed = balance.Used
@@ -245,6 +252,19 @@ public sealed class GetCalendarBookingsHandler(
         int Total,
         int Used,
         int? ReservedSessions,
+        int? ReleasedSessions,
+        decimal? AmountDue,
+        string? PurchaseSnapshotJson,
         OfferType OfferType,
         int? PulseCount);
+
+    private static int EffectiveReleased(PackageBalanceRow balance)
+    {
+        var snapshot = Operia.Application.Packages.PackagePurchaseSnapshot.FromJson(balance.PurchaseSnapshotJson);
+        if (snapshot?.PaymentOption == "installment" && snapshot.PulseCount is not > 0)
+        {
+            return balance.AmountDue == 0m ? balance.Total : balance.ReleasedSessions ?? 0;
+        }
+        return balance.ReleasedSessions ?? balance.Total;
+    }
 }

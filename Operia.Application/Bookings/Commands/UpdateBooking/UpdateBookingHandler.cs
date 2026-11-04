@@ -526,7 +526,8 @@ public sealed class UpdateBookingHandler(
                 owned.Used,
                 owned.ReservedSessions,
                 owned.Package?.OfferType ?? OfferType.SingleSession,
-                owned.Package?.PulseCount))
+                owned.Package?.PulseCount,
+                PurchaseSessionEntitlement.Released(owned)))
         {
             throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");
         }
@@ -534,11 +535,12 @@ public sealed class UpdateBookingHandler(
         var persisted = await db.BookingPackageReservations
             .Where(x => x.TenantId == tenantId && x.CustomerPackageId == owned.Id)
             .ToListAsync(cancellationToken);
+        var releaseLimit = PurchaseSessionEntitlement.Released(owned);
         var occupied = persisted.Concat(db.BookingPackageReservations.Local)
             .Where(x => x.CustomerPackageId == owned.Id && x.CancellationAtUtc == null)
             .Select(x => x.SessionNumber)
             .ToHashSet();
-        var next = Enumerable.Range(owned.Used + 1, owned.Total - owned.Used)
+        var next = Enumerable.Range(owned.Used + 1, Math.Max(0, releaseLimit - owned.Used))
             .FirstOrDefault(sessionNumber => !occupied.Contains(sessionNumber));
         if (next == 0)
         {

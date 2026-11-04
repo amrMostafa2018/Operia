@@ -16,6 +16,30 @@
     "Value": "This customer purchase could not be found."
   },
   {
+    "Name": "CustomerInstallmentUnavailable",
+    "Value": "There is no open installment on this purchase."
+  },
+  {
+    "Name": "CustomerInstallmentNotEligible",
+    "Value": "Complete the sessions released by the previous installment before collecting the next one."
+  },
+  {
+    "Name": "CustomerInstallmentAlreadyCollected",
+    "Value": "This installment has already been collected. Refresh the purchase before trying again."
+  },
+  {
+    "Name": "CustomerInstallmentPaymentMethodUnavailable",
+    "Value": "Select an enabled payment method."
+  },
+  {
+    "Name": "CustomerInstallmentIdempotencyConflict",
+    "Value": "This payment request is invalid. Refresh the purchase and try again."
+  },
+  {
+    "Name": "CustomerInstallmentPurchaseInactive",
+    "Value": "Installments cannot be collected on an inactive or expired purchase."
+  },
+  {
     "Name": "BookingBranchRequired",
     "Value": "Select a branch to view bookable employees."
   },
@@ -330,5 +354,22 @@
   {
     "Name": "PACKAGE_ALREADY_CANCELLED",
     "Value": "This service or offer is already cancelled."
-  }
+  },
+  { "Name": "SaleItemsRequired", "Value": "Add at least one item to the sale." },
+  { "Name": "SaleQuantityInvalid", "Value": "Choose a quantity between 1 and 100." },
+  { "Name": "SalePaymentOptionInvalid", "Value": "Choose cash, installments, or an owned session as appropriate." },
+  { "Name": "SalePaymentOptionUnavailable", "Value": "This payment option is no longer available for the selected offer." },
+  { "Name": "SaleOfferUnavailable", "Value": "This service or offer is no longer available for sale." },
+  { "Name": "SaleBranchUnavailable", "Value": "This branch is not available to you." },
+  { "Name": "SaleCustomerUnavailable", "Value": "The selected customer is no longer available." },
+  { "Name": "SaleOwnedSessionUnavailable", "Value": "This customer does not have an available session for this item." },
+  { "Name": "SaleUnlistedNameInvalid", "Value": "Enter an unlisted service name of at most 200 characters." },
+  { "Name": "SaleUnlistedPriceInvalid", "Value": "Enter a price between zero and 999,999,999.99." },
+  { "Name": "SaleUnlistedDurationInvalid", "Value": "Enter a duration between 1 and 1,440 minutes." },
+  { "Name": "SaleUnlistedMatchesCatalogOffer", "Value": "This name belongs to a catalog offer. Select that offer instead." },
+  { "Name": "SaleUnlistedLimit", "Value": "Add at most one unlisted service to a sale." },
+  { "Name": "SalePaymentMethodUnavailable", "Value": "Choose a currently enabled payment method for the amount due now." },
+  { "Name": "SaleQuoteChanged", "Value": "Sale prices or payment terms changed. Review the updated total before confirming." },
+  { "Name": "SaleIdempotencyKeyInvalid", "Value": "A confirmation reference is required." },
+  { "Name": "SaleIdempotencyConflict", "Value": "This confirmation reference belongs to another sale request." }
 ]

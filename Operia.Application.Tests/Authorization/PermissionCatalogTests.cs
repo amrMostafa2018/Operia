@@ -73,6 +73,7 @@ public sealed class PermissionCatalogTests
             Policies.CustomersActivatePackage,
             Policies.CustomersCancelPackage,
             Policies.CustomersAddPackage,
+            Policies.CustomersCollectInstallment,
             Policies.PackagesRead,
             Policies.PackagesSell,
             Policies.OffersRead,

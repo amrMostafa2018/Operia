@@ -4,9 +4,13 @@ namespace Operia.Application.Customers.Queries.GetCustomerPurchaseDetails;
 
 public sealed record GetCustomerPurchaseDetailsQuery(string PurchaseId) : IRequest<CustomerPurchaseDetailsDto>;
 
-public sealed record PurchaseBalanceDto(int Total, int Used, int Remaining);
+public sealed record PurchaseBalanceDto(int Total, int Used, int Remaining, int Bookable = 0);
 
 public sealed record PurchaseInstallmentDto(int Number, decimal Amount, string Status);
+
+public sealed record PurchaseCollectionDto(
+    string Id, int InstallmentNumber, decimal Amount, string PaymentMethod,
+    DateTime ConfirmedAtUtc, string IdempotencyKey);
 
 public sealed record CompletedPurchaseSessionDto(
     int SessionNumber,
@@ -32,4 +36,8 @@ public sealed record CustomerPurchaseDetailsDto(
     int? NextInstallmentNumber,
     int InstallmentCount,
     IReadOnlyList<PurchaseInstallmentDto> Installments,
-    IReadOnlyList<CompletedPurchaseSessionDto> CompletedSessions);
+    IReadOnlyList<CompletedPurchaseSessionDto> CompletedSessions,
+    bool NextInstallmentEligible,
+    decimal? NextInstallmentAmount,
+    IReadOnlyList<string> PaymentMethods,
+    IReadOnlyList<PurchaseCollectionDto> Collections);

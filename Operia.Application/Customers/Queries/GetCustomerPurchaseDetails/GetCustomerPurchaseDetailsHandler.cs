@@ -1,6 +1,7 @@
 using System.Text.Json;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Operia.Application.Bookings.Common;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Packages;
@@ -37,6 +38,8 @@ public sealed class GetCustomerPurchaseDetailsHandler(
                 x.IsActive,
                 x.Total,
                 x.Used,
+                x.ReservedSessions,
+                x.ReleasedSessions,
                 x.PurchasePrice,
                 x.AmountDue,
                 x.PurchaseSnapshotJson,
@@ -49,8 +52,13 @@ public sealed class GetCustomerPurchaseDetailsHandler(
         var snapshot = PackagePurchaseSnapshot.FromJson(purchase.PurchaseSnapshotJson);
         var pulseCount = snapshot?.PulseCount ?? purchase.CurrentPulseCount;
         var usesPulses = (snapshot?.OfferType ?? purchase.CurrentOfferType) == OfferType.Package && pulseCount is > 0;
+        var released = snapshot?.PaymentOption == "installment" && purchase.AmountDue > 0m
+            ? purchase.ReleasedSessions ?? 0
+            : purchase.Total;
         var sessions = !usesPulses
-            ? new PurchaseBalanceDto(purchase.Total, purchase.Used, Math.Max(0, purchase.Total - purchase.Used))
+            ? new PurchaseBalanceDto(purchase.Total, purchase.Used,
+                Math.Max(0, purchase.Total - purchase.Used),
+                Math.Max(0, released - purchase.Used - (purchase.ReservedSessions ?? 0)))
             : null;
         var pulses = usesPulses
             ? new PurchaseBalanceDto(purchase.Total, purchase.Used, Math.Max(0, purchase.Total - purchase.Used))
@@ -59,7 +67,7 @@ public sealed class GetCustomerPurchaseDetailsHandler(
         var price = snapshot?.PurchasePrice ?? purchase.PurchasePrice;
         var due = price is not null ? purchase.AmountDue : null;
         decimal? paid = price is not null && due is not null ? Math.Max(0, price.Value - due.Value) : null;
-        var paymentStatus = paid is null ? "unknown" : due == 0 ? "paid" : paid > 0 ? "partial" : "unpaid";
+        var paymentStatus = paid is null ? "unknown" : due == 0 ? "fullyPaid" : paid > 0 ? "partial" : "unpaid";
         var today = DateOnly.FromDateTime(clock.UtcNow);
         var packageStatus = !purchase.IsActive ? "cancelled"
             : purchase.ExpiresOn is not null && purchase.ExpiresOn < today ? "expired"
@@ -77,6 +85,20 @@ public sealed class GetCustomerPurchaseDetailsHandler(
                     paid is not null && paid >= cumulativeDue ? "paid" : "due");
             })
             .ToArray() ?? [];
+        var nextNumber = rows.FirstOrDefault(x => x.Status == "due")?.Number;
+        var previous = snapshot?.Installments.LastOrDefault(x => x.Number < nextNumber);
+        var eligible = nextNumber is not null && purchase.IsActive &&
+            (purchase.ExpiresOn is null || purchase.ExpiresOn >= today) &&
+            (previous is null || purchase.Used >= previous.CumulativeAvailableSessions);
+        var collections = await db.InstallmentCollections.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.CustomerPackageId == purchase.Id)
+            .OrderBy(x => x.InstallmentNumber)
+            .Select(x => new PurchaseCollectionDto(x.Id, x.InstallmentNumber, x.Amount,
+                x.PaymentMethod, x.ConfirmedAtUtc, x.IdempotencyKey))
+            .ToListAsync(cancellationToken);
+        IReadOnlyList<string> methods = eligible
+            ? await BookingPaymentMethods.GetEnabledAsync(db, tenantId, cancellationToken)
+            : [];
         var completed = await LoadCompletedSessionsAsync(
             tenantId, purchase.Id, purchase.PackageId, cancellationToken);
 
@@ -93,10 +115,14 @@ public sealed class GetCustomerPurchaseDetailsHandler(
             price,
             paid,
             due,
-            rows.FirstOrDefault(x => x.Status == "due")?.Number,
+            nextNumber,
             rows.Length,
             rows,
-            completed);
+            completed,
+            eligible,
+            rows.FirstOrDefault(x => x.Number == nextNumber)?.Amount,
+            methods,
+            collections);
     }
 
     private async Task<IReadOnlyList<CompletedPurchaseSessionDto>> LoadCompletedSessionsAsync(
