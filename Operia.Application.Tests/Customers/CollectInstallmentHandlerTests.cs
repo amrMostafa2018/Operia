@@ -129,6 +129,21 @@ public sealed class CollectInstallmentHandlerTests
         (await otherTenant.Revenue()).Total.Should().Be(0);
     }
 
+    [Fact]
+    public async Task LegacyCollectionCannotBeCollectedAgainThroughCustomerRoute()
+    {
+        await using var fixture = await Fixture.CreateAsync("tenant-1");
+        var row = await fixture.Db.CustomerPackageInstallments.SingleAsync(x => x.Number == 1);
+        row.CollectedAtUtc = new DateTime(2026, 10, 27, 7, 0, 0, DateTimeKind.Utc);
+        row.PaymentMethod = "cash";
+        await fixture.Db.SaveChangesAsync();
+
+        var repeated = () => fixture.Collect("customer-route");
+        (await repeated.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Customers.InstallmentAlreadyCollected);
+        (await fixture.Db.CustomerPackages.SingleAsync()).AmountDue.Should().Be(10m);
+    }
+
     private sealed class Fixture : IAsyncDisposable
     {
         private readonly Mock<ICurrentUserService> _user;
@@ -187,19 +202,28 @@ public sealed class CollectInstallmentHandlerTests
             fixture.Db.CustomerPackageInstallments.AddRange(
                 new CustomerPackageInstallment
                 {
-                    TenantId = tenantId, CustomerPackageId = "purchase-1", Number = 0,
-                    Amount = 5m, CollectedAtUtc = new DateTime(2026, 10, 27, 7, 0, 0, DateTimeKind.Utc),
+                    TenantId = tenantId,
+                    CustomerPackageId = "purchase-1",
+                    Number = 0,
+                    Amount = 5m,
+                    CollectedAtUtc = new DateTime(2026, 10, 27, 7, 0, 0, DateTimeKind.Utc),
                     PaymentMethod = "cash"
                 },
                 new CustomerPackageInstallment
                 {
-                    TenantId = tenantId, CustomerPackageId = "purchase-1", Number = 1,
-                    Amount = 5m, CumulativeAvailableSessions = 2
+                    TenantId = tenantId,
+                    CustomerPackageId = "purchase-1",
+                    Number = 1,
+                    Amount = 5m,
+                    CumulativeAvailableSessions = 2
                 },
                 new CustomerPackageInstallment
                 {
-                    TenantId = tenantId, CustomerPackageId = "purchase-1", Number = 2,
-                    Amount = 5m, CumulativeAvailableSessions = 2
+                    TenantId = tenantId,
+                    CustomerPackageId = "purchase-1",
+                    Number = 2,
+                    Amount = 5m,
+                    CumulativeAvailableSessions = 2
                 });
             await fixture.Db.SaveChangesAsync();
             return fixture;
