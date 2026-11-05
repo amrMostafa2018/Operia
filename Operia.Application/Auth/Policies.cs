@@ -20,6 +20,9 @@ public static class Policies
     public const string CustomersCancelPackage = "Customers.CancelPackage";
     public const string CustomersAddPackage = "Customers.AddPackage";
     public const string CustomersCollectInstallment = "Customers.CollectInstallment";
+    public const string CustomersRefund = "Customers.Refund";
+    public const string CustomersBlock = "Customers.Block";
+    public const string CustomersHistory = "Customers.History";
     public const string RevenueRead = "Revenue.Read";
     public const string RevenueReview = "Revenue.Review";
     public const string RevenueExport = "Revenue.Export";
@@ -76,6 +79,9 @@ public static class Policies
         CustomersCancelPackage,
         CustomersAddPackage,
         CustomersCollectInstallment,
+        CustomersRefund,
+        CustomersBlock,
+        CustomersHistory,
         RevenueRead,
         RevenueReview,
         RevenueExport,

@@ -2,7 +2,7 @@ using MediatR;
 
 namespace Operia.Application.Revenue.Queries.ListActivityRevenue;
 
-public sealed record ListActivityRevenueQuery(int Page = 1, int PageSize = 20)
+public sealed record ListActivityRevenueQuery(int Page = 1, int PageSize = 20, string? BranchId = null)
     : IRequest<ActivityRevenuePage>;
 
 public sealed record ActivityRevenuePage(

@@ -117,6 +117,12 @@ public sealed class BookingConcurrencyStore(ApplicationDbContext db) : IBookingC
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
+        if (await db.Customers.AsNoTracking().AnyAsync(x =>
+                x.TenantId == booking.TenantId && x.Id == booking.CustomerId &&
+                x.IsBlocked, cancellationToken))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Customers.CustomerBlocked, "customerId");
+        }
         var bookingConflict = await db.Bookings.AsNoTracking().AnyAsync(
             x => x.TenantId == booking.TenantId &&
                  x.EmployeeId == booking.EmployeeId &&

@@ -12,12 +12,6 @@ public sealed class DashboardController(IMediator mediator) : ControllerBase
 {
     [HttpGet("revenue")]
     [Authorize(Policy = Policies.DashboardRead)]
-    public Task<DashboardRevenueDto> Revenue(
-        [FromQuery] DateTime todayFromUtc,
-        [FromQuery] DateTime todayToUtc,
-        [FromQuery] DateTime monthFromUtc,
-        [FromQuery] DateTime monthToUtc,
-        CancellationToken cancellationToken) =>
-        mediator.Send(new GetDashboardRevenueQuery(
-            todayFromUtc, todayToUtc, monthFromUtc, monthToUtc), cancellationToken);
+    public Task<DashboardRevenueDto> Revenue(CancellationToken cancellationToken) =>
+        mediator.Send(new GetDashboardRevenueQuery(), cancellationToken);
 }

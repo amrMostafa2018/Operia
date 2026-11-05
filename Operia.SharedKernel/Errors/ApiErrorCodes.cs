@@ -47,6 +47,16 @@ public static class ApiErrorCodes
         public const string InstallmentPaymentMethodUnavailable = "CustomerInstallmentPaymentMethodUnavailable";
         public const string InstallmentIdempotencyConflict = "CustomerInstallmentIdempotencyConflict";
         public const string InstallmentPurchaseInactive = "CustomerInstallmentPurchaseInactive";
+        public const string RefundAmountInvalid = "CustomerRefundAmountInvalid";
+        public const string RefundExceedsPaid = "CustomerRefundExceedsPaid";
+        public const string RefundIdempotencyConflict = "CustomerRefundIdempotencyConflict";
+        public const string RefundUnavailable = "CustomerRefundUnavailable";
+        public const string RefundNoteInvalid = "CustomerRefundNoteInvalid";
+        public const string BlockReasonInvalid = "CustomerBlockReasonInvalid";
+        public const string CustomerChanged = "CustomerChanged";
+        public const string CustomerNotFound = "CustomerNotFound";
+        public const string CustomerBlocked = "CustomerBlocked";
+        public const string HistoryCursorInvalid = "CustomerHistoryCursorInvalid";
     }
 
     /// <summary>Employee working-day and branch schedule failures.</summary>
@@ -146,6 +156,16 @@ public static class ApiErrorCodes
     public static class Dashboard
     {
         public const string RevenueRangeInvalid = "DashboardRevenueRangeInvalid";
+    }
+
+    public static class Revenue
+    {
+        public const string DateRangeInvalid = "RevenueDateRangeInvalid";
+        public const string ServiceInvalid = "RevenueServiceInvalid";
+        public const string ReviewUnavailable = "RevenueReviewUnavailable";
+        public const string ProofInvalid = "RevenueProofInvalid";
+        public const string ProofNotFound = "RevenueProofNotFound";
+        public const string PaymentNotFound = "RevenuePaymentNotFound";
     }
 
     /// <summary>Booking access, availability, state, and reservation failures.</summary>

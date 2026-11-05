@@ -11,8 +11,10 @@ namespace Operia.Application.Tests.Authorization;
 
 public sealed class PermissionBaselineUpgradeTests
 {
-    [Fact]
-    public async Task V3RolesReceiveOnlyTheNewCollectionPermission()
+    [Theory]
+    [InlineData("v3")]
+    [InlineData("v4")]
+    public async Task EarlierRolesReceiveOnlyNewPermissions(string previousVersion)
     {
         var roleNames = new[]
         {
@@ -21,7 +23,7 @@ public sealed class PermissionBaselineUpgradeTests
         var roles = roleNames.ToDictionary(name => name, name => new IdentityRole(name));
         var claims = roleNames.ToDictionary(name => name, name => (IList<Claim>)
         [
-            new Claim("operia.permission-baseline", "v3")
+            new Claim("operia.permission-baseline", previousVersion)
         ]);
         // A deliberate removal from the previous baseline must remain removed.
         claims[Roles.Reception].Add(new Claim(Policies.PermissionClaimType, Policies.BookingsRead));
@@ -55,12 +57,21 @@ public sealed class PermissionBaselineUpgradeTests
         foreach (var name in roleNames)
         {
             Assert.Single(claims[name], claim => claim.Type == "operia.permission-baseline" &&
-                                                 claim.Value == "v4");
+                                                 claim.Value == "v5");
             Assert.Equal(name is Roles.SuperAdmin or Roles.Admin or Roles.Reception ? 1 : 0,
                 claims[name].Count(claim => claim.Type == Policies.PermissionClaimType &&
                                             claim.Value == Policies.CustomersCollectInstallment));
         }
         Assert.DoesNotContain(claims[Roles.Reception], claim =>
             claim.Type == Policies.PermissionClaimType && claim.Value == Policies.BookingsExport);
+        foreach (var role in new[] { Roles.SuperAdmin, Roles.Admin })
+        {
+            foreach (var permission in new[] { Policies.CustomersRefund, Policies.CustomersBlock,
+                         Policies.CustomersHistory })
+            {
+                Assert.Single(claims[role], claim =>
+                    claim.Type == Policies.PermissionClaimType && claim.Value == permission);
+            }
+        }
     }
 }

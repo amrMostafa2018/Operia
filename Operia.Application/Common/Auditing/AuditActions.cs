@@ -29,6 +29,10 @@ public static class AuditActions
     public const string PackageDeleted = "PackageDeleted";
     public const string SaleConfirmed = "SaleConfirmed";
     public const string SaleCollectionAttempted = "SaleCollectionAttempted";
+    public const string SalePaymentConfirmed = "SalePaymentConfirmed";
+    public const string RevenuePaymentSubmitted = "RevenuePaymentSubmitted";
+    public const string RevenuePaymentConfirmed = "RevenuePaymentConfirmed";
+    public const string RevenuePaymentCancelled = "RevenuePaymentCancelled";
     public const string SaleBooked = "SaleBooked";
     public const string PackageInstallmentCollected = "PackageInstallmentCollected";
 
@@ -42,4 +46,9 @@ public static class AuditActions
     /// <summary>Booking closed with per-item usage confirmed.</summary>
     public const string BookingClosed = "BookingClosed";
     public const string InstallmentCollected = "InstallmentCollected";
+    public const string PurchaseCancelled = "PurchaseCancelled";
+    public const string RefundPosted = "RefundPosted";
+    public const string CustomerBlocked = "CustomerBlocked";
+    public const string CustomerUnblocked = "CustomerUnblocked";
+    public const string CustomerBlockReasonChanged = "CustomerBlockReasonChanged";
 }

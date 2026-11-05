@@ -47,6 +47,16 @@
     "Name": "CustomerInstallmentPurchaseInactive",
     "Value": "لا يمكن تحصيل أقساط لعملية شراء غير مفعّلة أو منتهية."
   },
+  { "Name": "CustomerRefundAmountInvalid", "Value": "أدخل مبلغ استرداد أكبر من صفر وبحد أقصى منزلتين عشريتين." },
+  { "Name": "CustomerRefundExceedsPaid", "Value": "مبلغ الاسترداد يتجاوز المبلغ المدفوع والمتاح لهذه العملية. حدّث البيانات لمعرفة الحد الحالي." },
+  { "Name": "CustomerRefundIdempotencyConflict", "Value": "استُخدم مفتاح طلب الاسترداد هذا من قبل ببيانات مختلفة." },
+  { "Name": "CustomerRefundUnavailable", "Value": "لا يمكن استرداد هذه العملية أو تم تعديلها بواسطة مستخدم آخر. حدّث البيانات وأعد المحاولة." },
+  { "Name": "CustomerRefundNoteInvalid", "Value": "يجب ألا تتجاوز ملاحظة الاسترداد 1000 حرف." },
+  { "Name": "CustomerBlockReasonInvalid", "Value": "يجب ألا يتجاوز سبب الحظر 500 حرف." },
+  { "Name": "CustomerChanged", "Value": "تم تعديل هذا العميل بواسطة مستخدم آخر. حدّث البيانات وأعد المحاولة." },
+  { "Name": "CustomerNotFound", "Value": "تعذر العثور على هذا العميل." },
+  { "Name": "CustomerBlocked", "Value": "لا يمكن لهذا العميل إجراء حجز جديد لدى هذا المركز حاليًا. يرجى التواصل مع المركز." },
+  { "Name": "CustomerHistoryCursorInvalid", "Value": "صفحة سجل التعديلات لم تعد متاحة. أعد فتح السجل وحاول مجددًا." },
   {
     "Name": "BookingBranchRequired",
     "Value": "اختر فرعًا لعرض الموظفين المتاحين للحجز."
@@ -397,5 +407,11 @@
   { "Name": "BookingCustomerNameTooLong", "Value": "لا يمكن أن يتجاوز اسم العميل 200 حرف." },
   { "Name": "BookingCustomerSearchTermInvalid", "Value": "ابحث عن عميل باستخدام 2 إلى 100 حرف." },
   { "Name": "BookingRequestInvalid", "Value": "راجع تفاصيل الحجز وحاول مرة أخرى." },
-  { "Name": "BookingCustomerSelectionRequired", "Value": "اختر عميلاً مسجلاً أو حدّد العميل المباشر." }
+  { "Name": "BookingCustomerSelectionRequired", "Value": "اختر عميلاً مسجلاً أو حدّد العميل المباشر." },
+  { "Name": "RevenueDateRangeInvalid", "Value": "يجب أن يكون تاريخ البداية قبل تاريخ النهاية أو مساويًا له." },
+  { "Name": "RevenueServiceInvalid", "Value": "اختر خدمة صحيحة." },
+  { "Name": "RevenueReviewUnavailable", "Value": "لا يمكن مراجعة عملية الدفع في حالتها الحالية." },
+  { "Name": "RevenueProofInvalid", "Value": "اختر صورة إثبات تحويل صالحة." },
+  { "Name": "RevenueProofNotFound", "Value": "لا يوجد إثبات تحويل متاح لعملية الدفع هذه." },
+  { "Name": "RevenuePaymentNotFound", "Value": "لم يتم العثور على عملية الدفع هذه." }
 ]

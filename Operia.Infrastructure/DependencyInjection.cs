@@ -20,6 +20,7 @@ using Operia.Application.Onboarding.Commands.SetupBusiness;
 using Operia.Application.Bookings.Commands.CreateBooking;
 using Operia.Application.Bookings.Commands.CancelBooking;
 using Operia.Application.Customers.Commands.CollectInstallment;
+using Operia.Application.Customers.Commands.CancelAndRefundPurchase;
 using Operia.Application.Sales.Commands.CollectSale;
 
 namespace Operia.Infrastructure;
@@ -69,6 +70,7 @@ public static class DependencyInjection
         services.AddScoped<IBookingConcurrencyStore, BookingConcurrencyStore>();
         services.AddScoped<IBookingCancellationStore, BookingConcurrencyStore>();
         services.AddScoped<IInstallmentCollectionStore, InstallmentCollectionStore>();
+        services.AddScoped<ICustomerRefundStore, CustomerRefundStore>();
         services.AddScoped<ISaleCollectionStore, SaleCollectionStore>();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();

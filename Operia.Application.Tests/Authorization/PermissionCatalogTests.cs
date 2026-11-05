@@ -12,7 +12,7 @@ namespace Operia.Application.Tests.Authorization;
 public sealed class PermissionCatalogTests
 {
     [Fact]
-    public async Task V3RolesReceiveOnlyTheNewPermissionOnce()
+    public async Task V3RolesReceiveOnlyNewPermissionsOnce()
     {
         var names = new[]
         {
@@ -48,12 +48,18 @@ public sealed class PermissionCatalogTests
         foreach (var name in names)
         {
             Assert.Single(claims[name], claim => claim.Type == "operia.permission-baseline" &&
-                                                 claim.Value == "v4");
+                                                 claim.Value == "v5");
             var permissions = claims[name]
                 .Where(claim => claim.Type == Policies.PermissionClaimType)
                 .Select(claim => claim.Value)
                 .ToArray();
-            if (name is Roles.SuperAdmin or Roles.Admin or Roles.Reception)
+            if (name is Roles.SuperAdmin or Roles.Admin)
+            {
+                Assert.Equal(
+                    [Policies.CustomersCollectInstallment, Policies.CustomersRefund,
+                        Policies.CustomersBlock, Policies.CustomersHistory], permissions);
+            }
+            else if (name is Roles.Reception)
             {
                 Assert.Equal([Policies.CustomersCollectInstallment], permissions);
             }

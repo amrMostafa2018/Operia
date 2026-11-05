@@ -1,40 +1,28 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
-using Operia.SharedKernel.Errors;
+using Operia.Application.Revenue;
+using Operia.SharedKernel.Interfaces;
 
 namespace Operia.Application.Dashboard.Queries.GetDashboardRevenue;
 
 public sealed class GetDashboardRevenueHandler(
     IApplicationDbContext db,
-    ICurrentUserService currentUser) : IRequestHandler<GetDashboardRevenueQuery, DashboardRevenueDto>
+    ICurrentUserService currentUser,
+    IBranchScope branchScope,
+    IDateTimeProvider clock) : IRequestHandler<GetDashboardRevenueQuery, DashboardRevenueDto>
 {
     public async Task<DashboardRevenueDto> Handle(
         GetDashboardRevenueQuery request,
         CancellationToken cancellationToken)
     {
-        var tenantId = currentUser.TenantId
-            ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
-        var sales = db.SaleCollections.AsNoTracking()
-            .Where(x => x.TenantId == tenantId && x.Confirmed);
-        var installments = db.InstallmentCollections.AsNoTracking()
-            .Where(x => x.TenantId == tenantId);
-        var todaySales = await sales.Where(x => x.AttemptedAtUtc >= request.TodayFromUtc &&
-            x.AttemptedAtUtc < request.TodayToUtc)
-            .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0m;
-        var todayInstallments = await installments.Where(x =>
-            x.ConfirmedAtUtc >= request.TodayFromUtc &&
-            x.ConfirmedAtUtc < request.TodayToUtc)
-            .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0m;
-        var monthSales = await sales.Where(x => x.AttemptedAtUtc >= request.MonthFromUtc &&
-            x.AttemptedAtUtc < request.MonthToUtc)
-            .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0m;
-        var monthInstallments = await installments.Where(x =>
-            x.ConfirmedAtUtc >= request.MonthFromUtc &&
-            x.ConfirmedAtUtc < request.MonthToUtc)
-            .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0m;
-        return new DashboardRevenueDto(todaySales + todayInstallments,
-            monthSales + monthInstallments);
+        var ledger = await new RevenueLedger(db, currentUser, branchScope)
+            .ScopedAsync(null, cancellationToken);
+        var periods = await new RevenuePeriods(db, currentUser, clock)
+            .CurrentAsync(cancellationToken);
+        var today = await ledger.ForPeriodAsync(periods.TodayFromUtc, periods.TodayToUtc,
+            cancellationToken);
+        var month = await ledger.ForPeriodAsync(periods.MonthFromUtc, periods.MonthToUtc,
+            cancellationToken);
+        return new DashboardRevenueDto(today.Net, month.Net);
     }
 }

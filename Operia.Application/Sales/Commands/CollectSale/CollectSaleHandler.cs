@@ -1,11 +1,9 @@
-using System.Text.Json;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Bookings.Common;
 using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
-using Operia.Application.Sales.Commands.ConfirmSale;
 using Operia.Domain.Entities;
 using Operia.SharedKernel.Errors;
 using Operia.SharedKernel.Interfaces;
@@ -57,6 +55,12 @@ public sealed class CollectSaleHandler(
             {
                 return Result(sale, confirmed);
             }
+            if (await db.SaleCollections.AsNoTracking().AnyAsync(x =>
+                x.TenantId == tenantId && x.SaleId == sale.Id &&
+                x.ReviewStatus == "UnderReview", token))
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Sales.CollectionUnavailable);
+            }
             if (sale.Status != "PendingCollection" && sale.Status != "ReadyToBook")
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Sales.CollectionUnavailable);
@@ -80,88 +84,31 @@ public sealed class CollectSaleHandler(
                 PaymentMethod = sale.PaymentMethod,
                 Confirmed = request.PaymentConfirmed,
                 AttemptedAtUtc = clock.UtcNow,
+                ConfirmedAtUtc = request.PaymentConfirmed ? clock.UtcNow : null,
                 CollectedByUserId = currentUser.UserId ?? string.Empty
             };
             db.SaleCollections.Add(attempt);
 
+            var oldStatus = sale.Status;
             if (request.PaymentConfirmed)
             {
-                var items = JsonSerializer.Deserialize<ConfirmedSaleItemSnapshot[]>(sale.ItemsSnapshotJson)
-                    ?? [];
-                var direct = await db.Customers.AsNoTracking().AnyAsync(x =>
-                    x.TenantId == tenantId && x.Id == sale.CustomerId && x.IsDirect, token);
-                if (!direct)
-                {
-                    for (var index = 0; index < items.Length; index++)
-                    {
-                        var item = items[index];
-                        if (item.OfferId is null || item.PurchaseTerms is null ||
-                            item.PaymentOption == "owned")
-                        {
-                            continue;
-                        }
-                        var terms = item.PurchaseTerms;
-                        var total = terms.PulseCount is > 0
-                            ? terms.PulseCount.Value : terms.SessionCount ?? 1;
-                        for (var unit = 0; unit < item.Quantity; unit++)
-                        {
-                            var amountDue = terms.PurchasePrice - item.DueNow / item.Quantity;
-                            var purchase = new CustomerPackage
-                            {
-                                TenantId = tenantId,
-                                CustomerId = sale.CustomerId,
-                                PackageId = item.OfferId,
-                                SaleId = sale.Id,
-                                SaleItemIndex = index,
-                                SaleUnitIndex = unit,
-                                PurchasePrice = terms.PurchasePrice,
-                                AmountDue = amountDue,
-                                ReleasedSessions = terms.PulseCount is not > 0 &&
-                                    terms.PaymentOption == "installment" &&
-                                    amountDue > 0m ? 0 : total,
-                                PurchaseSnapshotJson = terms.ToJson(),
-                                Total = total,
-                                ReservedSessions = 0,
-                                ExpiresOn = terms.PackageExpiryMonths is > 0
-                                    ? DateOnly.FromDateTime(clock.UtcNow)
-                                        .AddMonths(terms.PackageExpiryMonths.Value)
-                                    : null,
-                                IsActive = true
-                            };
-                            if (terms.PaymentOption == "installment")
-                            {
-                                purchase.Installments.Add(new CustomerPackageInstallment
-                                {
-                                    TenantId = tenantId,
-                                    CustomerPackageId = purchase.Id,
-                                    Number = 0,
-                                    Amount = terms.FirstPayment ?? item.DueNow / item.Quantity,
-                                    CumulativeAvailableSessions = 0,
-                                    CollectedAtUtc = clock.UtcNow,
-                                    PaymentMethod = sale.PaymentMethod
-                                });
-                                foreach (var row in terms.Installments.OrderBy(x => x.Number))
-                                {
-                                    purchase.Installments.Add(new CustomerPackageInstallment
-                                    {
-                                        TenantId = tenantId,
-                                        CustomerPackageId = purchase.Id,
-                                        Number = row.Number,
-                                        Amount = row.Amount,
-                                        CumulativeAvailableSessions = row.CumulativeAvailableSessions
-                                    });
-                                }
-                            }
-                            db.CustomerPackages.Add(purchase);
-                        }
-                    }
-                }
-                sale.Status = sale.Disposition == "Close" ? "Closed" : "ReadyToBook";
+                await SaleCollectionActivation.ActivateAsync(
+                    db, sale, tenantId, clock, token);
             }
 
-            auditWriter.Write(tenantId, AuditActions.SaleCollectionAttempted,
+            auditWriter.Write(tenantId,
+                request.PaymentConfirmed ? AuditActions.SalePaymentConfirmed
+                    : AuditActions.SaleCollectionAttempted,
                 nameof(Sale), sale.Id, sale.Id,
-                new { attempt.Id, attempt.Amount, attempt.PaymentMethod, attempt.Confirmed });
+                new
+                {
+                    attempt.Id,
+                    attempt.Amount,
+                    attempt.PaymentMethod,
+                    attempt.Confirmed,
+                    OldStatus = oldStatus,
+                    NewStatus = sale.Status
+                });
             await db.SaveChangesAsync(token);
             return Result(sale, attempt);
         }, cancellationToken);

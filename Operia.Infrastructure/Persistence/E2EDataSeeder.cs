@@ -17,7 +17,7 @@ using Operia.Infrastructure.Identity;
 
 namespace Operia.Infrastructure.Persistence;
 
-/// <summary>Restores the US-07 through US-18 prerequisites in reserved local development tenants.</summary>
+/// <summary>Restores the US-07 through US-20 prerequisites in reserved local development tenants.</summary>
 public static class E2EDataSeeder
 {
     private const string TenantA = "e2e70000-0000-4000-8000-000000000001";
@@ -67,6 +67,13 @@ public static class E2EDataSeeder
     private const string GridBaselinePurchaseA = "e2e70000-0000-4000-8000-000000000162";
     private const string GridBaselineCollectionA = "e2e70000-0000-4000-8000-000000000163";
     private const string GridMutationSaleA = "e2e70000-0000-4000-8000-000000000164";
+    private const string StatementSaleA = "e2e70000-0000-4000-8000-000000000180";
+    private const string StatementPurchaseA = "e2e70000-0000-4000-8000-000000000181";
+    private const string StatementInitialCollectionA = "e2e70000-0000-4000-8000-000000000182";
+    private const string StatementInstallmentCollectionA = "e2e70000-0000-4000-8000-000000000183";
+    private const string StatementCompletedBookingA = "e2e70000-0000-4000-8000-000000000188";
+    private const string StatementFutureBookingA = "e2e70000-0000-4000-8000-000000000189";
+    private const string StatementCancelledBookingA = "e2e70000-0000-4000-8000-000000000190";
     private const string BranchB = "e2e70000-0000-4000-8000-000000000170";
     private const string CategoryB = "e2e70000-0000-4000-8000-000000000171";
     private const string CustomerB = "e2e70000-0000-4000-8000-000000000172";
@@ -354,6 +361,8 @@ public static class E2EDataSeeder
         await db.RefreshTokens.Where(x => userIds.Contains(x.UserId))
             .ExecuteDeleteAsync();
         await db.BookingPackageReservations.IgnoreQueryFilters()
+            .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
+        await db.RefundTransactions.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.SaleCollections.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
@@ -797,6 +806,22 @@ public static class E2EDataSeeder
                 Disposition = "Later",
                 Status = "PendingCollection",
                 CreatedAt = DateTime.UtcNow.Date.AddDays(-1).AddHours(10)
+            },
+            new Sale
+            {
+                Id = StatementSaleA,
+                TenantId = TenantA,
+                BranchId = BranchA,
+                CustomerId = CustomerA,
+                IdempotencyKey = "e2e-us20-statement-prerequisite",
+                RequestHash = "seeded-us20-statement",
+                PaymentMethod = "cash",
+                GrandTotal = 2000,
+                DueNow = 500,
+                ItemsSnapshotJson = pendingItems,
+                Disposition = "Close",
+                Status = "Closed",
+                CreatedAt = DateTime.UtcNow.Date.AddDays(-14).AddHours(10)
             });
 
         var tenantBItems = JsonSerializer.Serialize(new[]
@@ -848,6 +873,18 @@ public static class E2EDataSeeder
                 Confirmed = true,
                 AttemptedAtUtc = DateTime.UtcNow.Date.AddDays(-1).AddHours(11),
                 CollectedByUserId = UserB
+            },
+            new SaleCollection
+            {
+                Id = StatementInitialCollectionA,
+                TenantId = TenantA,
+                SaleId = StatementSaleA,
+                IdempotencyKey = "e2e-us20-initial-prerequisite",
+                Amount = 500,
+                PaymentMethod = "cash",
+                Confirmed = true,
+                AttemptedAtUtc = DateTime.UtcNow.Date.AddDays(-14).AddHours(10),
+                CollectedByUserId = UserA
             });
 
         db.CustomerPackages.AddRange(
@@ -888,6 +925,27 @@ public static class E2EDataSeeder
                 Total = tenantBOffer.SessionCount ?? 0,
                 Used = 0,
                 ReservedSessions = 0,
+                ExpiresOn = today.AddMonths(12),
+                IsActive = true
+            },
+            new CustomerPackage
+            {
+                Id = StatementPurchaseA,
+                TenantId = TenantA,
+                CustomerId = CustomerA,
+                PackageId = SaleInstallmentOfferA,
+                SaleId = StatementSaleA,
+                SaleItemIndex = 0,
+                SaleUnitIndex = 0,
+                PurchasePrice = 2000,
+                AmountDue = 1000,
+                ReleasedSessions = 3,
+                PurchaseSnapshotJson = (PackagePurchaseSnapshot
+                    .Capture(saleInstallmentOffer, "installment", 2000) with
+                { OfferName = "E2E US-20 Saved Statement Package" }).ToJson(),
+                Total = 10,
+                Used = 1,
+                ReservedSessions = 1,
                 ExpiresOn = today.AddMonths(12),
                 IsActive = true
             });
@@ -1077,7 +1135,61 @@ public static class E2EDataSeeder
             NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000052", 2, 500, 6),
             NewPurchaseInstallment("e2e70000-0000-4000-8000-000000000053", 3, 500, 10));
 
+        db.CustomerPackageInstallments.AddRange(
+            new CustomerPackageInstallment
+            {
+                Id = "e2e70000-0000-4000-8000-000000000184",
+                TenantId = TenantA,
+                CustomerPackageId = StatementPurchaseA,
+                Number = 0,
+                Amount = 500,
+                CumulativeAvailableSessions = 0,
+                CollectedAtUtc = DateTime.UtcNow.Date.AddDays(-14).AddHours(10),
+                PaymentMethod = "cash"
+            },
+            new CustomerPackageInstallment
+            {
+                Id = "e2e70000-0000-4000-8000-000000000185",
+                TenantId = TenantA,
+                CustomerPackageId = StatementPurchaseA,
+                Number = 1,
+                Amount = 500,
+                CumulativeAvailableSessions = 3,
+                CollectedAtUtc = DateTime.UtcNow.Date.AddDays(-7).AddHours(10),
+                PaymentMethod = "cash"
+            },
+            new CustomerPackageInstallment
+            {
+                Id = "e2e70000-0000-4000-8000-000000000186",
+                TenantId = TenantA,
+                CustomerPackageId = StatementPurchaseA,
+                Number = 2,
+                Amount = 500,
+                CumulativeAvailableSessions = 6
+            },
+            new CustomerPackageInstallment
+            {
+                Id = "e2e70000-0000-4000-8000-000000000187",
+                TenantId = TenantA,
+                CustomerPackageId = StatementPurchaseA,
+                Number = 3,
+                Amount = 500,
+                CumulativeAvailableSessions = 10
+            });
+
         db.InstallmentCollections.AddRange(
+            new InstallmentCollection
+            {
+                Id = StatementInstallmentCollectionA,
+                TenantId = TenantA,
+                CustomerPackageId = StatementPurchaseA,
+                InstallmentNumber = 1,
+                Amount = 500,
+                PaymentMethod = "cash",
+                IdempotencyKey = "e2e-us20-installment-prerequisite",
+                CollectedByUserId = StaffUserA,
+                ConfirmedAtUtc = DateTime.UtcNow.Date.AddDays(-7).AddHours(10)
+            },
             NewCollection("e2e70000-0000-4000-8000-000000000086",
                 LockedCollectionPurchaseA, 1, "e2e-us11-locked-prerequisite"),
             NewCollection("e2e70000-0000-4000-8000-000000000087",
@@ -1138,6 +1250,80 @@ public static class E2EDataSeeder
             ChangedByDisplayName = "US-07 E2E Owner",
             ChangesJson = $$"""
                 {"Items":[{"BookingItemId":"{{CompletedBookingItemA}}","Name":"E2E Saved Installment Package","Status":"complete","PulsesUsed":null,"Notes":"US-10 seeded execution","CustomerPackageIds":["{{DetailPurchaseA}}"]}]}
+                """
+        });
+        var statementBookings = new[]
+        {
+            (Id: StatementCompletedBookingA, ItemId: "e2e70000-0000-4000-8000-000000000191",
+                ReservationId: "e2e70000-0000-4000-8000-000000000194",
+                Number: "E2E-US20-COMPLETED", Date: today.AddDays(-5),
+                Status: BookingStatus.Completed, Session: 1, CancelledAt: (DateTime?)null),
+            (Id: StatementFutureBookingA, ItemId: "e2e70000-0000-4000-8000-000000000192",
+                ReservationId: "e2e70000-0000-4000-8000-000000000195",
+                Number: "E2E-US20-FUTURE", Date: today.AddDays(10),
+                Status: BookingStatus.Booked, Session: 2, CancelledAt: (DateTime?)null),
+            (Id: StatementCancelledBookingA, ItemId: "e2e70000-0000-4000-8000-000000000193",
+                ReservationId: "e2e70000-0000-4000-8000-000000000196",
+                Number: "E2E-US20-CANCELLED", Date: today.AddDays(11),
+                Status: BookingStatus.Cancelled, Session: 3,
+                CancelledAt: (DateTime?)DateTime.UtcNow.Date.AddDays(-1))
+        };
+        foreach (var fixture in statementBookings)
+        {
+            db.Bookings.Add(new Booking
+            {
+                Id = fixture.Id,
+                TenantId = TenantA,
+                BookingNumber = fixture.Number,
+                IdempotencyKey = fixture.Number.ToLowerInvariant(),
+                BranchId = BranchA,
+                EmployeeId = StaffEmployeeA,
+                CustomerId = CustomerA,
+                CustomerName = "US-07 Test Customer",
+                CustomerMobile = "+201000000074",
+                ScheduledDate = fixture.Date,
+                StartMinutes = 660,
+                EndMinutes = 690,
+                Status = fixture.Status,
+                Source = "AdminPortal",
+                PaymentMethod = "cash",
+                TotalAmount = 0,
+                PaidAmount = 0,
+                DiscountAmount = 0
+            });
+            db.BookingItems.Add(new BookingItem
+            {
+                Id = fixture.ItemId,
+                TenantId = TenantA,
+                BookingId = fixture.Id,
+                Type = BookingItemType.PackageSession,
+                PackageId = SaleInstallmentOfferA,
+                Name = "E2E US-20 Saved Statement Package",
+                Quantity = 1,
+                DurationMinutes = 30,
+                UnitPrice = 0,
+                PaymentOption = "installment"
+            });
+            db.BookingPackageReservations.Add(new BookingPackageReservation
+            {
+                Id = fixture.ReservationId,
+                TenantId = TenantA,
+                BookingId = fixture.Id,
+                CustomerPackageId = StatementPurchaseA,
+                SessionNumber = fixture.Session,
+                CancellationAtUtc = fixture.CancelledAt
+            });
+        }
+        db.BookingHistory.Add(new BookingHistory
+        {
+            Id = "e2e70000-0000-4000-8000-000000000197",
+            TenantId = TenantA,
+            BookingId = StatementCompletedBookingA,
+            Action = "Closed",
+            ChangedByUserId = UserA,
+            ChangedByDisplayName = "US-07 E2E Owner",
+            ChangesJson = $$"""
+                {"Items":[{"BookingItemId":"{{statementBookings[0].ItemId}}","Name":"E2E US-20 Saved Statement Package","Status":"complete","PulsesUsed":null,"Notes":"US-20 completed execution","CustomerPackageIds":["{{StatementPurchaseA}}"]}]}
                 """
         });
         db.Bookings.Add(new Booking

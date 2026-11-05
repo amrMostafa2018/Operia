@@ -11,8 +11,8 @@ internal static class CustomerOperationsWorkbook
     private static readonly string[] Headers =
     [
         "#", "Customer", "Mobile", "Branch", "Service", "Service Type",
-        "Payment Type", "Total", "Collected", "Remaining", "Units",
-        "Customer Restriction", "Purchase Status", "Payment Status",
+        "Payment Type", "Total", "Collected", "Refunded", "Net Collected", "Remaining", "Units",
+        "Customer Restriction", "Purchase Status", "Payment Status", "Refund Status",
         "Installment Due", "Operation Date"
     ];
 
@@ -58,9 +58,10 @@ internal static class CustomerOperationsWorkbook
                 WriteRow(writer, index + 2,
                 [
                     index + 1, row.CustomerName, row.Mobile, row.BranchName, row.Service,
-                    row.ServiceType, row.PaymentType, row.Total, row.Collected, row.Remaining,
+                    row.ServiceType, row.PaymentType, row.Total, row.Collected,
+                    row.Refunded, row.NetCollected, row.Remaining,
                     row.UnitsRemaining is null ? "—" : $"{row.UnitsRemaining} / {row.UnitsTotal}",
-                    row.CustomerRestriction, row.PurchaseStatus, row.PaymentStatus,
+                    row.CustomerRestriction, row.PurchaseStatus, row.PaymentStatus, row.RefundStatus,
                     row.InstallmentDueStatus, row.OperationDate
                 ]);
             }
