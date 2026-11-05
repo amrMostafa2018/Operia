@@ -128,6 +128,30 @@ public sealed class CollectSaleHandler(
                                     : null,
                                 IsActive = true
                             };
+                            if (terms.PaymentOption == "installment")
+                            {
+                                purchase.Installments.Add(new CustomerPackageInstallment
+                                {
+                                    TenantId = tenantId,
+                                    CustomerPackageId = purchase.Id,
+                                    Number = 0,
+                                    Amount = terms.FirstPayment ?? item.DueNow / item.Quantity,
+                                    CumulativeAvailableSessions = 0,
+                                    CollectedAtUtc = clock.UtcNow,
+                                    PaymentMethod = sale.PaymentMethod
+                                });
+                                foreach (var row in terms.Installments.OrderBy(x => x.Number))
+                                {
+                                    purchase.Installments.Add(new CustomerPackageInstallment
+                                    {
+                                        TenantId = tenantId,
+                                        CustomerPackageId = purchase.Id,
+                                        Number = row.Number,
+                                        Amount = row.Amount,
+                                        CumulativeAvailableSessions = row.CumulativeAvailableSessions
+                                    });
+                                }
+                            }
                             db.CustomerPackages.Add(purchase);
                         }
                     }

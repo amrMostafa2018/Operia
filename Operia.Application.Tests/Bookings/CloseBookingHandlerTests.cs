@@ -166,11 +166,33 @@ public sealed class CloseBookingHandlerTests
     public async Task Handle_DuplicatePurchaseSelection_DoesNotConsumeReservationTwice()
     {
         await SeedAsync();
+        _db.CustomerPackages.AddRange(
+            new CustomerPackage
+            {
+                Id = "owned-service-1",
+                TenantId = "tenant-1",
+                CustomerId = "customer-1",
+                PackageId = "service-1",
+                Total = 1,
+                ReservedSessions = 0,
+                IsActive = true
+            },
+            new CustomerPackage
+            {
+                Id = "owned-service-2",
+                TenantId = "tenant-1",
+                CustomerId = "customer-1",
+                PackageId = "service-1",
+                Total = 1,
+                ReservedSessions = 0,
+                IsActive = true
+            });
+        await _db.SaveChangesAsync();
         var created = await CreateHandler().Handle(
             new CreateBookingCommand("duplicate-close-purchase", "customer-1", "branch-1",
                 "employee-1", _scheduledDate, 720, 780,
-                [new CreateBookingItemInput("service-1", null, 1),
-                 new CreateBookingItemInput("service-1", null, 1)]),
+                [new CreateBookingItemInput("service-1", "owned-service-1", 1),
+                 new CreateBookingItemInput("service-1", "owned-service-2", 1)]),
             CancellationToken.None);
         var booking = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == created.Id);
         var purchaseId = (await _db.BookingPackageReservations
