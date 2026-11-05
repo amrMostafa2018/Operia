@@ -38,6 +38,7 @@ public interface IApplicationDbContext
     DbSet<Sale> Sales { get; }
     DbSet<SaleCollection> SaleCollections { get; }
     DbSet<RefundTransaction> RefundTransactions { get; }
+    DbSet<CustomerPackageInstallment> CustomerPackageInstallments { get; }
     DbSet<BookingPackageReservation> BookingPackageReservations { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

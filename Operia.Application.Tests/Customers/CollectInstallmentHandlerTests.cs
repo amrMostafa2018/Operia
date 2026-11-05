@@ -20,6 +20,45 @@ namespace Operia.Application.Tests.Customers;
 public sealed class CollectInstallmentHandlerTests
 {
     [Fact]
+    public async Task RejectsLaterInstallmentUntilFirstPaymentIsCollected()
+    {
+        await using var fixture = await Fixture.CreateAsync("tenant-1");
+        var purchase = await fixture.Db.CustomerPackages.Include(x => x.Installments).SingleAsync();
+        purchase.AmountDue = 15m;
+        purchase.Installments.Single(x => x.Number == 0).CollectedAtUtc = null;
+        await fixture.Db.SaveChangesAsync();
+
+        var collect = () => fixture.Collect("before-first-payment");
+        (await collect.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Customers.InstallmentNotEligible);
+        (await fixture.Db.InstallmentCollections.CountAsync()).Should().Be(0);
+        purchase.AmountDue.Should().Be(15m);
+    }
+
+    [Fact]
+    public async Task BothEndpointsShareCollectionState()
+    {
+        await using var fixture = await Fixture.CreateAsync("tenant-1");
+        await fixture.Collect("new-first");
+        var oldHandler = fixture.LegacyCollector();
+
+        var retry = await oldHandler.Handle(
+            new Operia.Application.Packages.InstallmentPurchases.CollectInstallmentCommand(
+                "purchase-1", 1, 5m, "cash"), CancellationToken.None);
+        retry.AmountDue.Should().Be(5m);
+        (await fixture.Db.InstallmentCollections.CountAsync()).Should().Be(1);
+
+        var purchase = await fixture.Db.CustomerPackages.SingleAsync();
+        purchase.Used = 2;
+        await fixture.Db.SaveChangesAsync();
+        await oldHandler.Handle(
+            new Operia.Application.Packages.InstallmentPurchases.CollectInstallmentCommand(
+                "purchase-1", 2, 5m, "cash"), CancellationToken.None);
+        purchase.AmountDue.Should().Be(0m);
+        (await fixture.Revenue()).Total.Should().Be(2);
+    }
+
+    [Fact]
     public async Task CollectsNextRowOnce_WaitsForProgress_AndReleasesRemainderOnFullPayment()
     {
         await using var fixture = await Fixture.CreateAsync("tenant-1");
@@ -90,6 +129,21 @@ public sealed class CollectInstallmentHandlerTests
         (await otherTenant.Revenue()).Total.Should().Be(0);
     }
 
+    [Fact]
+    public async Task LegacyCollectionCannotBeCollectedAgainThroughCustomerRoute()
+    {
+        await using var fixture = await Fixture.CreateAsync("tenant-1");
+        var row = await fixture.Db.CustomerPackageInstallments.SingleAsync(x => x.Number == 1);
+        row.CollectedAtUtc = new DateTime(2026, 10, 27, 7, 0, 0, DateTimeKind.Utc);
+        row.PaymentMethod = "cash";
+        await fixture.Db.SaveChangesAsync();
+
+        var repeated = () => fixture.Collect("customer-route");
+        (await repeated.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Customers.InstallmentAlreadyCollected);
+        (await fixture.Db.CustomerPackages.SingleAsync()).AmountDue.Should().Be(10m);
+    }
+
     private sealed class Fixture : IAsyncDisposable
     {
         private readonly Mock<ICurrentUserService> _user;
@@ -145,6 +199,32 @@ public sealed class CollectInstallmentHandlerTests
                 ExpiresOn = new DateOnly(2027, 1, 1),
                 IsActive = true
             });
+            fixture.Db.CustomerPackageInstallments.AddRange(
+                new CustomerPackageInstallment
+                {
+                    TenantId = tenantId,
+                    CustomerPackageId = "purchase-1",
+                    Number = 0,
+                    Amount = 5m,
+                    CollectedAtUtc = new DateTime(2026, 10, 27, 7, 0, 0, DateTimeKind.Utc),
+                    PaymentMethod = "cash"
+                },
+                new CustomerPackageInstallment
+                {
+                    TenantId = tenantId,
+                    CustomerPackageId = "purchase-1",
+                    Number = 1,
+                    Amount = 5m,
+                    CumulativeAvailableSessions = 2
+                },
+                new CustomerPackageInstallment
+                {
+                    TenantId = tenantId,
+                    CustomerPackageId = "purchase-1",
+                    Number = 2,
+                    Amount = 5m,
+                    CumulativeAvailableSessions = 2
+                });
             await fixture.Db.SaveChangesAsync();
             return fixture;
         }
@@ -165,17 +245,15 @@ public sealed class CollectInstallmentHandlerTests
 
         public Task<CollectInstallmentResult> Collect(string key, string method = "cash")
         {
-            var store = new Mock<IInstallmentCollectionStore>();
-            store.Setup(x => x.ExecuteAsync(It.IsAny<string>(), It.IsAny<string>(),
-                    It.IsAny<Func<CancellationToken, Task<CollectInstallmentResult>>>(),
-                    It.IsAny<CancellationToken>()))
-                .Returns((string _, string _, Func<CancellationToken, Task<CollectInstallmentResult>> action,
-                    CancellationToken token) => action(token));
-            var handler = new CollectInstallmentHandler(Db, store.Object, _user.Object,
+            var handler = new CollectInstallmentHandler(Db, new InstallmentCollectionStore(Db), _user.Object,
                 new AuditWriter(Db, _user.Object), _clock.Object);
             return handler.Handle(new CollectInstallmentCommand("purchase-1", method, key),
                 CancellationToken.None);
         }
+
+        public Operia.Application.Packages.InstallmentPurchases.CollectInstallmentHandler LegacyCollector() =>
+            new(Db, new InstallmentCollectionStore(Db), _user.Object,
+                new AuditWriter(Db, _user.Object), _clock.Object);
 
         public Task<InstallmentRevenuePage> Revenue() =>
             new ListInstallmentRevenueHandler(Db, _user.Object)

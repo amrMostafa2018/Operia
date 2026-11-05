@@ -6,10 +6,10 @@ namespace Operia.Infrastructure.Persistence;
 
 public sealed class InstallmentCollectionStore(ApplicationDbContext db) : IInstallmentCollectionStore
 {
-    public async Task<CollectInstallmentResult> ExecuteAsync(
+    public async Task<TResult> ExecuteAsync<TResult>(
         string tenantId,
         string purchaseId,
-        Func<CancellationToken, Task<CollectInstallmentResult>> collect,
+        Func<CancellationToken, Task<TResult>> collect,
         CancellationToken cancellationToken)
     {
         if (!db.Database.IsRelational())

@@ -8,7 +8,7 @@ namespace Operia.Infrastructure.Identity;
 public static class PermissionClaimBootstrapper
 {
     private const string BaselineVersionClaimType = "operia.permission-baseline";
-    private const string BaselineVersion = "v4";
+    private const string BaselineVersion = "v5";
 
     public static readonly IReadOnlySet<string> AdminExcludedPermissions =
         new HashSet<string>(StringComparer.Ordinal)
@@ -83,22 +83,26 @@ public static class PermissionClaimBootstrapper
                 ?? throw new InvalidOperationException($"Role '{roleName}' was not found.");
             var claims = await roleManager.GetClaimsAsync(role);
 
-            if (claims.Any(claim => claim.Type == BaselineVersionClaimType &&
-                                    claim.Value == BaselineVersion))
+            var priorBaseline = claims.FirstOrDefault(claim => claim.Type == BaselineVersionClaimType);
+            if (priorBaseline?.Value == BaselineVersion)
             {
                 continue;
             }
 
-            // Existing roles retain every customized grant. This version adds only the two
-            // newly introduced admin actions, then records that it ran once.
-            var previouslyInitialized = claims.Any(claim =>
-                claim.Type == BaselineVersionClaimType);
-            var additions = previouslyInitialized
-                ? roleName is Roles.Admin or Roles.SuperAdmin
-                    ? new[] { Policies.CustomersRefund, Policies.CustomersBlock,
+            // Upgrades add only newly introduced grants. Existing customizations remain.
+            if (priorBaseline is not null && priorBaseline.Value is not ("v3" or "v4"))
+            {
+                continue;
+            }
+            var additions = priorBaseline is null
+                ? permissions
+                : roleName is Roles.Admin or Roles.SuperAdmin
+                    ? new[] { Policies.CustomersCollectInstallment,
+                        Policies.CustomersRefund, Policies.CustomersBlock,
                         Policies.CustomersHistory }
-                    : []
-                : permissions;
+                    : roleName is Roles.Reception
+                        ? new[] { Policies.CustomersCollectInstallment }
+                        : [];
 
             foreach (var permission in additions)
             {
@@ -112,6 +116,11 @@ public static class PermissionClaimBootstrapper
                 await roleManager.AddClaimAsync(
                     role,
                     new Claim(Policies.PermissionClaimType, permission));
+            }
+
+            if (priorBaseline is not null)
+            {
+                await roleManager.RemoveClaimAsync(role, priorBaseline);
             }
 
             await roleManager.AddClaimAsync(

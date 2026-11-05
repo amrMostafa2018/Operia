@@ -24,5 +24,5 @@ public sealed record UpdatePackageCommand(
     decimal? FirstPayment = null,
     int? InstallmentCount = null,
     IReadOnlyList<PackageInstallmentInput>? Installments = null,
-    bool AllStaff = true,
+    bool? AllStaff = null,
     IReadOnlyList<string>? StaffIds = null) : IRequest<PackageDetailDto>;

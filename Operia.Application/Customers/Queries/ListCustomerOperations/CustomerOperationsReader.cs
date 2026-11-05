@@ -29,10 +29,19 @@ public sealed class CustomerOperationsReader(
                     join branch in db.Branches.AsNoTracking() on sale.BranchId equals branch.Id
                     where sale.TenantId == tenantId && customer.TenantId == tenantId &&
                           branch.TenantId == tenantId && branches.Contains(sale.BranchId)
-                    select new SaleSource(
-                        sale.Id, sale.CreatedAt, sale.ItemsSnapshotJson,
-                        sale.Status, customer.Id, customer.FullName, customer.MobileNumber,
-                        customer.IsActive, customer.IsBlocked, branch.Name);
+                    select new
+                    {
+                        SaleId = sale.Id,
+                        sale.CreatedAt,
+                        ItemsJson = sale.ItemsSnapshotJson,
+                        sale.Status,
+                        CustomerId = customer.Id,
+                        CustomerName = customer.FullName,
+                        Mobile = customer.MobileNumber,
+                        CustomerActive = customer.IsActive,
+                        CustomerBlocked = customer.IsBlocked,
+                        BranchName = branch.Name
+                    };
 
         if (filter.FromDate is { } from)
         {
@@ -55,8 +64,12 @@ public sealed class CustomerOperationsReader(
             sales = sales.Where(x => x.Mobile.Contains(mobile));
         }
 
-        var scopedSales = await sales.OrderByDescending(x => x.CreatedAt)
-            .ThenByDescending(x => x.Id).ToListAsync(cancellationToken);
+        var scopedSaleData = await sales.OrderByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.SaleId).ToListAsync(cancellationToken);
+        var scopedSales = scopedSaleData.Select(x => new SaleSource(
+            x.SaleId, x.CreatedAt, x.ItemsJson, x.Status, x.CustomerId,
+            x.CustomerName, x.Mobile, x.CustomerActive, x.CustomerBlocked,
+            x.BranchName)).ToList();
         if (scopedSales.Count == 0)
         {
             return [];
