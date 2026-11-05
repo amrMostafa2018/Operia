@@ -47,19 +47,22 @@ public sealed class UpdateBookingHandler(
             throw ConflictException.FromCode(ApiErrorCodes.Bookings.InstallmentEditNotAllowed, "items");
         }
 
+        if (itemsChanged && request.Items.Any(item => string.IsNullOrWhiteSpace(item.CustomerPackageId)))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.PaymentCollectionRequired, "items");
+        }
         if (itemsChanged && await db.Customers.AsNoTracking().AnyAsync(x =>
                 x.TenantId == tenantId && x.Id == booking.CustomerId && x.IsDirect,
                 cancellationToken))
         {
             throw ConflictException.FromCode(ApiErrorCodes.Bookings.DirectCustomerItemsReadOnly, "items");
         }
-        var addedProductIds = request.Items
-            .GroupBy(item => item.PackageId)
-            .Where(group => group.Sum(item => item.Quantity) >
-                            booking.Items.Where(line => line.PackageId == group.Key).Sum(line => line.Quantity))
-            .Select(group => group.Key)
-            .ToHashSet(StringComparer.Ordinal);
-        if (addedProductIds.Count > 0)
+        if (itemsChanged &&
+            booking.EndMinutes - booking.StartMinutes < BookingDuration.RequiredMinutes(request.Items, catalog))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.DurationMismatch, "items");
+        }
+        if (itemsChanged)
         {
             var employee = await db.Employees.AsNoTracking().SingleOrDefaultAsync(
                 item => item.TenantId == tenantId && item.Id == booking.EmployeeId && item.IsActive,
@@ -78,10 +81,25 @@ public sealed class UpdateBookingHandler(
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageStaffUnavailable, "items");
             }
+            var day = booking.ScheduledDate.DayOfWeek.ToString()[..3].ToLowerInvariant();
+            var schedule = await db.EmployeeWorkingDays.AsNoTracking().SingleOrDefaultAsync(x =>
+                x.TenantId == tenantId && x.EmployeeId == employee.Id &&
+                x.BranchId == booking.BranchId && x.Day == day && x.Enabled,
+                cancellationToken);
+            var start = TimeOnly.FromTimeSpan(TimeSpan.FromMinutes(booking.StartMinutes));
+            var end = booking.EndMinutes == 1440
+                ? TimeOnly.MaxValue
+                : TimeOnly.FromTimeSpan(TimeSpan.FromMinutes(booking.EndMinutes));
+            if (schedule?.FromTime is null || schedule.ToTime is null ||
+                start < schedule.FromTime || end > schedule.ToTime)
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Bookings.OutsideWorkingHours, "items");
+            }
         }
-        if (addedProductIds.Any(id =>
-                catalog.TryGetValue(id, out var product) &&
-                !product.AllStaff && product.AvailableStaff.All(staff => staff.EmployeeId != booking.EmployeeId)))
+        if (itemsChanged && request.Items.Any(item =>
+                catalog.TryGetValue(item.PackageId, out var product) &&
+                !product.AllStaff && product.AvailableStaff.Count > 0 &&
+                product.AvailableStaff.All(staff => staff.EmployeeId != booking.EmployeeId)))
         {
             throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageStaffUnavailable, "items");
         }

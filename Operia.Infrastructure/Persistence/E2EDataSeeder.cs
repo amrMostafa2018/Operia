@@ -17,7 +17,7 @@ using Operia.Infrastructure.Identity;
 
 namespace Operia.Infrastructure.Persistence;
 
-/// <summary>Restores the US-07 through US-15 prerequisites in reserved local development tenants.</summary>
+/// <summary>Restores the US-07 through US-18 prerequisites in reserved local development tenants.</summary>
 public static class E2EDataSeeder
 {
     private const string TenantA = "e2e70000-0000-4000-8000-000000000001";
@@ -47,6 +47,33 @@ public static class E2EDataSeeder
     private const string BookingServiceOfferA = "e2e70000-0000-4000-8000-000000000090";
     private const string PendingSuccessSaleA = "e2e70000-0000-4000-8000-000000000091";
     private const string PendingFailureSaleA = "e2e70000-0000-4000-8000-000000000092";
+    private const string WorkingStaffUserA = "e2e70000-0000-4000-8000-000000000110";
+    private const string WorkingStaffEmployeeA = "e2e70000-0000-4000-8000-000000000111";
+    private const string OffStaffUserA = "e2e70000-0000-4000-8000-000000000112";
+    private const string OffStaffEmployeeA = "e2e70000-0000-4000-8000-000000000113";
+    private const string BranchStaffUserA = "e2e70000-0000-4000-8000-000000000114";
+    private const string BranchStaffEmployeeA = "e2e70000-0000-4000-8000-000000000115";
+    private const string SecondaryBranchA = "e2e70000-0000-4000-8000-000000000116";
+    private const string DurationLongOfferA = "e2e70000-0000-4000-8000-000000000130";
+    private const string AssignedStaffOfferA = "e2e70000-0000-4000-8000-000000000131";
+    private const string LegacyUnassignedOfferA = "e2e70000-0000-4000-8000-000000000132";
+    private const string SeededConflictBookingA = "e2e70000-0000-4000-8000-000000000140";
+    private const string SeededConflictBookingItemA = "e2e70000-0000-4000-8000-000000000141";
+    private const string SeededConflictHoldA = "e2e70000-0000-4000-8000-000000000142";
+    private const string BookingCollectionSuccessSaleA = "e2e70000-0000-4000-8000-000000000150";
+    private const string BookingCollectionFailureSaleA = "e2e70000-0000-4000-8000-000000000151";
+    private const string GridCustomerA = "e2e70000-0000-4000-8000-000000000160";
+    private const string GridBaselineSaleA = "e2e70000-0000-4000-8000-000000000161";
+    private const string GridBaselinePurchaseA = "e2e70000-0000-4000-8000-000000000162";
+    private const string GridBaselineCollectionA = "e2e70000-0000-4000-8000-000000000163";
+    private const string GridMutationSaleA = "e2e70000-0000-4000-8000-000000000164";
+    private const string BranchB = "e2e70000-0000-4000-8000-000000000170";
+    private const string CategoryB = "e2e70000-0000-4000-8000-000000000171";
+    private const string CustomerB = "e2e70000-0000-4000-8000-000000000172";
+    private const string OfferB = "e2e70000-0000-4000-8000-000000000173";
+    private const string GridSaleB = "e2e70000-0000-4000-8000-000000000174";
+    private const string GridPurchaseB = "e2e70000-0000-4000-8000-000000000175";
+    private const string GridCollectionB = "e2e70000-0000-4000-8000-000000000176";
     private const string OwnedSessionPurchaseA = "e2e70000-0000-4000-8000-000000000081";
     private const string UiCollectionPurchaseA = "e2e70000-0000-4000-8000-000000000082";
     private const string ApiCollectionPurchaseA = "e2e70000-0000-4000-8000-000000000083";
@@ -102,6 +129,13 @@ public static class E2EDataSeeder
             Roles.Staff,
             password,
             grantAllTenantPermissions: false);
+        await SeedUserAsync(users, WorkingStaffUserA, TenantA, "+201000000110",
+            "US-16 Working Staff", Roles.Staff, password, grantAllTenantPermissions: false);
+        await SeedUserAsync(users, OffStaffUserA, TenantA, "+201000000112",
+            "US-16 Off Staff", Roles.Staff, password, grantAllTenantPermissions: false);
+        await SeedUserAsync(users, BranchStaffUserA, TenantA, "+201000000114",
+            "US-16 Secondary Branch Staff", Roles.Staff, password,
+            grantAllTenantPermissions: false);
         await SeedTenantAsync(db, TenantA, UserA, NameA);
         await SeedTenantAsync(db, TenantB, UserB, NameB);
         await UpsertAsync(db, new Business
@@ -141,6 +175,16 @@ public static class E2EDataSeeder
             PhoneNumber = "+201000000071",
             GoogleMapsUrl = string.Empty
         });
+        await UpsertAsync(db, new Branch
+        {
+            Id = SecondaryBranchA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            Name = "US-16 Secondary Branch",
+            Address = "Secondary test address",
+            PhoneNumber = "+201000000116",
+            GoogleMapsUrl = string.Empty
+        });
         await UpsertAsync(db, new Employee
         {
             Id = EmployeeA,
@@ -167,6 +211,45 @@ public static class E2EDataSeeder
             JoiningDate = today.AddDays(-20),
             IsActive = true
         });
+        await UpsertAsync(db, new Employee
+        {
+            Id = WorkingStaffEmployeeA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            IdentityUserId = WorkingStaffUserA,
+            Code = "E2E16A",
+            FullName = "US-16 Working Staff",
+            Email = "e2e-us16-working@operia.example",
+            MobileNumber = "+201000000110",
+            JoiningDate = today.AddDays(-18),
+            IsActive = true
+        });
+        await UpsertAsync(db, new Employee
+        {
+            Id = OffStaffEmployeeA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            IdentityUserId = OffStaffUserA,
+            Code = "E2E16B",
+            FullName = "US-16 Off Staff",
+            Email = "e2e-us16-off@operia.example",
+            MobileNumber = "+201000000112",
+            JoiningDate = today.AddDays(-17),
+            IsActive = true
+        });
+        await UpsertAsync(db, new Employee
+        {
+            Id = BranchStaffEmployeeA,
+            TenantId = TenantA,
+            BusinessId = BusinessA,
+            IdentityUserId = BranchStaffUserA,
+            Code = "E2E16C",
+            FullName = "US-16 Secondary Branch Staff",
+            Email = "e2e-us16-branch@operia.example",
+            MobileNumber = "+201000000114",
+            JoiningDate = today.AddDays(-16),
+            IsActive = true
+        });
         await UpsertAsync(db, new UserBranch
         {
             Id = "e2e70000-0000-4000-8000-000000000009",
@@ -180,6 +263,27 @@ public static class E2EDataSeeder
             TenantId = TenantA,
             EmployeeId = StaffEmployeeA,
             BranchId = BranchA
+        });
+        await UpsertAsync(db, new UserBranch
+        {
+            Id = "e2e70000-0000-4000-8000-000000000117",
+            TenantId = TenantA,
+            EmployeeId = WorkingStaffEmployeeA,
+            BranchId = BranchA
+        });
+        await UpsertAsync(db, new UserBranch
+        {
+            Id = "e2e70000-0000-4000-8000-000000000118",
+            TenantId = TenantA,
+            EmployeeId = OffStaffEmployeeA,
+            BranchId = BranchA
+        });
+        await UpsertAsync(db, new UserBranch
+        {
+            Id = "e2e70000-0000-4000-8000-000000000119",
+            TenantId = TenantA,
+            EmployeeId = BranchStaffEmployeeA,
+            BranchId = SecondaryBranchA
         });
         await UpsertAsync(db, new Customer
         {
@@ -215,13 +319,38 @@ public static class E2EDataSeeder
                 FromTime = new TimeOnly(8, 0),
                 ToTime = new TimeOnly(18, 0)
             });
+            await UpsertAsync(db, new EmployeeWorkingDay
+            {
+                Id = $"e2e70000-0000-4000-8000-{index + 120:000000000000}",
+                TenantId = TenantA,
+                EmployeeId = WorkingStaffEmployeeA,
+                BranchId = BranchA,
+                Day = days[index],
+                Enabled = true,
+                FromTime = new TimeOnly(8, 0),
+                ToTime = new TimeOnly(18, 0)
+            });
+            await UpsertAsync(db, new EmployeeWorkingDay
+            {
+                Id = $"e2e70000-0000-4000-8000-{index + 127:000000000000}",
+                TenantId = TenantA,
+                EmployeeId = BranchStaffEmployeeA,
+                BranchId = SecondaryBranchA,
+                Day = days[index],
+                Enabled = true,
+                FromTime = new TimeOnly(8, 0),
+                ToTime = new TimeOnly(18, 0)
+            });
         }
         await db.SaveChangesAsync();
 
         // Only the reserved E2E tenants are cleared. Every test-created offer,
         // booking and purchase starts fresh on the next Playwright run.
         var tenantIds = new[] { TenantA, TenantB };
-        var userIds = new[] { UserA, UserB, StaffUserA };
+        var userIds = new[]
+        {
+            UserA, UserB, StaffUserA, WorkingStaffUserA, OffStaffUserA, BranchStaffUserA
+        };
         await db.RefreshTokens.Where(x => userIds.Contains(x.UserId))
             .ExecuteDeleteAsync();
         await db.BookingPackageReservations.IgnoreQueryFilters()
@@ -269,6 +398,44 @@ public static class E2EDataSeeder
             Icon = "pi pi-box"
         };
         db.ServiceCategories.Add(category);
+
+        await UpsertAsync(db, new Branch
+        {
+            Id = BranchB,
+            TenantId = TenantB,
+            BusinessId = BusinessB,
+            Name = "US-18 Tenant B Branch",
+            Address = "Tenant B test address",
+            PhoneNumber = "+201000000172",
+            GoogleMapsUrl = string.Empty
+        });
+        db.ServiceCategories.Add(new ServiceCategory
+        {
+            Id = CategoryB,
+            TenantId = TenantB,
+            BusinessId = BusinessB,
+            Name = "US-18 Tenant B Category",
+            Icon = "pi pi-lock"
+        });
+        db.Customers.AddRange(
+            new Customer
+            {
+                Id = GridCustomerA,
+                TenantId = TenantA,
+                FullName = "US-18 Grid Customer",
+                MobileNumber = "01000000180",
+                NormalizedMobileNumber = "201000000180",
+                IsActive = true
+            },
+            new Customer
+            {
+                Id = CustomerB,
+                TenantId = TenantB,
+                FullName = "US-18 Tenant B Customer",
+                MobileNumber = "01000000181",
+                NormalizedMobileNumber = "201000000181",
+                IsActive = true
+            });
 
         var allStaffOffer = new Package
         {
@@ -402,6 +569,93 @@ public static class E2EDataSeeder
                 Status = PackageStatus.Active
             });
 
+        db.Packages.AddRange(
+            new Package
+            {
+                Id = DurationLongOfferA,
+                TenantId = TenantA,
+                BusinessId = BusinessA,
+                Name = "E2E US-16 60 Minute Service",
+                Description = "Combines with the 30-minute booking service for duration checks.",
+                OfferType = OfferType.SingleSession,
+                ServiceCategoryId = CategoryA,
+                SessionDurationMinutes = 60,
+                Price = 0,
+                CashEnabled = true,
+                InstallmentEnabled = false,
+                AllStaff = true,
+                Status = PackageStatus.Active
+            },
+            new Package
+            {
+                Id = AssignedStaffOfferA,
+                TenantId = TenantA,
+                BusinessId = BusinessA,
+                Name = "E2E US-16 Assigned Staff Service",
+                Description = "Assigned to one working and one off-schedule staff member.",
+                OfferType = OfferType.SingleSession,
+                ServiceCategoryId = CategoryA,
+                SessionDurationMinutes = 30,
+                Price = 0,
+                CashEnabled = true,
+                InstallmentEnabled = false,
+                AllStaff = false,
+                Status = PackageStatus.Active,
+                AvailableStaff =
+                [
+                    new PackageStaff
+                    {
+                        Id = "e2e70000-0000-4000-8000-000000000133",
+                        TenantId = TenantA,
+                        PackageId = AssignedStaffOfferA,
+                        EmployeeId = StaffEmployeeA
+                    },
+                    new PackageStaff
+                    {
+                        Id = "e2e70000-0000-4000-8000-000000000134",
+                        TenantId = TenantA,
+                        PackageId = AssignedStaffOfferA,
+                        EmployeeId = OffStaffEmployeeA
+                    }
+                ]
+            },
+            new Package
+            {
+                Id = LegacyUnassignedOfferA,
+                TenantId = TenantA,
+                BusinessId = BusinessA,
+                Name = "E2E US-16 Unassigned Staff Service",
+                Description = "Legacy AllStaff false offer with no explicit assignments.",
+                OfferType = OfferType.SingleSession,
+                ServiceCategoryId = CategoryA,
+                SessionDurationMinutes = 30,
+                Price = 0,
+                CashEnabled = true,
+                InstallmentEnabled = false,
+                AllStaff = false,
+                Status = PackageStatus.Active
+            });
+
+        var tenantBOffer = new Package
+        {
+            Id = OfferB,
+            TenantId = TenantB,
+            BusinessId = BusinessB,
+            Name = "E2E US-18 Tenant B Package",
+            Description = "Cross-tenant operations-grid isolation fixture.",
+            OfferType = OfferType.Package,
+            ServiceCategoryId = CategoryB,
+            SessionDurationMinutes = 30,
+            SessionCount = 4,
+            PackageExpiryMonths = 12,
+            Price = 900,
+            CashEnabled = true,
+            InstallmentEnabled = false,
+            AllStaff = true,
+            Status = PackageStatus.Active
+        };
+        db.Packages.Add(tenantBOffer);
+
         var saleInstallmentOffer = new Package
         {
             Id = SaleInstallmentOfferA,
@@ -471,6 +725,171 @@ public static class E2EDataSeeder
                 ItemsSnapshotJson = pendingItems,
                 Disposition = "Later",
                 Status = "PendingCollection"
+            });
+
+        var cashSaleItems = JsonSerializer.Serialize(new[]
+        {
+            new ConfirmedSaleItemSnapshot(
+                CashServiceOfferA, null, cashServiceOffer.Name, "session",
+                cashServiceOffer.SessionDurationMinutes, null, 1, "cash",
+                cashServiceOffer.Price, 0, cashServiceOffer.Price, cashServiceOffer.Price,
+                PackagePurchaseSnapshot.Capture(cashServiceOffer, "cash", cashServiceOffer.Price))
+        });
+        db.Sales.AddRange(
+            new Sale
+            {
+                Id = BookingCollectionSuccessSaleA,
+                TenantId = TenantA,
+                BranchId = BranchA,
+                CustomerId = CustomerA,
+                IdempotencyKey = "e2e-us17-success-prerequisite",
+                RequestHash = "seeded-us17-success",
+                PaymentMethod = "cash",
+                GrandTotal = cashServiceOffer.Price,
+                DueNow = cashServiceOffer.Price,
+                ItemsSnapshotJson = cashSaleItems,
+                Disposition = "BookNow",
+                Status = "PendingCollection"
+            },
+            new Sale
+            {
+                Id = BookingCollectionFailureSaleA,
+                TenantId = TenantA,
+                BranchId = BranchA,
+                CustomerId = CustomerA,
+                IdempotencyKey = "e2e-us17-failure-prerequisite",
+                RequestHash = "seeded-us17-failure",
+                PaymentMethod = "cash",
+                GrandTotal = cashServiceOffer.Price,
+                DueNow = cashServiceOffer.Price,
+                ItemsSnapshotJson = cashSaleItems,
+                Disposition = "BookNow",
+                Status = "PendingCollection"
+            },
+            new Sale
+            {
+                Id = GridBaselineSaleA,
+                TenantId = TenantA,
+                BranchId = BranchA,
+                CustomerId = GridCustomerA,
+                IdempotencyKey = "e2e-us18-baseline-sale",
+                RequestHash = "seeded-us18-baseline",
+                PaymentMethod = "cash",
+                GrandTotal = 2000,
+                DueNow = 500,
+                ItemsSnapshotJson = pendingItems,
+                Disposition = "Close",
+                Status = "Closed",
+                CreatedAt = DateTime.UtcNow.Date.AddDays(-2).AddHours(10)
+            },
+            new Sale
+            {
+                Id = GridMutationSaleA,
+                TenantId = TenantA,
+                BranchId = BranchA,
+                CustomerId = GridCustomerA,
+                IdempotencyKey = "e2e-us18-mutation-sale",
+                RequestHash = "seeded-us18-mutation",
+                PaymentMethod = "cash",
+                GrandTotal = cashServiceOffer.Price,
+                DueNow = cashServiceOffer.Price,
+                ItemsSnapshotJson = cashSaleItems,
+                Disposition = "Later",
+                Status = "PendingCollection",
+                CreatedAt = DateTime.UtcNow.Date.AddDays(-1).AddHours(10)
+            });
+
+        var tenantBItems = JsonSerializer.Serialize(new[]
+        {
+            new ConfirmedSaleItemSnapshot(
+                OfferB, null, tenantBOffer.Name, "package",
+                tenantBOffer.SessionDurationMinutes, tenantBOffer.SessionCount, 1, "cash",
+                tenantBOffer.Price, 0, tenantBOffer.Price, tenantBOffer.Price,
+                PackagePurchaseSnapshot.Capture(tenantBOffer, "cash", tenantBOffer.Price))
+        });
+        db.Sales.Add(new Sale
+        {
+            Id = GridSaleB,
+            TenantId = TenantB,
+            BranchId = BranchB,
+            CustomerId = CustomerB,
+            IdempotencyKey = "e2e-us18-tenant-b-sale",
+            RequestHash = "seeded-us18-tenant-b",
+            PaymentMethod = "cash",
+            GrandTotal = tenantBOffer.Price,
+            DueNow = tenantBOffer.Price,
+            ItemsSnapshotJson = tenantBItems,
+            Disposition = "Close",
+            Status = "Closed",
+            CreatedAt = DateTime.UtcNow.Date.AddDays(-1).AddHours(11)
+        });
+
+        db.SaleCollections.AddRange(
+            new SaleCollection
+            {
+                Id = GridBaselineCollectionA,
+                TenantId = TenantA,
+                SaleId = GridBaselineSaleA,
+                IdempotencyKey = "e2e-us18-baseline-collection",
+                Amount = 500,
+                PaymentMethod = "cash",
+                Confirmed = true,
+                AttemptedAtUtc = DateTime.UtcNow.Date.AddDays(-2).AddHours(10),
+                CollectedByUserId = UserA
+            },
+            new SaleCollection
+            {
+                Id = GridCollectionB,
+                TenantId = TenantB,
+                SaleId = GridSaleB,
+                IdempotencyKey = "e2e-us18-tenant-b-collection",
+                Amount = tenantBOffer.Price,
+                PaymentMethod = "cash",
+                Confirmed = true,
+                AttemptedAtUtc = DateTime.UtcNow.Date.AddDays(-1).AddHours(11),
+                CollectedByUserId = UserB
+            });
+
+        db.CustomerPackages.AddRange(
+            new CustomerPackage
+            {
+                Id = GridBaselinePurchaseA,
+                TenantId = TenantA,
+                CustomerId = GridCustomerA,
+                PackageId = SaleInstallmentOfferA,
+                SaleId = GridBaselineSaleA,
+                SaleItemIndex = 0,
+                SaleUnitIndex = 0,
+                PurchasePrice = 2000,
+                AmountDue = 1500,
+                ReleasedSessions = 0,
+                PurchaseSnapshotJson = PackagePurchaseSnapshot
+                    .Capture(saleInstallmentOffer, "installment", 2000).ToJson(),
+                Total = 10,
+                Used = 0,
+                ReservedSessions = 0,
+                ExpiresOn = today.AddMonths(12),
+                IsActive = true
+            },
+            new CustomerPackage
+            {
+                Id = GridPurchaseB,
+                TenantId = TenantB,
+                CustomerId = CustomerB,
+                PackageId = OfferB,
+                SaleId = GridSaleB,
+                SaleItemIndex = 0,
+                SaleUnitIndex = 0,
+                PurchasePrice = tenantBOffer.Price,
+                AmountDue = 0,
+                ReleasedSessions = tenantBOffer.SessionCount,
+                PurchaseSnapshotJson = PackagePurchaseSnapshot
+                    .Capture(tenantBOffer, "cash", tenantBOffer.Price).ToJson(),
+                Total = tenantBOffer.SessionCount ?? 0,
+                Used = 0,
+                ReservedSessions = 0,
+                ExpiresOn = today.AddMonths(12),
+                IsActive = true
             });
 
         var staleSaleOffer = new Package
@@ -721,11 +1140,57 @@ public static class E2EDataSeeder
                 {"Items":[{"BookingItemId":"{{CompletedBookingItemA}}","Name":"E2E Saved Installment Package","Status":"complete","PulsesUsed":null,"Notes":"US-10 seeded execution","CustomerPackageIds":["{{DetailPurchaseA}}"]}]}
                 """
         });
+        db.Bookings.Add(new Booking
+        {
+            Id = SeededConflictBookingA,
+            TenantId = TenantA,
+            BookingNumber = "E2E-US16-CONFLICT",
+            IdempotencyKey = "e2e-us16-seeded-conflict",
+            BranchId = BranchA,
+            EmployeeId = StaffEmployeeA,
+            CustomerId = CustomerA,
+            CustomerName = "US-07 Test Customer",
+            CustomerMobile = "+201000000074",
+            ScheduledDate = today.AddDays(200),
+            StartMinutes = 600,
+            EndMinutes = 630,
+            Status = BookingStatus.Booked,
+            Source = "AdminPortal",
+            TotalAmount = 0,
+            PaidAmount = 0,
+            DiscountAmount = 0
+        });
+        db.BookingItems.Add(new BookingItem
+        {
+            Id = SeededConflictBookingItemA,
+            TenantId = TenantA,
+            BookingId = SeededConflictBookingA,
+            Type = BookingItemType.Service,
+            PackageId = BookingServiceOfferA,
+            Name = "E2E Booking Service",
+            Quantity = 1,
+            DurationMinutes = 30,
+            UnitPrice = 0,
+            PaymentOption = "cash"
+        });
+        db.BookingHolds.Add(new BookingHold
+        {
+            Id = SeededConflictHoldA,
+            TenantId = TenantA,
+            BranchId = BranchA,
+            EmployeeId = WorkingStaffEmployeeA,
+            CustomerId = CustomerA,
+            ScheduledDate = today.AddDays(201),
+            StartMinutes = 540,
+            EndMinutes = 570,
+            ExpiresAtUtc = DateTime.UtcNow.AddDays(2),
+            IdempotencyKey = "e2e-us16-seeded-hold"
+        });
         await db.SaveChangesAsync();
 
         await transaction.CommitAsync();
         logger.LogInformation(
-            "Restored US-07 through US-15 E2E prerequisites in the local development database");
+            "Restored US-07 through US-18 E2E prerequisites in the local development database");
     }
 
     private static void AssertLocalDevelopmentDatabase(ApplicationDbContext db)

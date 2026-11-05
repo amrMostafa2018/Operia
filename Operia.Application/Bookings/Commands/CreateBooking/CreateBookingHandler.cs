@@ -82,12 +82,17 @@ public sealed class CreateBookingHandler(
         var catalog = await LoadCatalogAsync(tenantId, request.Items, cancellationToken);
         foreach (var product in catalog.Values)
         {
-            if (!product.AllStaff && product.AvailableStaff.All(staff => staff.EmployeeId != request.EmployeeId))
+            if (!product.AllStaff && product.AvailableStaff.Count > 0 &&
+                product.AvailableStaff.All(staff => staff.EmployeeId != request.EmployeeId))
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageStaffUnavailable, "employeeId");
             }
         }
         BookingItemPricing.ValidatePackageSelection(request.Items, catalog);
+        if (request.EndMinutes - request.StartMinutes < BookingDuration.RequiredMinutes(request.Items, catalog))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.DurationMismatch, "endMinutes");
+        }
         if (request.DirectCustomer && request.Items.Any(item =>
                 !string.IsNullOrWhiteSpace(item.CustomerPackageId) ||
                 catalog[item.PackageId].OfferType == OfferType.Package))
@@ -114,6 +119,10 @@ public sealed class CreateBookingHandler(
             .ToHashSet(StringComparer.Ordinal);
 
         var booking = BuildBooking(tenantId, customer, request, catalog, ownedCatalogPackageIds);
+        if (booking.TotalAmount > 0m)
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.PaymentCollectionRequired, "items");
+        }
         var (reservations, newPurchases) = request.DirectCustomer
             ? (new List<BookingPackageReservation>(), new List<CustomerPackage>())
             : await BuildReservationsAsync(

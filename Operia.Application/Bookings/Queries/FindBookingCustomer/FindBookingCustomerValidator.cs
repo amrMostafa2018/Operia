@@ -10,6 +10,11 @@ public sealed class FindBookingCustomerValidator : AbstractValidator<FindBooking
     {
         RuleFor(x => x.Mobile)
             .NotEmpty()
-            .WithErrorCode(ApiErrorCodes.Auth.PhoneRequired);
+            .WithErrorCode(ApiErrorCodes.Auth.PhoneRequired)
+            .When(x => string.IsNullOrWhiteSpace(x.CustomerId));
+        RuleFor(x => x.CustomerId)
+            .NotEmpty()
+            .WithErrorCode(ApiErrorCodes.Bookings.CustomerSelectionRequired)
+            .When(x => string.IsNullOrWhiteSpace(x.Mobile));
     }
 }

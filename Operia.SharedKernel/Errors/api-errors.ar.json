@@ -16,6 +16,14 @@
     "Value": "تعذر العثور على عملية الشراء هذه."
   },
   {
+    "Name": "CustomerOperationDateRangeInvalid",
+    "Value": "يجب أن يكون تاريخ النهاية في أو بعد تاريخ البداية."
+  },
+  {
+    "Name": "CustomerOperationFilterInvalid",
+    "Value": "اختر فلترًا صالحًا لعمليات العملاء."
+  },
+  {
     "Name": "CustomerInstallmentUnavailable",
     "Value": "لا يوجد قسط مفتوح لهذه العملية."
   },
@@ -58,6 +66,10 @@
   {
     "Name": "BookingSlotUnavailable",
     "Value": "هذا الموعد لم يعد متاحًا. يرجى اختيار موعد آخر."
+  },
+  {
+    "Name": "BookingDurationMismatch",
+    "Value": "العناصر المختارة تحتاج وقتًا أطول من هذا الموعد. اختر موعدًا أطول."
   },
   {
     "Name": "BookingChanged",
@@ -110,6 +122,10 @@
   {
     "Name": "BookingPaymentMethodUnavailable",
     "Value": "طريقة الدفع المحددة لم تعد مفعّلة. اختر طريقة أخرى."
+  },
+  {
+    "Name": "BookingPaymentCollectionRequired",
+    "Value": "حصّل المبلغ المستحق وتحقق منه قبل تأكيد هذا الحجز."
   },
   {
     "Name": "BookingItemsRequired",
@@ -379,5 +395,7 @@
   { "Name": "BookingDirectCustomerPackageUnavailable", "Value": "لا يمكن للعميل المباشر استخدام أو شراء باقة في هذا الحجز." },
   { "Name": "BookingDirectCustomerItemsReadOnly", "Value": "لا يمكن تغيير عناصر حجز العميل المباشر بعد التأكيد." },
   { "Name": "BookingCustomerNameTooLong", "Value": "لا يمكن أن يتجاوز اسم العميل 200 حرف." },
-  { "Name": "BookingCustomerSearchTermInvalid", "Value": "ابحث عن عميل باستخدام 2 إلى 100 حرف." }
+  { "Name": "BookingCustomerSearchTermInvalid", "Value": "ابحث عن عميل باستخدام 2 إلى 100 حرف." },
+  { "Name": "BookingRequestInvalid", "Value": "راجع تفاصيل الحجز وحاول مرة أخرى." },
+  { "Name": "BookingCustomerSelectionRequired", "Value": "اختر عميلاً مسجلاً أو حدّد العميل المباشر." }
 ]

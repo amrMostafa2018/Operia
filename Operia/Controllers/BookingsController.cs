@@ -13,6 +13,7 @@ using Operia.Application.Bookings.Commands.CloseBooking;
 using Operia.Application.Bookings.Commands.UpdateBooking;
 using Operia.Application.Bookings.Queries.ExportBookings;
 using Operia.Application.Bookings.Queries.GetBookingPaymentMethods;
+using Operia.Application.Bookings.Queries.GetEligibleBookingEmployees;
 using System.Text;
 
 namespace Operia.Controllers;
@@ -31,6 +32,14 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
         var booking = await mediator.Send(command, cancellationToken);
         return Created($"/api/bookings/{booking.Id}", booking);
     }
+
+    /// <summary>Finds staff free for every selected item during the proposed appointment.</summary>
+    [HttpPost("eligible-employees")]
+    [Authorize(Policy = Policies.BookingsManage)]
+    public Task<IReadOnlyList<EligibleBookingEmployee>> EligibleEmployees(
+        GetEligibleBookingEmployeesQuery query,
+        CancellationToken cancellationToken) =>
+        mediator.Send(query, cancellationToken);
 
     /// <summary>Cancels a Booked appointment using its client-supplied row version.</summary>
     [HttpPost("{id}/cancel")]
@@ -64,6 +73,14 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
         [FromQuery] string? bookingId,
         CancellationToken cancellationToken) =>
         mediator.Send(new FindBookingCustomerQuery(mobile, bookingId), cancellationToken);
+
+    /// <summary>Loads a selected registered customer and owned balances by tenant-scoped ID.</summary>
+    [HttpGet("customers/{customerId}")]
+    [Authorize(Policy = Policies.BookingsManage)]
+    public Task<BookingCustomerDto?> FindCustomerById(
+        string customerId,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new FindBookingCustomerQuery(null, CustomerId: customerId), cancellationToken);
 
     [HttpGet("customers/search")]
     [Authorize(Policy = Policies.BookingsManage)]

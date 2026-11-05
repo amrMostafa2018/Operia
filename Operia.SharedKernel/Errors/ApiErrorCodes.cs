@@ -38,6 +38,8 @@ public static class ApiErrorCodes
 
     public static class Customers
     {
+        public const string InvalidOperationDateRange = "CustomerOperationDateRangeInvalid";
+        public const string InvalidOperationFilter = "CustomerOperationFilterInvalid";
         public const string PurchaseNotFound = "CustomerPurchaseNotFound";
         public const string InstallmentUnavailable = "CustomerInstallmentUnavailable";
         public const string InstallmentNotEligible = "CustomerInstallmentNotEligible";
@@ -149,11 +151,14 @@ public static class ApiErrorCodes
     /// <summary>Booking access, availability, state, and reservation failures.</summary>
     public static class Bookings
     {
+        public const string RequestInvalid = "BookingRequestInvalid";
+        public const string CustomerSelectionRequired = "BookingCustomerSelectionRequired";
         public const string BranchRequired = "BookingBranchRequired";
         public const string DateRangeInvalid = "BookingDateRangeInvalid";
         public const string DateRangeTooLarge = "BookingDateRangeTooLarge";
         public const string NotFound = "BookingNotFound";
         public const string SlotUnavailable = "BookingSlotUnavailable";
+        public const string DurationMismatch = "BookingDurationMismatch";
         public const string Changed = "BookingChanged";
         public const string StatusInvalid = "BookingStatusInvalid";
         public const string CustomerNotFound = "BookingCustomerNotFound";
@@ -173,6 +178,7 @@ public static class ApiErrorCodes
         public const string TerminalReadOnly = "BookingTerminalReadOnly";
         public const string PackageEditNotAllowed = "BookingPackageEditNotAllowed";
         public const string PaymentMethodUnavailable = "BookingPaymentMethodUnavailable";
+        public const string PaymentCollectionRequired = "BookingPaymentCollectionRequired";
         public const string InstallmentPurchaseOnly = "BookingInstallmentPurchaseOnly";
         public const string InstallmentEditNotAllowed = "BookingInstallmentEditNotAllowed";
         public const string InstallmentCollectionInvalid = "BookingInstallmentCollectionInvalid";

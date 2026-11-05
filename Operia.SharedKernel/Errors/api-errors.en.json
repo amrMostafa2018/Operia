@@ -16,6 +16,14 @@
     "Value": "This customer purchase could not be found."
   },
   {
+    "Name": "CustomerOperationDateRangeInvalid",
+    "Value": "The end date must be on or after the start date."
+  },
+  {
+    "Name": "CustomerOperationFilterInvalid",
+    "Value": "Select a valid customer operations filter."
+  },
+  {
     "Name": "CustomerInstallmentUnavailable",
     "Value": "There is no open installment on this purchase."
   },
@@ -58,6 +66,10 @@
   {
     "Name": "BookingSlotUnavailable",
     "Value": "This appointment is no longer available. Please choose another time."
+  },
+  {
+    "Name": "BookingDurationMismatch",
+    "Value": "The selected items need more time than this appointment. Choose a longer slot."
   },
   {
     "Name": "BookingChanged",
@@ -110,6 +122,10 @@
   {
     "Name": "BookingPaymentMethodUnavailable",
     "Value": "The selected payment method is no longer enabled. Choose another method."
+  },
+  {
+    "Name": "BookingPaymentCollectionRequired",
+    "Value": "Collect and verify the amount due before confirming this booking."
   },
   {
     "Name": "BookingItemsRequired",
@@ -387,5 +403,7 @@
   { "Name": "BookingDirectCustomerPackageUnavailable", "Value": "Direct customers cannot use or buy packages in this booking." },
   { "Name": "BookingDirectCustomerItemsReadOnly", "Value": "Direct customer booking items cannot be changed after confirmation." },
   { "Name": "BookingCustomerNameTooLong", "Value": "Customer name cannot exceed 200 characters." },
-  { "Name": "BookingCustomerSearchTermInvalid", "Value": "Search for a customer with 2 to 100 characters." }
+  { "Name": "BookingCustomerSearchTermInvalid", "Value": "Search for a customer with 2 to 100 characters." },
+  { "Name": "BookingRequestInvalid", "Value": "Review the booking details and try again." },
+  { "Name": "BookingCustomerSelectionRequired", "Value": "Select a registered customer or choose Direct Customer." }
 ]
