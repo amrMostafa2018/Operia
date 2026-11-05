@@ -48,6 +48,9 @@ public sealed class GetCustomerActionHistoryHandler(
             .Where(x => x.TenantId == tenantId && x.CustomerId == request.CustomerId &&
                         x.CustomerPackageId == purchaseId)
             .Select(x => x.Id).ToArrayAsync(token);
+        var saleCollectionIds = await db.SaleCollections.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.SaleId == saleId)
+            .Select(x => x.Id).ToArrayAsync(token);
 
         IQueryable<AuditLog> events = db.AuditLogs.AsNoTracking().Where(x =>
             x.TenantId == tenantId &&
@@ -61,6 +64,10 @@ public sealed class GetCustomerActionHistoryHandler(
                  x.Action == AuditActions.InstallmentCollected) ||
              x.EntityType == nameof(RefundTransaction) && refundIds.Contains(x.EntityId) &&
                 x.Action == AuditActions.RefundPosted ||
+             x.EntityType == nameof(SaleCollection) && saleCollectionIds.Contains(x.EntityId) &&
+                (x.Action == AuditActions.RevenuePaymentSubmitted ||
+                 x.Action == AuditActions.RevenuePaymentConfirmed ||
+                 x.Action == AuditActions.RevenuePaymentCancelled) ||
              x.EntityType == nameof(Sale) && x.EntityId == saleId &&
                 (x.Action == AuditActions.SaleConfirmed ||
                  x.Action == AuditActions.SalePaymentConfirmed ||
@@ -175,6 +182,16 @@ public sealed class GetCustomerActionHistoryHandler(
                 action = confirmed ? AuditActions.SalePaymentConfirmed
                     : AuditActions.SaleCollectionAttempted;
                 amount = confirmed ? Decimal(root, "amount") : null;
+                oldValue = String(root, "oldStatus");
+                newValue = String(root, "newStatus");
+                break;
+            case AuditActions.RevenuePaymentSubmitted:
+            case AuditActions.RevenuePaymentConfirmed:
+            case AuditActions.RevenuePaymentCancelled:
+                referenceType = "payment";
+                referenceId = entityId;
+                amount = action == AuditActions.RevenuePaymentConfirmed
+                    ? Decimal(root, "amount") : null;
                 oldValue = String(root, "oldStatus");
                 newValue = String(root, "newStatus");
                 break;

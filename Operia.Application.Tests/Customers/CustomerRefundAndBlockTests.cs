@@ -203,6 +203,65 @@ public sealed class CustomerRefundAndBlockTests
         await otherCustomer.Should().ThrowAsync<ApiNotFoundException>();
     }
 
+    [Fact]
+    public async Task PurchaseAndSaleHistoryIncludeReviewedPaymentEvents()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var paymentId = await fixture.Db.SaleCollections.Select(x => x.Id).SingleAsync();
+        const string cancelledPaymentId = "cancelled-payment";
+        fixture.Db.SaleCollections.Add(new SaleCollection
+        {
+            Id = cancelledPaymentId,
+            TenantId = "tenant-1",
+            SaleId = "sale-1",
+            ReviewStatus = "Cancelled"
+        });
+        fixture.Db.AuditLogs.AddRange(
+            new AuditLog
+            {
+                TenantId = "tenant-1",
+                EntityType = nameof(SaleCollection),
+                EntityId = paymentId,
+                Action = AuditActions.RevenuePaymentSubmitted,
+                DetailsJson = """{"amount":5000,"newStatus":"UnderReview"}"""
+            },
+            new AuditLog
+            {
+                TenantId = "tenant-1",
+                EntityType = nameof(SaleCollection),
+                EntityId = paymentId,
+                Action = AuditActions.RevenuePaymentConfirmed,
+                DetailsJson = """{"amount":5000,"oldStatus":"UnderReview","newStatus":"Paid"}"""
+            },
+            new AuditLog
+            {
+                TenantId = "tenant-1",
+                EntityType = nameof(SaleCollection),
+                EntityId = cancelledPaymentId,
+                Action = AuditActions.RevenuePaymentCancelled,
+                DetailsJson = """{"amount":5000,"oldStatus":"UnderReview","newStatus":"Cancelled"}"""
+            });
+        await fixture.Db.SaveChangesAsync();
+
+        var handler = new GetCustomerActionHistoryHandler(fixture.Db,
+            fixture.User.Object, fixture.Scope.Object);
+        foreach (var saleOnly in new[] { false, true })
+        {
+            var history = await handler.Handle(new GetCustomerActionHistoryQuery(
+                "customer-1", saleOnly ? "sale-1" : "purchase-1", saleOnly),
+                CancellationToken.None);
+            history.Items.Should().Contain(x => x.Action == AuditActions.RevenuePaymentSubmitted &&
+                x.ReferenceType == "payment" && x.ReferenceId == paymentId &&
+                x.NewValue == "UnderReview" && x.Amount == null);
+            history.Items.Should().Contain(x => x.Action == AuditActions.RevenuePaymentConfirmed &&
+                x.ReferenceType == "payment" && x.ReferenceId == paymentId &&
+                x.OldValue == "UnderReview" && x.NewValue == "Paid" && x.Amount == 5000m);
+            history.Items.Should().Contain(x => x.Action == AuditActions.RevenuePaymentCancelled &&
+                x.ReferenceType == "payment" && x.ReferenceId == cancelledPaymentId &&
+                x.OldValue == "UnderReview" && x.NewValue == "Cancelled" && x.Amount == null);
+        }
+    }
+
     private sealed class Fixture : IAsyncDisposable
     {
         public TestApplicationDbContext Db { get; }
