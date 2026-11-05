@@ -31,6 +31,7 @@ public sealed class CollectInstallmentHandler(
         return await store.ExecuteAsync(tenantId, request.PurchaseId, async token =>
         {
             var purchase = await db.CustomerPackages
+                .Include(x => x.Installments)
                 .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.PurchaseId, token)
                 ?? throw ApiNotFoundException.FromCode(ApiErrorCodes.Customers.PurchaseNotFound);
             var existing = await db.InstallmentCollections.AsNoTracking()
@@ -66,6 +67,12 @@ public sealed class CollectInstallmentHandler(
 
             var ordered = snapshot.Installments.OrderBy(x => x.Number).ToArray();
             var paid = snapshot.PurchasePrice - purchase.AmountDue.Value;
+            var firstPayment = purchase.Installments.SingleOrDefault(x => x.Number == 0);
+            if (paid < (snapshot.FirstPayment ?? 0m) ||
+                firstPayment is { CollectedAtUtc: null })
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Customers.InstallmentNotEligible);
+            }
             var cumulative = snapshot.FirstPayment ?? 0m;
             PurchaseInstallmentSnapshot? next = null;
             foreach (var row in ordered)
@@ -86,6 +93,16 @@ public sealed class CollectInstallmentHandler(
                          x.InstallmentNumber == next.Number, token))
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Customers.InstallmentAlreadyCollected);
+            }
+            var scheduledRow = purchase.Installments.SingleOrDefault(x => x.Number == next.Number);
+            if (scheduledRow is { CollectedAtUtc: not null })
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Customers.InstallmentAlreadyCollected);
+            }
+            if (scheduledRow is not null && scheduledRow.Amount != next.Amount ||
+                purchase.Installments.Any(x => x.Number < next.Number && x.CollectedAtUtc is null))
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Customers.InstallmentUnavailable);
             }
 
             var previous = ordered.LastOrDefault(row => row.Number < next.Number);
@@ -114,7 +131,21 @@ public sealed class CollectInstallmentHandler(
             };
             purchase.AmountDue = remaining;
             purchase.ReleasedSessions = released;
+            if (scheduledRow is not null)
+            {
+                scheduledRow.CollectedAtUtc = collection.ConfirmedAtUtc;
+                scheduledRow.PaymentMethod = request.PaymentMethod;
+            }
             db.InstallmentCollections.Add(collection);
+            if (purchase.OriginBookingId is not null)
+            {
+                var booking = await db.Bookings.SingleOrDefaultAsync(
+                    x => x.TenantId == tenantId && x.Id == purchase.OriginBookingId, token);
+                if (booking is not null)
+                {
+                    booking.PaidAmount += next.Amount;
+                }
+            }
             auditWriter.Write(tenantId, AuditActions.InstallmentCollected,
                 nameof(CustomerPackage), purchase.Id, snapshot.OfferName,
                 new

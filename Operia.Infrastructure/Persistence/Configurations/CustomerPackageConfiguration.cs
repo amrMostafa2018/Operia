@@ -22,6 +22,8 @@ public sealed class CustomerPackageConfiguration : IEntityTypeConfiguration<Cust
             .HasFilter("[SaleId] IS NOT NULL");
         builder.HasOne<Sale>().WithMany().HasForeignKey(x => x.SaleId)
             .OnDelete(DeleteBehavior.Restrict);
+        builder.Property(x => x.OriginBookingId).HasMaxLength(36);
+        builder.HasIndex(x => new { x.TenantId, x.OriginBookingId });
         builder.Property(x => x.Total);
         builder.Property(x => x.PurchasePrice).HasPrecision(18, 2);
         builder.Property(x => x.AmountDue).HasPrecision(18, 2);
