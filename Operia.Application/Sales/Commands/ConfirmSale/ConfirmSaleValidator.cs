@@ -7,12 +7,18 @@ public sealed class ConfirmSaleValidator : AbstractValidator<ConfirmSaleCommand>
 {
     public ConfirmSaleValidator()
     {
-        RuleFor(command => command.CustomerId).NotEmpty()
-            .WithErrorCode(ApiErrorCodes.Sales.CustomerUnavailable);
+        RuleFor(command => command).Must(command =>
+                command.DirectCustomer
+                    ? string.IsNullOrWhiteSpace(command.CustomerId)
+                    : !string.IsNullOrWhiteSpace(command.CustomerId))
+            .WithErrorCode(ApiErrorCodes.Sales.DirectCustomerSelectionInvalid);
         RuleFor(command => command.BranchId).NotEmpty()
             .WithErrorCode(ApiErrorCodes.Sales.BranchUnavailable);
         RuleFor(command => command.IdempotencyKey).NotEmpty().MaximumLength(100)
             .WithErrorCode(ApiErrorCodes.Sales.IdempotencyKeyInvalid);
+        RuleFor(command => command.Disposition)
+            .Must(value => value is "Close" or "Later" or "BookNow")
+            .WithErrorCode(ApiErrorCodes.Sales.DispositionInvalid);
         RuleFor(command => command.Items).NotEmpty()
             .WithErrorCode(ApiErrorCodes.Sales.ItemsRequired);
         RuleFor(command => command.Items).Must(items => items is null || items.Count(item =>

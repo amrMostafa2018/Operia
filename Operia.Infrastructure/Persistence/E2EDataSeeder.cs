@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Operia.Application.Auth;
 using Operia.Application.Common.Authorization;
 using Operia.Application.Packages;
+using Operia.Application.Sales.Commands.ConfirmSale;
 using Operia.Domain.Common;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
@@ -15,7 +17,7 @@ using Operia.Infrastructure.Identity;
 
 namespace Operia.Infrastructure.Persistence;
 
-/// <summary>Restores the US-07 through US-12 prerequisites in reserved local development tenants.</summary>
+/// <summary>Restores the US-07 through US-15 prerequisites in reserved local development tenants.</summary>
 public static class E2EDataSeeder
 {
     private const string TenantA = "e2e70000-0000-4000-8000-000000000001";
@@ -41,6 +43,10 @@ public static class E2EDataSeeder
     private const string StaleSaleOfferA = "e2e70000-0000-4000-8000-000000000072";
     private const string OwnedSessionOfferA = "e2e70000-0000-4000-8000-000000000073";
     private const string CollectionOfferA = "e2e70000-0000-4000-8000-000000000074";
+    private const string DirectServiceOfferA = "e2e70000-0000-4000-8000-000000000089";
+    private const string BookingServiceOfferA = "e2e70000-0000-4000-8000-000000000090";
+    private const string PendingSuccessSaleA = "e2e70000-0000-4000-8000-000000000091";
+    private const string PendingFailureSaleA = "e2e70000-0000-4000-8000-000000000092";
     private const string OwnedSessionPurchaseA = "e2e70000-0000-4000-8000-000000000081";
     private const string UiCollectionPurchaseA = "e2e70000-0000-4000-8000-000000000082";
     private const string ApiCollectionPurchaseA = "e2e70000-0000-4000-8000-000000000083";
@@ -220,6 +226,8 @@ public static class E2EDataSeeder
             .ExecuteDeleteAsync();
         await db.BookingPackageReservations.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
+        await db.SaleCollections.IgnoreQueryFilters()
+            .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.InstallmentCollections.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.CustomerPackageInstallments.IgnoreQueryFilters()
@@ -236,6 +244,9 @@ public static class E2EDataSeeder
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.Sales.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
+        await db.Customers.IgnoreQueryFilters()
+            .Where(x => tenantIds.Contains(x.TenantId) && x.Id != CustomerA)
+            .ExecuteDeleteAsync();
         await db.PackageInstallments.IgnoreQueryFilters()
             .Where(x => tenantIds.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.PackageStaff.IgnoreQueryFilters()
@@ -359,6 +370,38 @@ public static class E2EDataSeeder
         };
         db.Packages.Add(cashServiceOffer);
 
+        db.Packages.AddRange(
+            new Package
+            {
+                Id = DirectServiceOfferA,
+                TenantId = TenantA,
+                BusinessId = BusinessA,
+                Name = "E2E Direct Service",
+                OfferType = OfferType.SingleSession,
+                ServiceCategoryId = CategoryA,
+                SessionDurationMinutes = 30,
+                Price = 350,
+                CashEnabled = true,
+                InstallmentEnabled = false,
+                AllStaff = true,
+                Status = PackageStatus.Active
+            },
+            new Package
+            {
+                Id = BookingServiceOfferA,
+                TenantId = TenantA,
+                BusinessId = BusinessA,
+                Name = "E2E Booking Service",
+                OfferType = OfferType.SingleSession,
+                ServiceCategoryId = CategoryA,
+                SessionDurationMinutes = 30,
+                Price = 0,
+                CashEnabled = true,
+                InstallmentEnabled = false,
+                AllStaff = true,
+                Status = PackageStatus.Active
+            });
+
         var saleInstallmentOffer = new Package
         {
             Id = SaleInstallmentOfferA,
@@ -390,6 +433,45 @@ public static class E2EDataSeeder
             ]
         };
         db.Packages.Add(saleInstallmentOffer);
+
+        var pendingItems = JsonSerializer.Serialize(new[]
+        {
+            new ConfirmedSaleItemSnapshot(
+                SaleInstallmentOfferA, null, saleInstallmentOffer.Name, "package",
+                30, 10, 1, "installment", 2000, 0, 2000, 500,
+                PackagePurchaseSnapshot.Capture(saleInstallmentOffer, "installment", 2000))
+        });
+        db.Sales.AddRange(
+            new Sale
+            {
+                Id = PendingSuccessSaleA,
+                TenantId = TenantA,
+                BranchId = BranchA,
+                CustomerId = CustomerA,
+                IdempotencyKey = "e2e-us14-success-prerequisite",
+                RequestHash = "seeded-us14-success",
+                PaymentMethod = "cash",
+                GrandTotal = 2000,
+                DueNow = 500,
+                ItemsSnapshotJson = pendingItems,
+                Disposition = "Close",
+                Status = "PendingCollection"
+            },
+            new Sale
+            {
+                Id = PendingFailureSaleA,
+                TenantId = TenantA,
+                BranchId = BranchA,
+                CustomerId = CustomerA,
+                IdempotencyKey = "e2e-us14-failure-prerequisite",
+                RequestHash = "seeded-us14-failure",
+                PaymentMethod = "cash",
+                GrandTotal = 2000,
+                DueNow = 500,
+                ItemsSnapshotJson = pendingItems,
+                Disposition = "Later",
+                Status = "PendingCollection"
+            });
 
         var staleSaleOffer = new Package
         {
@@ -643,7 +725,7 @@ public static class E2EDataSeeder
 
         await transaction.CommitAsync();
         logger.LogInformation(
-            "Restored US-07 through US-12 E2E prerequisites in the local development database");
+            "Restored US-07 through US-15 E2E prerequisites in the local development database");
     }
 
     private static void AssertLocalDevelopmentDatabase(ApplicationDbContext db)

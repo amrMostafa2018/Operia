@@ -16,5 +16,6 @@ public sealed class Sale : Entity, ITenantScoped
     public decimal GrandTotal { get; set; }
     public decimal DueNow { get; set; }
     public string ItemsSnapshotJson { get; set; } = "[]";
+    public string Disposition { get; set; } = "Later";
     public string Status { get; set; } = "PendingCollection";
 }

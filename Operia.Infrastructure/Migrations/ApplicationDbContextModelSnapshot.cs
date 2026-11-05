@@ -277,6 +277,10 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<string>("SaleId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
                     b.Property<DateOnly>("ScheduledDate")
                         .HasColumnType("date");
 
@@ -312,11 +316,17 @@ namespace Operia.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
+                    b.HasIndex("SaleId");
+
                     b.HasIndex("TenantId", "BookingNumber")
                         .IsUnique();
 
                     b.HasIndex("TenantId", "IdempotencyKey")
                         .IsUnique();
+
+                    b.HasIndex("TenantId", "SaleId")
+                        .IsUnique()
+                        .HasFilter("[SaleId] IS NOT NULL");
 
                     b.HasIndex("TenantId", "BranchId", "ScheduledDate");
 
@@ -772,6 +782,9 @@ namespace Operia.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDirect")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("datetime2");
 
@@ -851,6 +864,16 @@ namespace Operia.Infrastructure.Migrations
                     b.Property<int?>("ReservedSessions")
                         .HasColumnType("int");
 
+                    b.Property<string>("SaleId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<int?>("SaleItemIndex")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SaleUnitIndex")
+                        .HasColumnType("int");
+
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(36)
@@ -874,9 +897,14 @@ namespace Operia.Infrastructure.Migrations
 
                     b.HasIndex("PackageId");
 
+                    b.HasIndex("SaleId");
                     b.HasIndex("TenantId", "OriginBookingId");
 
                     b.HasIndex("TenantId", "CustomerId", "IsActive");
+
+                    b.HasIndex("TenantId", "SaleId", "SaleItemIndex", "SaleUnitIndex")
+                        .IsUnique()
+                        .HasFilter("[SaleId] IS NOT NULL");
 
                     b.ToTable("CustomerPackages", (string)null);
                 });
@@ -1487,6 +1515,11 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
 
+                    b.Property<string>("Disposition")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<decimal>("DueNow")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -1539,6 +1572,71 @@ namespace Operia.Infrastructure.Migrations
                     b.HasIndex("TenantId", "CustomerId", "CreatedAt");
 
                     b.ToTable("Sales", (string)null);
+                });
+
+            modelBuilder.Entity("Operia.Domain.Entities.SaleCollection", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("AttemptedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CollectedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("Confirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("SaleId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SaleId");
+
+                    b.HasIndex("TenantId", "SaleId")
+                        .IsUnique()
+                        .HasFilter("[Confirmed] = 1");
+
+                    b.HasIndex("TenantId", "SaleId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("SaleCollections", (string)null);
                 });
 
             modelBuilder.Entity("Operia.Domain.Entities.ServiceCategory", b =>
@@ -2028,6 +2126,11 @@ namespace Operia.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Operia.Domain.Entities.Sale", null)
+                        .WithMany()
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Branch");
 
                     b.Navigation("Employee");
@@ -2172,6 +2275,11 @@ namespace Operia.Infrastructure.Migrations
                         .HasForeignKey("PackageId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Operia.Domain.Entities.Sale", null)
+                        .WithMany()
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Customer");
 
@@ -2339,6 +2447,15 @@ namespace Operia.Infrastructure.Migrations
                     b.HasOne("Operia.Domain.Entities.Customer", null)
                         .WithMany()
                         .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Operia.Domain.Entities.SaleCollection", b =>
+                {
+                    b.HasOne("Operia.Domain.Entities.Sale", null)
+                        .WithMany()
+                        .HasForeignKey("SaleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

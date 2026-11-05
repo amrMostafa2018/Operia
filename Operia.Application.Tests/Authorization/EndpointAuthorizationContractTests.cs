@@ -42,6 +42,7 @@ public sealed class EndpointAuthorizationContractTests
 
             ["BookingsController.Create"] = Policies.BookingsManage,
             ["BookingsController.FindCustomer"] = Policies.BookingsManage,
+            ["BookingsController.SearchCustomers"] = Policies.BookingsManage,
             ["BookingsController.Calendar"] = Policies.BookingsRead,
             ["BookingsController.List"] = Policies.BookingsRead,
             ["BookingsController.History"] = Policies.BookingsRead,
@@ -52,6 +53,8 @@ public sealed class EndpointAuthorizationContractTests
             ["BookingsController.Export"] = Policies.BookingsExport,
 
             ["CustomersController.Inquiry"] = Policies.CustomersRead,
+            ["CustomersController.Register"] = Policies.CustomersManage,
+            ["CustomersController.DirectSales"] = Policies.CustomersRead,
             ["CustomersController.PurchaseInquiry"] = Policies.CustomersRead,
             ["CustomersController.CollectInstallment"] = Policies.CustomersCollectInstallment,
 
@@ -85,11 +88,16 @@ public sealed class EndpointAuthorizationContractTests
 
             ["SalesController.Quote"] = Policies.PackagesSell,
             ["SalesController.Confirm"] = Policies.PackagesSell,
+            ["SalesController.Collect"] = Policies.PackagesSell,
+            ["SalesController.Book"] = Policies.BookingsManage,
+            ["SalesController.Get"] = Policies.PackagesSell,
             ["SalesController.Catalog"] = Policies.PackagesSell,
             ["SalesController.Categories"] = Policies.PackagesSell,
             ["SalesController.Branches"] = Policies.PackagesSell,
             ["SalesController.Customer"] = Policies.PackagesSell,
             ["SalesController.PaymentMethods"] = Policies.PackagesSell,
+            ["RevenueController.Collections"] = Policies.RevenueRead,
+            ["DashboardController.Revenue"] = Policies.DashboardRead,
 
             ["OnboardingController.GetStatus"] = Policies.AuthenticatedUser,
             ["OnboardingController.GetPlans"] = null,

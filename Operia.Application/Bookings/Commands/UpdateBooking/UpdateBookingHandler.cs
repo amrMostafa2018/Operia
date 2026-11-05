@@ -47,6 +47,12 @@ public sealed class UpdateBookingHandler(
             throw ConflictException.FromCode(ApiErrorCodes.Bookings.InstallmentEditNotAllowed, "items");
         }
 
+        if (itemsChanged && await db.Customers.AsNoTracking().AnyAsync(x =>
+                x.TenantId == tenantId && x.Id == booking.CustomerId && x.IsDirect,
+                cancellationToken))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.DirectCustomerItemsReadOnly, "items");
+        }
         var addedProductIds = request.Items
             .GroupBy(item => item.PackageId)
             .Where(group => group.Sum(item => item.Quantity) >

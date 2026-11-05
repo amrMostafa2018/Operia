@@ -10,6 +10,9 @@ public sealed class CustomerPackage : Entity, ITenantScoped
     public string TenantId { get; set; } = string.Empty;
     public string CustomerId { get; set; } = string.Empty;
     public string PackageId { get; set; } = string.Empty;
+    public string? SaleId { get; set; }
+    public int? SaleItemIndex { get; set; }
+    public int? SaleUnitIndex { get; set; }
     /// <summary>Booking that sold this purchase, when it was bought through booking creation.</summary>
     public string? OriginBookingId { get; set; }
     public decimal? PurchasePrice { get; set; }

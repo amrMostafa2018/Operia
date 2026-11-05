@@ -11,6 +11,8 @@ public sealed class Customer : Entity, ITenantScoped
     public string FullName { get; set; } = string.Empty;
     public string MobileNumber { get; set; } = string.Empty;
     public string NormalizedMobileNumber { get; set; } = string.Empty;
+    /// <summary>The tenant's shared walk-in ledger, not an identifiable person.</summary>
+    public bool IsDirect { get; set; }
     public bool IsActive { get; set; } = true;
     public ICollection<CustomerPackage> Packages { get; set; } = [];
 }

@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Operia.Application.Auth;
 using Operia.Application.Sales.Queries.QuoteSale;
 using Operia.Application.Sales.Commands.ConfirmSale;
+using Operia.Application.Sales.Commands.CollectSale;
+using Operia.Application.Sales.Commands.BookSale;
+using Operia.Application.Sales.Queries.GetSale;
 using Operia.Application.Bookings.Queries.FindBookingCustomer;
 using Operia.Application.Bookings.Queries.GetBookingPaymentMethods;
 using Operia.Application.Branches.Queries.GetBookingBranches;
@@ -52,4 +55,19 @@ public sealed class SalesController(IMediator mediator) : ControllerBase
     [Authorize(Policy = Policies.PackagesSell)]
     public Task<ConfirmSaleResult> Confirm(ConfirmSaleCommand command, CancellationToken cancellationToken) =>
         mediator.Send(command, cancellationToken);
+
+    [HttpPost("collect")]
+    [Authorize(Policy = Policies.PackagesSell)]
+    public Task<CollectSaleResult> Collect(CollectSaleCommand command,
+        CancellationToken cancellationToken) => mediator.Send(command, cancellationToken);
+
+    [HttpPost("book")]
+    [Authorize(Policy = Policies.BookingsManage)]
+    public Task<BookSaleResult> Book(BookSaleCommand command,
+        CancellationToken cancellationToken) => mediator.Send(command, cancellationToken);
+
+    [HttpGet("{saleId}")]
+    [Authorize(Policy = Policies.PackagesSell)]
+    public Task<SaleStateDto> Get(string saleId, CancellationToken cancellationToken) =>
+        mediator.Send(new GetSaleQuery(saleId), cancellationToken);
 }

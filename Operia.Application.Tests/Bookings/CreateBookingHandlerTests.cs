@@ -6,6 +6,8 @@ using Operia.Application.Bookings.Commands.CancelBooking;
 using Operia.Application.Bookings.Commands.UpdateBooking;
 using Operia.Application.Bookings.Queries.GetCalendarBookings;
 using Operia.Application.Bookings.Queries.FindBookingCustomer;
+using Operia.Application.Bookings.Queries.SearchBookingCustomers;
+using Operia.Application.Customers.Commands.RegisterBookingCustomer;
 using Operia.Application.Packages.InstallmentPurchases;
 using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
@@ -174,6 +176,104 @@ public sealed class CreateBookingHandlerTests
         (await _db.AuditLogs.CountAsync()).Should().Be(1);
         (await _db.BookingPackageReservations.CountAsync()).Should().Be(1);
         (await _db.CustomerPackages.SingleAsync()).ReservedSessions.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task DirectCustomer_BooksStandaloneServiceWithoutPersonalRecordOrPurchase()
+    {
+        await SeedAsync();
+        var first = await CreateHandler().Handle(new CreateBookingCommand(
+            "direct-1", null, "branch-1", "employee-1", _scheduledDate, 600, 630,
+            [new CreateBookingItemInput("service-1", null, 1)], DirectCustomer: true), CancellationToken.None);
+        var repeated = await CreateHandler().Handle(new CreateBookingCommand(
+            "direct-1", null, "branch-1", "employee-1", _scheduledDate, 600, 630,
+            [new CreateBookingItemInput("service-1", null, 1)], DirectCustomer: true), CancellationToken.None);
+        var second = await CreateHandler().Handle(new CreateBookingCommand(
+            "direct-2", null, "branch-1", "employee-1", _scheduledDate, 720, 750,
+            [new CreateBookingItemInput("service-1", null, 1)], DirectCustomer: true), CancellationToken.None);
+
+        repeated.Id.Should().Be(first.Id);
+        var bookings = await _db.Bookings.Where(x => x.Id == first.Id || x.Id == second.Id).ToListAsync();
+        bookings.Select(x => x.CustomerId).Distinct().Should().ContainSingle();
+        bookings.Should().OnlyContain(x => x.CustomerMobile == string.Empty);
+        (await _db.Customers.CountAsync(x => x.IsDirect)).Should().Be(1);
+        (await _db.CustomerPackages.CountAsync()).Should().Be(1);
+        (await _db.BookingPackageReservations.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DirectCustomer_CannotAttachOwnedSessionOrBuyPackage()
+    {
+        await SeedAsync();
+        foreach (var item in new[]
+                 {
+                     new CreateBookingItemInput("package-1", "owned-1", 1),
+                     new CreateBookingItemInput("package-1", null, 1)
+                 })
+        {
+            var action = () => CreateHandler().Handle(new CreateBookingCommand(
+                Guid.NewGuid().ToString(), null, "branch-1", "employee-1", _scheduledDate, 600, 660,
+                [item], DirectCustomer: true), CancellationToken.None);
+            (await action.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+                .Should().Be(ApiErrorCodes.Bookings.DirectCustomerPackageUnavailable);
+        }
+
+        (await _db.Bookings.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DirectCustomer_EditCannotCreateOwnedPurchase()
+    {
+        await SeedAsync();
+        var created = await CreateHandler().Handle(new CreateBookingCommand(
+            "direct-edit", null, "branch-1", "employee-1", _scheduledDate, 600, 630,
+            [new CreateBookingItemInput("service-1", null, 1)], DirectCustomer: true), CancellationToken.None);
+
+        var edit = () => new UpdateBookingHandler(
+                _db, _user.Object, _branchScope.Object, new AuditWriter(_db, _user.Object),
+                _identity.Object, _clock.Object)
+            .Handle(new UpdateBookingCommand(created.Id, created.Version,
+                [new CreateBookingItemInput("package-1", null, 1)]), CancellationToken.None);
+
+        (await edit.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Bookings.DirectCustomerItemsReadOnly);
+        (await _db.CustomerPackages.CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Registration_RejectsExistingEgyptMobileAndSearchesByNameWithinTenant()
+    {
+        await SeedAsync();
+        var handler = new RegisterBookingCustomerHandler(_db, _user.Object, new AuditWriter(_db, _user.Object));
+        var duplicate = () => handler.Handle(new RegisterBookingCustomerCommand("Another Ahmed", "201012345678"),
+            CancellationToken.None);
+        (await duplicate.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Bookings.CustomerMobileExists);
+
+        var created = await handler.Handle(new RegisterBookingCustomerCommand("Mona New", "201098765432"),
+            CancellationToken.None);
+        created.Id.Should().NotBeNullOrWhiteSpace();
+        (await _db.AuditLogs.CountAsync(x => x.Action == AuditActions.CustomerCreated)).Should().Be(1);
+        var matches = await new SearchBookingCustomersHandler(_db, _user.Object)
+            .Handle(new SearchBookingCustomersQuery("Mona"), CancellationToken.None);
+        matches.Select(x => x.Id).Should().ContainSingle().Which.Should().Be(created.Id);
+        var matchesByLocalMobile = await new SearchBookingCustomersHandler(_db, _user.Object)
+            .Handle(new SearchBookingCustomersQuery("01098765432"), CancellationToken.None);
+        matchesByLocalMobile.Select(x => x.Id).Should().ContainSingle().Which.Should().Be(created.Id);
+        var byMobile = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
+            .Handle(new FindBookingCustomerQuery("01098765432"), CancellationToken.None);
+        byMobile!.Id.Should().Be(created.Id);
+    }
+
+    [Fact]
+    public void RegistrationValidator_AcceptsCountryCodeDigitsFromBookingPhoneInput()
+    {
+        var validator = new RegisterBookingCustomerValidator();
+
+        validator.Validate(new RegisterBookingCustomerCommand("Mona New", "201098765432"))
+            .IsValid.Should().BeTrue();
+        validator.Validate(new RegisterBookingCustomerCommand("Mona New", "1234567890"))
+            .IsValid.Should().BeFalse();
     }
 
     [Fact]

@@ -16,6 +16,12 @@ public sealed class CustomerPackageConfiguration : IEntityTypeConfiguration<Cust
         builder.Property(x => x.TenantId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.CustomerId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.PackageId).IsRequired().HasMaxLength(36);
+        builder.Property(x => x.SaleId).HasMaxLength(36);
+        builder.HasIndex(x => new { x.TenantId, x.SaleId, x.SaleItemIndex, x.SaleUnitIndex })
+            .IsUnique()
+            .HasFilter("[SaleId] IS NOT NULL");
+        builder.HasOne<Sale>().WithMany().HasForeignKey(x => x.SaleId)
+            .OnDelete(DeleteBehavior.Restrict);
         builder.Property(x => x.OriginBookingId).HasMaxLength(36);
         builder.HasIndex(x => new { x.TenantId, x.OriginBookingId });
         builder.Property(x => x.Total);

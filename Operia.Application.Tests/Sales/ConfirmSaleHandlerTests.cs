@@ -7,7 +7,13 @@ using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Sales.Commands.ConfirmSale;
+using Operia.Application.Sales.Commands.CollectSale;
+using Operia.Application.Sales.Commands.BookSale;
+using Operia.Application.Sales.Queries.GetSale;
+using Operia.Application.Revenue.Queries.ListActivityRevenue;
+using Operia.Application.Dashboard.Queries.GetDashboardRevenue;
 using Operia.Application.Sales.Queries.QuoteSale;
+using Operia.Application.Customers.Queries.ListDirectCustomerSales;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
@@ -20,6 +26,191 @@ namespace Operia.Application.Tests.Sales;
 
 public sealed class ConfirmSaleHandlerTests
 {
+    [Fact]
+    public async Task FailedThenConfirmedCollection_UsesSavedTermsAndCountsOnlyReceivedAmount()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var items = new[] { Item("package", "installment"), Item("service", "cash") };
+        var quote = await fixture.Quote(items);
+        var sale = await fixture.Confirm(items, quote, "collect-1");
+        (await fixture.DashboardRevenue()).Today.Should().Be(0m);
+
+        var failed = await fixture.Collect(sale.SaleId, "attempt-1", false);
+        failed.AmountCollected.Should().Be(0m);
+        (await fixture.Db.CustomerPackages.CountAsync()).Should().Be(0);
+        (await fixture.Db.SaleCollections.CountAsync(x => x.Confirmed)).Should().Be(0);
+        (await fixture.DashboardRevenue()).Today.Should().Be(0m);
+
+        fixture.Db.Packages.Single(x => x.Id == "package").InstallmentPrice = 999m;
+        await fixture.Db.SaveChangesAsync();
+        var received = await fixture.Collect(sale.SaleId, "attempt-2", true);
+        var repeated = await fixture.Collect(sale.SaleId, "attempt-2", true);
+        repeated.CollectionId.Should().Be(received.CollectionId);
+        received.AmountCollected.Should().Be(80m);
+        var purchases = await fixture.Db.CustomerPackages
+            .Where(x => x.SaleId == sale.SaleId).OrderBy(x => x.SaleItemIndex).ToListAsync();
+        purchases.Should().HaveCount(2);
+        purchases[0].PurchasePrice.Should().Be(200m);
+        purchases[0].AmountDue.Should().Be(150m);
+        purchases[0].ReleasedSessions.Should().Be(0);
+        purchases[0].PurchaseSnapshotJson.Should().Contain("Package");
+        purchases[1].PurchasePrice.Should().Be(30m);
+        purchases[1].AmountDue.Should().Be(0m);
+        (await fixture.Db.AuditLogs.CountAsync(x =>
+            x.Action == AuditActions.SaleCollectionAttempted)).Should().Be(2);
+        var revenue = await new ListActivityRevenueHandler(fixture.Db, fixture.User.Object)
+            .Handle(new ListActivityRevenueQuery(), CancellationToken.None);
+        revenue.ConfirmedTotal.Should().Be(80m);
+        revenue.Items.Should().ContainSingle();
+        (await fixture.DashboardRevenue()).Today.Should().Be(80m);
+    }
+
+    [Fact]
+    public async Task CollectionOfUnknownTenantSale_DoesNotCreateAttempt()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var action = () => fixture.Collect("foreign-sale", "attempt", true);
+        (await action.Should().ThrowAsync<ApiNotFoundException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.NotFound);
+        (await fixture.Db.SaleCollections.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SaleRecoveryAndCollection_RejectOtherBranchOperator()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var items = new[] { Item("service", "cash") };
+        var quote = await fixture.Quote(items);
+        var sale = await fixture.Confirm(items, quote, "branch-scope");
+        fixture.BranchScope.Setup(x => x.GetAllowedBranchIdsAsync("operator",
+                It.IsAny<CancellationToken>())).ReturnsAsync([]);
+
+        var state = () => new GetSaleHandler(fixture.Db, fixture.User.Object,
+            fixture.BranchScope.Object).Handle(new GetSaleQuery(sale.SaleId),
+            CancellationToken.None);
+        (await state.Should().ThrowAsync<ForbiddenException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.BranchUnavailable);
+        var collect = () => fixture.Collect(sale.SaleId, "other-branch", true);
+        (await collect.Should().ThrowAsync<ForbiddenException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.BranchUnavailable);
+        (await fixture.Db.SaleCollections.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task BookNow_ConflictKeepsCollectionAndRetryCreatesOneBooking()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var items = new[] { Item("service", "cash") };
+        var quote = await fixture.Quote(items);
+        var sale = await fixture.Confirm(items, quote, "book-1", disposition: "BookNow");
+        await fixture.Collect(sale.SaleId, "book-payment", true);
+        fixture.AddBookableEmployee();
+        fixture.Db.Bookings.Add(new Booking
+        {
+            TenantId = "tenant-1",
+            BranchId = "branch-1",
+            EmployeeId = "staff-1",
+            CustomerId = "customer-1",
+            ScheduledDate = new DateOnly(2026, 10, 27),
+            StartMinutes = 540,
+            EndMinutes = 570,
+            BookingNumber = "existing",
+            IdempotencyKey = "existing"
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var conflict = await fixture.Book(sale.SaleId, 540);
+        conflict.Status.Should().Be("BookingPending");
+        conflict.RecoveryCode.Should().Be(ApiErrorCodes.Bookings.SlotUnavailable);
+        (await fixture.Db.SaleCollections.CountAsync(x => x.Confirmed)).Should().Be(1);
+        (await fixture.Db.Bookings.CountAsync()).Should().Be(1);
+
+        var booked = await fixture.Book(sale.SaleId, 600);
+        booked.Status.Should().Be("Booked");
+        var repeated = await fixture.Book(sale.SaleId, 660);
+        repeated.BookingId.Should().Be(booked.BookingId);
+        (await fixture.Db.Bookings.CountAsync(x => x.SaleId == sale.SaleId)).Should().Be(1);
+        (await fixture.Db.CustomerPackages.SingleAsync(x => x.SaleId == sale.SaleId))
+            .ReservedSessions.Should().Be(1);
+        (await fixture.Db.SaleCollections.CountAsync(x => x.Confirmed)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task SingleSessionInstallment_IsRejectedBeforeSaleOrCollection()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var quote = () => fixture.Quote([Item("service", "installment")]);
+        (await quote.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.PaymentOptionUnavailable);
+        (await fixture.Db.Sales.CountAsync()).Should().Be(0);
+        (await fixture.Db.SaleCollections.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Close_AfterCollectionKeepsSaleWithoutAppointment()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var items = new[] { Item("service", "cash") };
+        var quote = await fixture.Quote(items);
+        var sale = await fixture.Confirm(items, quote, "close-1", disposition: "Close");
+        var receipt = await fixture.Collect(sale.SaleId, "close-payment", true);
+        receipt.SaleStatus.Should().Be("Closed");
+        (await fixture.Db.Sales.SingleAsync(x => x.Id == sale.SaleId)).Status
+            .Should().Be("Closed");
+        (await fixture.Db.Bookings.CountAsync()).Should().Be(0);
+        (await fixture.Db.BookingPackageReservations.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DirectServiceSales_ReuseOneLedgerWithoutContactDetails()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var items = new[] { Item("service", "cash") };
+        var quote = await fixture.Quote(items, direct: true);
+        await fixture.Confirm(items, quote, "walk-in-1", direct: true);
+        await fixture.Confirm(items, quote, "walk-in-2", direct: true);
+
+        var direct = await fixture.Db.Customers.SingleAsync(customer => customer.IsDirect);
+        direct.MobileNumber.Should().BeEmpty();
+        direct.NormalizedMobileNumber.Should().BeEmpty();
+        (await fixture.Db.Sales.CountAsync(sale => sale.CustomerId == direct.Id)).Should().Be(2);
+        (await fixture.Db.Sales.CountAsync(sale => sale.CustomerId == "customer-1")).Should().Be(0);
+        var ledger = await new ListDirectCustomerSalesHandler(fixture.Db, fixture.User.Object)
+            .Handle(new ListDirectCustomerSalesQuery(), CancellationToken.None);
+        ledger!.TotalSales.Should().Be(2);
+        ledger.Sales.Should().HaveCount(2);
+        ledger.Sales.Should().OnlyContain(sale => sale.Items.Single() == "Service");
+    }
+
+    [Fact]
+    public async Task DirectCustomer_CannotBuyPackageOrUseOwnedSession()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var package = () => fixture.Quote([Item("package", "cash")], direct: true);
+        (await package.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.DirectServiceOnly);
+        var owned = () => fixture.Quote(
+            [new QuoteSaleItem(null, "owned-1", null, null, null, "owned")], direct: true);
+        (await owned.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.DirectServiceOnly);
+        (await fixture.Db.Customers.CountAsync(customer => customer.IsDirect)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DirectCustomerLedger_DoesNotExposeAnotherTenantsSales()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        await fixture.AddForeignDirectSaleAsync();
+        var items = new[] { Item("service", "cash") };
+        var quote = await fixture.Quote(items, direct: true);
+        await fixture.Confirm(items, quote, "tenant-sale", direct: true);
+
+        var ledger = await new ListDirectCustomerSalesHandler(fixture.Db, fixture.User.Object)
+            .Handle(new ListDirectCustomerSalesQuery(), CancellationToken.None);
+        ledger!.TotalSales.Should().Be(1);
+        ledger.Sales.Single().Items.Should().ContainSingle().Which.Should().Be("Service");
+    }
+
     [Fact]
     public async Task MixedOptions_SaveSnapshotAndAudit_WithoutCollectionOrBooking()
     {
@@ -150,6 +341,7 @@ public sealed class ConfirmSaleHandlerTests
     private sealed class Fixture : IAsyncDisposable
     {
         public TestApplicationDbContext Db { get; }
+        public Mock<ICurrentUserService> User => _user;
         public Mock<IBranchScope> BranchScope { get; }
         private readonly string _database;
         private readonly Mock<ICurrentUserService> _user;
@@ -271,20 +463,130 @@ public sealed class ConfirmSaleHandlerTests
             await foreignDb.SaveChangesAsync();
         }
 
-        public Task<SaleQuoteDto> Quote(IReadOnlyList<QuoteSaleItem> items) =>
-            _quoteHandler.Handle(new QuoteSaleQuery("customer-1", "branch-1", items), CancellationToken.None);
+        public async Task AddForeignDirectSaleAsync()
+        {
+            var foreignUser = new Mock<ICurrentUserService>();
+            foreignUser.SetupGet(user => user.TenantId).Returns("tenant-2");
+            var clock = new Mock<IDateTimeProvider>();
+            clock.SetupGet(provider => provider.UtcNow).Returns(DateTime.UtcNow);
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(_database).Options;
+            await using var foreignDb = new TestApplicationDbContext(options, clock.Object,
+                foreignUser.Object);
+            foreignDb.Customers.Add(new Customer
+            {
+                Id = "foreign-direct",
+                TenantId = "tenant-2",
+                FullName = "عميل مباشر",
+                IsDirect = true
+            });
+            foreignDb.Sales.Add(new Sale
+            {
+                TenantId = "tenant-2",
+                BranchId = "foreign-branch",
+                CustomerId = "foreign-direct",
+                IdempotencyKey = "foreign-sale",
+                ItemsSnapshotJson = "[{\"Name\":\"Private service\"}]"
+            });
+            await foreignDb.SaveChangesAsync();
+        }
+
+        public Task<SaleQuoteDto> Quote(IReadOnlyList<QuoteSaleItem> items, bool direct = false) =>
+            _quoteHandler.Handle(new QuoteSaleQuery(direct ? null : "customer-1", "branch-1", items,
+                direct), CancellationToken.None);
 
         public Task<ConfirmSaleResult> Confirm(IReadOnlyList<QuoteSaleItem> items,
-            SaleQuoteDto quote, string key, string? method = "cash")
+            SaleQuoteDto quote, string key, string? method = "cash", bool direct = false,
+            string disposition = "Later")
         {
             var mediator = new Mock<IMediator>();
             mediator.Setup(x => x.Send(It.IsAny<QuoteSaleQuery>(), It.IsAny<CancellationToken>()))
                 .Returns((QuoteSaleQuery query, CancellationToken token) => _quoteHandler.Handle(query, token));
             var handler = new ConfirmSaleHandler(Db, _user.Object, mediator.Object,
                 new AuditWriter(Db, _user.Object));
-            return handler.Handle(new ConfirmSaleCommand("customer-1", "branch-1", items,
-                method, quote.GrandTotal, quote.DueNow, key), CancellationToken.None);
+            return handler.Handle(new ConfirmSaleCommand(direct ? null : "customer-1", "branch-1",
+                items, method, quote.GrandTotal, quote.DueNow, key, direct, disposition),
+                CancellationToken.None);
         }
+
+        public void AddBookableEmployee()
+        {
+            Db.Employees.Add(new Employee
+            {
+                Id = "staff-1",
+                TenantId = "tenant-1",
+                BusinessId = "business-1",
+                IdentityUserId = "staff-user",
+                IsActive = true
+            });
+            Db.UserBranches.Add(new UserBranch
+            {
+                TenantId = "tenant-1",
+                BranchId = "branch-1",
+                EmployeeId = "staff-1"
+            });
+            Db.EmployeeWorkingDays.Add(new EmployeeWorkingDay
+            {
+                TenantId = "tenant-1",
+                BranchId = "branch-1",
+                EmployeeId = "staff-1",
+                Day = "tue",
+                Enabled = true,
+                FromTime = new TimeOnly(9, 0),
+                ToTime = new TimeOnly(17, 0)
+            });
+        }
+
+        public async Task<BookSaleResult> Book(string saleId, int startMinutes)
+        {
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(_database).Options;
+            var identity = new Mock<IIdentityService>();
+            identity.Setup(x => x.GetRolesAsync(It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Dictionary<string, string> { ["staff-user"] = "Staff" });
+            var clock = new Mock<IDateTimeProvider>();
+            clock.SetupGet(x => x.UtcNow).Returns(
+                new DateTime(2026, 10, 27, 9, 0, 0, DateTimeKind.Utc));
+            await using var requestDb = new TestApplicationDbContext(
+                options, clock.Object, _user.Object);
+            var handler = new BookSaleHandler(requestDb, new BookingConcurrencyStore(requestDb),
+                _user.Object, BranchScope.Object, identity.Object,
+                new AuditWriter(requestDb, _user.Object), clock.Object);
+            var result = await handler.Handle(new BookSaleCommand(saleId, "staff-1",
+                new DateOnly(2026, 10, 27), startMinutes, startMinutes + 30),
+                CancellationToken.None);
+            Db.ChangeTracker.Clear();
+            return result;
+        }
+
+        public Task<CollectSaleResult> Collect(string saleId, string key, bool confirmed)
+        {
+            var store = new Mock<ISaleCollectionStore>();
+            store.Setup(x => x.ExecuteAsync(It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<Func<CancellationToken, Task<CollectSaleResult>>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns((string _, string _,
+                    Func<CancellationToken, Task<CollectSaleResult>> operation,
+                    CancellationToken token) => operation(token));
+            var clock = new Mock<IDateTimeProvider>();
+            clock.SetupGet(x => x.UtcNow).Returns(
+                new DateTime(2026, 10, 27, 9, 0, 0, DateTimeKind.Utc));
+            var handler = new CollectSaleHandler(Db, store.Object, _user.Object,
+                BranchScope.Object,
+                new AuditWriter(Db, _user.Object), clock.Object);
+            return handler.Handle(new CollectSaleCommand(saleId, key, confirmed),
+                CancellationToken.None);
+        }
+
+        public Task<DashboardRevenueDto> DashboardRevenue() =>
+            new GetDashboardRevenueHandler(Db, _user.Object).Handle(
+                new GetDashboardRevenueQuery(
+                    new DateTime(2026, 10, 27, 0, 0, 0, DateTimeKind.Utc),
+                    new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
+                    new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+                    new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc)),
+                CancellationToken.None);
 
         public ValueTask DisposeAsync() => Db.DisposeAsync();
     }

@@ -68,8 +68,8 @@ public sealed class CollectInstallmentHandler(
             var ordered = snapshot.Installments.OrderBy(x => x.Number).ToArray();
             var paid = snapshot.PurchasePrice - purchase.AmountDue.Value;
             var firstPayment = purchase.Installments.SingleOrDefault(x => x.Number == 0);
-            if (firstPayment is null || firstPayment.CollectedAtUtc is null ||
-                paid < (snapshot.FirstPayment ?? 0m))
+            if (paid < (snapshot.FirstPayment ?? 0m) ||
+                firstPayment is { CollectedAtUtc: null })
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Customers.InstallmentNotEligible);
             }
@@ -95,8 +95,11 @@ public sealed class CollectInstallmentHandler(
                 throw ConflictException.FromCode(ApiErrorCodes.Customers.InstallmentAlreadyCollected);
             }
             var scheduledRow = purchase.Installments.SingleOrDefault(x => x.Number == next.Number);
-            if (scheduledRow is null || scheduledRow.CollectedAtUtc is not null ||
-                scheduledRow.Amount != next.Amount ||
+            if (scheduledRow is { CollectedAtUtc: not null })
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Customers.InstallmentAlreadyCollected);
+            }
+            if (scheduledRow is not null && scheduledRow.Amount != next.Amount ||
                 purchase.Installments.Any(x => x.Number < next.Number && x.CollectedAtUtc is null))
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Customers.InstallmentUnavailable);
@@ -128,8 +131,11 @@ public sealed class CollectInstallmentHandler(
             };
             purchase.AmountDue = remaining;
             purchase.ReleasedSessions = released;
-            scheduledRow.CollectedAtUtc = clock.UtcNow;
-            scheduledRow.PaymentMethod = request.PaymentMethod;
+            if (scheduledRow is not null)
+            {
+                scheduledRow.CollectedAtUtc = collection.ConfirmedAtUtc;
+                scheduledRow.PaymentMethod = request.PaymentMethod;
+            }
             db.InstallmentCollections.Add(collection);
             if (purchase.OriginBookingId is not null)
             {

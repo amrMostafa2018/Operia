@@ -120,6 +120,8 @@ public static class ApiErrorCodes
         public const string OfferUnavailable = "SaleOfferUnavailable";
         public const string BranchUnavailable = "SaleBranchUnavailable";
         public const string CustomerUnavailable = "SaleCustomerUnavailable";
+        public const string DirectCustomerSelectionInvalid = "SaleDirectCustomerSelectionInvalid";
+        public const string DirectServiceOnly = "SaleDirectServiceOnly";
         public const string OwnedSessionUnavailable = "SaleOwnedSessionUnavailable";
         public const string UnlistedNameInvalid = "SaleUnlistedNameInvalid";
         public const string UnlistedPriceInvalid = "SaleUnlistedPriceInvalid";
@@ -130,6 +132,18 @@ public static class ApiErrorCodes
         public const string QuoteChanged = "SaleQuoteChanged";
         public const string IdempotencyKeyInvalid = "SaleIdempotencyKeyInvalid";
         public const string IdempotencyConflict = "SaleIdempotencyConflict";
+        public const string DispositionInvalid = "SaleDispositionInvalid";
+        public const string NotFound = "SaleNotFound";
+        public const string CollectionUnavailable = "SaleCollectionUnavailable";
+        public const string CollectionAttemptConflict = "SaleCollectionAttemptConflict";
+        public const string BookingUnavailable = "SaleBookingUnavailable";
+        public const string DurationMismatch = "SaleDurationMismatch";
+        public const string BookingDateInvalid = "SaleBookingDateInvalid";
+    }
+
+    public static class Dashboard
+    {
+        public const string RevenueRangeInvalid = "DashboardRevenueRangeInvalid";
     }
 
     /// <summary>Booking access, availability, state, and reservation failures.</summary>
@@ -143,6 +157,12 @@ public static class ApiErrorCodes
         public const string Changed = "BookingChanged";
         public const string StatusInvalid = "BookingStatusInvalid";
         public const string CustomerNotFound = "BookingCustomerNotFound";
+        public const string CustomerMobileExists = "BookingCustomerMobileExists";
+        public const string CustomerNameTooLong = "BookingCustomerNameTooLong";
+        public const string CustomerSearchTermInvalid = "BookingCustomerSearchTermInvalid";
+        public const string DirectCustomerSelectionInvalid = "BookingDirectCustomerSelectionInvalid";
+        public const string DirectCustomerPackageUnavailable = "BookingDirectCustomerPackageUnavailable";
+        public const string DirectCustomerItemsReadOnly = "BookingDirectCustomerItemsReadOnly";
         public const string EmployeeNotFound = "BookingEmployeeNotFound";
         public const string EmployeeNotInBranch = "BookingEmployeeNotInBranch";
         public const string OutsideWorkingHours = "BookingOutsideWorkingHours";

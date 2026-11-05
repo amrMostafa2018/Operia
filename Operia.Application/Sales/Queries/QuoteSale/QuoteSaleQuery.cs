@@ -5,7 +5,8 @@ namespace Operia.Application.Sales.Queries.QuoteSale;
 public sealed record QuoteSaleQuery(
     string? CustomerId,
     string? BranchId,
-    IReadOnlyList<QuoteSaleItem> Items) : IRequest<SaleQuoteDto>;
+    IReadOnlyList<QuoteSaleItem> Items,
+    bool DirectCustomer = false) : IRequest<SaleQuoteDto>;
 
 public sealed record QuoteSaleItem(
     string? OfferId,

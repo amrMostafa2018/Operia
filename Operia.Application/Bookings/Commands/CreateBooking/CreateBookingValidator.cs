@@ -9,7 +9,9 @@ public sealed class CreateBookingValidator : AbstractValidator<CreateBookingComm
     public CreateBookingValidator()
     {
         RuleFor(x => x.IdempotencyKey).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.CustomerId).NotEmpty();
+        RuleFor(x => x.CustomerId).NotEmpty().When(x => !x.DirectCustomer);
+        RuleFor(x => x.CustomerId).Empty().When(x => x.DirectCustomer)
+            .WithErrorCode(ApiErrorCodes.Bookings.DirectCustomerSelectionInvalid);
         RuleFor(x => x.BranchId).NotEmpty().WithErrorCode(ApiErrorCodes.Bookings.BranchRequired);
         RuleFor(x => x.EmployeeId).NotEmpty();
         RuleFor(x => x.StartMinutes).InclusiveBetween(0, 1439);

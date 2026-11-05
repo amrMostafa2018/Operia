@@ -15,6 +15,7 @@ public sealed class Booking : Entity, ITenantScoped
     public string BranchId { get; set; } = string.Empty;
     public string EmployeeId { get; set; } = string.Empty;
     public string CustomerId { get; set; } = string.Empty;
+    public string? SaleId { get; set; }
     public string CustomerName { get; set; } = string.Empty;
     public string CustomerMobile { get; set; } = string.Empty;
     /// <summary>The scheduled branch-local calendar date; no time zone is stored on the branch.</summary>

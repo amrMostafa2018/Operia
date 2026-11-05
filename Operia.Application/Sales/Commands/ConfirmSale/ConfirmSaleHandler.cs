@@ -25,15 +25,22 @@ public sealed class ConfirmSaleHandler(
     {
         var tenantId = currentUser.TenantId
             ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
+        if (request.DirectCustomer && !string.IsNullOrWhiteSpace(request.CustomerId))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Sales.DirectCustomerSelectionInvalid,
+                "customerId");
+        }
         var requestHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
             JsonSerializer.Serialize(new
             {
                 request.CustomerId,
+                request.DirectCustomer,
                 request.BranchId,
                 request.Items,
                 request.PaymentMethod,
                 request.ExpectedGrandTotal,
-                request.ExpectedDueNow
+                request.ExpectedDueNow,
+                request.Disposition
             }))));
 
         var prior = await db.Sales.AsNoTracking().SingleOrDefaultAsync(sale =>
@@ -49,7 +56,8 @@ public sealed class ConfirmSaleHandler(
         }
 
         var quote = await mediator.Send(
-            new QuoteSaleQuery(request.CustomerId, request.BranchId, request.Items),
+            new QuoteSaleQuery(request.CustomerId, request.BranchId, request.Items,
+                request.DirectCustomer),
             cancellationToken);
         if (quote.GrandTotal != request.ExpectedGrandTotal || quote.DueNow != request.ExpectedDueNow)
         {
@@ -85,17 +93,41 @@ public sealed class ConfirmSaleHandler(
             line.DueNow,
             line.PurchaseTerms)).ToArray();
 
+        Customer? directCustomer = null;
+        var directCustomerCreated = false;
+        var customerId = request.CustomerId;
+        if (request.DirectCustomer)
+        {
+            directCustomer = await db.Customers.SingleOrDefaultAsync(customer =>
+                customer.TenantId == tenantId && customer.IsDirect, cancellationToken);
+            if (directCustomer is null)
+            {
+                directCustomer = new Customer
+                {
+                    TenantId = tenantId,
+                    FullName = "عميل مباشر",
+                    MobileNumber = string.Empty,
+                    NormalizedMobileNumber = string.Empty,
+                    IsDirect = true
+                };
+                db.Customers.Add(directCustomer);
+                directCustomerCreated = true;
+            }
+            customerId = directCustomer.Id;
+        }
+
         var sale = new Sale
         {
             TenantId = tenantId,
             BranchId = request.BranchId,
-            CustomerId = request.CustomerId,
+            CustomerId = customerId!,
             IdempotencyKey = request.IdempotencyKey,
             RequestHash = requestHash,
             PaymentMethod = method ?? "none",
             GrandTotal = quote.GrandTotal,
             DueNow = quote.DueNow,
             ItemsSnapshotJson = JsonSerializer.Serialize(snapshots),
+            Disposition = request.Disposition,
             Status = quote.DueNow > 0 ? "PendingCollection" : "ReadyToBook"
         };
         db.Sales.Add(sale);
@@ -113,25 +145,75 @@ public sealed class ConfirmSaleHandler(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
+        catch (DbUpdateException) when (directCustomerCreated && directCustomer is not null)
+        {
+            // A concurrent walk-in sale may have created the shared ledger first.
+            var priorSale = await db.Sales.AsNoTracking().SingleOrDefaultAsync(existing =>
+                existing.TenantId == tenantId && existing.IdempotencyKey == request.IdempotencyKey,
+                cancellationToken);
+            if (priorSale is not null)
+            {
+                if (priorSale.RequestHash != requestHash)
+                {
+                    throw ConflictException.FromCode(ApiErrorCodes.Sales.IdempotencyConflict);
+                }
+                return new ConfirmSaleResult(priorSale.Id, priorSale.Status,
+                    priorSale.GrandTotal, priorSale.DueNow);
+            }
+            var existing = await db.Customers.AsNoTracking().SingleOrDefaultAsync(customer =>
+                customer.TenantId == tenantId && customer.IsDirect, cancellationToken);
+            if (existing is null)
+            {
+                throw;
+            }
+            sale.CustomerId = existing.Id;
+            db.Customers.Remove(directCustomer);
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                var concurrent = await FindConcurrentSale(tenantId, request.IdempotencyKey,
+                    requestHash, cancellationToken);
+                if (concurrent is null)
+                {
+                    throw;
+                }
+                return concurrent;
+            }
+        }
         catch (DbUpdateException)
         {
             // The unique tenant/key index handles concurrent retries. EF's failed save is rolled
             // back; a matching committed sale is the only expected recovery outcome.
-            var concurrent = await db.Sales.AsNoTracking().SingleOrDefaultAsync(existing =>
-                existing.TenantId == tenantId && existing.IdempotencyKey == request.IdempotencyKey,
-                cancellationToken);
+            var concurrent = await FindConcurrentSale(tenantId, request.IdempotencyKey,
+                requestHash, cancellationToken);
             if (concurrent is null)
             {
                 throw;
             }
-            if (concurrent.RequestHash != requestHash)
-            {
-                throw ConflictException.FromCode(ApiErrorCodes.Sales.IdempotencyConflict);
-            }
-            return new ConfirmSaleResult(concurrent.Id, concurrent.Status,
-                concurrent.GrandTotal, concurrent.DueNow);
+            return concurrent;
         }
         return new ConfirmSaleResult(sale.Id, sale.Status, sale.GrandTotal, sale.DueNow);
+    }
+
+    private async Task<ConfirmSaleResult?> FindConcurrentSale(string tenantId,
+        string idempotencyKey, string requestHash, CancellationToken cancellationToken)
+    {
+        var concurrent = await db.Sales.AsNoTracking().SingleOrDefaultAsync(existing =>
+            existing.TenantId == tenantId && existing.IdempotencyKey == idempotencyKey,
+            cancellationToken);
+        if (concurrent is null)
+        {
+            return null;
+        }
+        if (concurrent.RequestHash != requestHash)
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Sales.IdempotencyConflict);
+        }
+        return new ConfirmSaleResult(concurrent.Id, concurrent.Status,
+            concurrent.GrandTotal, concurrent.DueNow);
     }
 }
 

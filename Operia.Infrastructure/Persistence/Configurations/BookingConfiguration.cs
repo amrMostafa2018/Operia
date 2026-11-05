@@ -19,6 +19,11 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(x => x.BranchId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.EmployeeId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.CustomerId).IsRequired().HasMaxLength(36);
+        builder.Property(x => x.SaleId).HasMaxLength(36);
+        builder.HasIndex(x => new { x.TenantId, x.SaleId }).IsUnique()
+            .HasFilter("[SaleId] IS NOT NULL");
+        builder.HasOne<Sale>().WithMany().HasForeignKey(x => x.SaleId)
+            .OnDelete(DeleteBehavior.Restrict);
         builder.Property(x => x.CustomerName).IsRequired().HasMaxLength(200);
         builder.Property(x => x.CustomerMobile).IsRequired().HasMaxLength(30);
         builder.Property(x => x.Source).IsRequired().HasMaxLength(30);
