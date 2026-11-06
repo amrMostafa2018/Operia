@@ -29,15 +29,15 @@ internal sealed class RevenueLedger(
             .Where(x => x.TenantId == tenantId && branches.Contains(x.BranchId));
 
         var attempts = from collection in db.SaleCollections.AsNoTracking()
-                          join sale in sales on collection.SaleId equals sale.Id
-                          where collection.TenantId == tenantId && collection.Amount > 0m
-                          select collection;
+                       join sale in sales on collection.SaleId equals sale.Id
+                       where collection.TenantId == tenantId && collection.Amount > 0m
+                       select collection;
         var collections = attempts.Where(x => x.Confirmed);
         var installments = from collection in db.InstallmentCollections.AsNoTracking()
                            join purchase in db.CustomerPackages.AsNoTracking()
                                on collection.CustomerPackageId equals purchase.Id
-                           join sale in sales on purchase.SaleId equals sale.Id
                            where collection.TenantId == tenantId && purchase.TenantId == tenantId
+                               && purchase.BranchId != null && branches.Contains(purchase.BranchId)
                            select collection;
         var refunds = from refund in db.RefundTransactions.AsNoTracking()
                       join purchase in db.CustomerPackages.AsNoTracking()

@@ -191,6 +191,7 @@ public sealed class CollectInstallmentHandlerTests
                 TenantId = tenantId,
                 CustomerId = "customer-1",
                 PackageId = "offer-1",
+                BranchId = "branch-1",
                 PurchasePrice = 15m,
                 AmountDue = 10m,
                 PurchaseSnapshotJson = snapshot.ToJson(),
@@ -255,9 +256,14 @@ public sealed class CollectInstallmentHandlerTests
             new(Db, new InstallmentCollectionStore(Db), _user.Object,
                 new AuditWriter(Db, _user.Object), _clock.Object);
 
-        public Task<InstallmentRevenuePage> Revenue() =>
-            new ListInstallmentRevenueHandler(Db, _user.Object)
+        public Task<InstallmentRevenuePage> Revenue()
+        {
+            var branchScope = new Mock<IBranchScope>();
+            branchScope.Setup(x => x.GetAllowedBranchIdsAsync("operator-1",
+                It.IsAny<CancellationToken>())).ReturnsAsync(["branch-1"]);
+            return new ListInstallmentRevenueHandler(Db, _user.Object, branchScope.Object)
                 .Handle(new ListInstallmentRevenueQuery(), CancellationToken.None);
+        }
 
         public ValueTask DisposeAsync() => Db.DisposeAsync();
     }

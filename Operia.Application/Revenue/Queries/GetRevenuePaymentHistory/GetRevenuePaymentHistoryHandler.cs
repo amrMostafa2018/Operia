@@ -30,10 +30,9 @@ public sealed class GetRevenuePaymentHistoryHandler(
             from payment in db.InstallmentCollections.AsNoTracking()
             join purchase in db.CustomerPackages.AsNoTracking()
                 on payment.CustomerPackageId equals purchase.Id
-            join sale in db.Sales.AsNoTracking() on purchase.SaleId equals sale.Id
             where payment.TenantId == tenantId && purchase.TenantId == tenantId &&
-                  sale.TenantId == tenantId && payment.Id == request.PaymentId
-            select new { PurchaseId = purchase.Id, sale.BranchId })
+                  purchase.BranchId != null && payment.Id == request.PaymentId
+            select new { PurchaseId = purchase.Id, purchase.BranchId })
             .SingleOrDefaultAsync(token);
         var refundPayment = await (
             from refund in db.RefundTransactions.AsNoTracking()
@@ -69,8 +68,15 @@ public sealed class GetRevenuePaymentHistoryHandler(
                  refundId != null && x.EntityType == nameof(RefundTransaction) &&
                     x.EntityId == refundId && x.Action == AuditActions.RefundPosted))
             .OrderBy(x => x.CreatedAt).ThenBy(x => x.Id)
-            .Select(x => new { x.Id, x.CreatedAt, x.UserDisplayName, x.UserId,
-                x.Action, x.DetailsJson })
+            .Select(x => new
+            {
+                x.Id,
+                x.CreatedAt,
+                x.UserDisplayName,
+                x.UserId,
+                x.Action,
+                x.DetailsJson
+            })
             .ToListAsync(token);
         return events.OrderBy(x => x.CreatedAt)
             .ThenBy(x => x.Action == AuditActions.RevenuePaymentSubmitted ? 0 : 1)

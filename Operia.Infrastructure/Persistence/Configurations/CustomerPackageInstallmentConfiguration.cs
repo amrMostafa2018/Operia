@@ -14,6 +14,7 @@ public sealed class CustomerPackageInstallmentConfiguration : IEntityTypeConfigu
         builder.Property(x => x.TenantId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.CustomerPackageId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.Amount).HasPrecision(18, 2);
+        builder.Property(x => x.DueOn).HasColumnType("date");
         builder.Property(x => x.PaymentMethod).HasMaxLength(30);
         builder.Property(x => x.Version).IsRowVersion();
         builder.HasOne(x => x.CustomerPackage).WithMany(x => x.Installments)

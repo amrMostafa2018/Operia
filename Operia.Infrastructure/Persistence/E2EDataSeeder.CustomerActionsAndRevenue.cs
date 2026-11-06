@@ -153,9 +153,9 @@ public static partial class E2EDataSeeder
 
         db.CustomerPackages.AddRange(
             NewPurchase(RefundPurchase, RefundCustomer, RefundSale, offer,
-                5000m, 3, 1, utcToday),
+                5000m, 3, 1, utcToday, BranchA),
             NewPurchase(RevenueTodayPurchase, RevenueCustomer, RevenueTodaySale, offer,
-                5000m, 0, 0, utcToday),
+                5000m, 0, 0, utcToday, SecondaryBranchA),
             new CustomerPackage
             {
                 Id = RevenueInstallmentPurchase,
@@ -163,6 +163,8 @@ public static partial class E2EDataSeeder
                 CustomerId = RevenueCustomer,
                 PackageId = installmentOffer.Id,
                 SaleId = RevenueInstallmentSale,
+                BranchId = SecondaryBranchA,
+                BranchAttributionSource = "Sale",
                 SaleItemIndex = 0,
                 SaleUnitIndex = 0,
                 PurchasePrice = 2000m,
@@ -323,13 +325,15 @@ public static partial class E2EDataSeeder
 
     private static CustomerPackage NewPurchase(string id, string customerId,
         string saleId, Package offer, decimal amount, int used, int reserved,
-        DateOnly today) => new()
+        DateOnly today, string branchId) => new()
         {
             Id = id,
             TenantId = TenantA,
             CustomerId = customerId,
             PackageId = offer.Id,
             SaleId = saleId,
+            BranchId = branchId,
+            BranchAttributionSource = "Sale",
             SaleItemIndex = 0,
             SaleUnitIndex = 0,
             PurchasePrice = amount,

@@ -199,6 +199,8 @@ public sealed class CancelBookingHandler(
             TenantId = tenantId,
             CustomerId = booking.CustomerId,
             PackageId = packageId,
+            BranchId = booking.BranchId,
+            BranchAttributionSource = "OriginBooking",
             Total = 1,
             ReservedSessions = 0,
             IsActive = true

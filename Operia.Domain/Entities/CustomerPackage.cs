@@ -11,6 +11,9 @@ public sealed class CustomerPackage : Entity, ITenantScoped
     public string CustomerId { get; set; } = string.Empty;
     public string PackageId { get; set; } = string.Empty;
     public string? SaleId { get; set; }
+    /// <summary>Branch proven by the sale or an attributable booking; null means unresolved.</summary>
+    public string? BranchId { get; set; }
+    public string? BranchAttributionSource { get; set; }
     public int? SaleItemIndex { get; set; }
     public int? SaleUnitIndex { get; set; }
     /// <summary>Booking that sold this purchase, when it was bought through booking creation.</summary>

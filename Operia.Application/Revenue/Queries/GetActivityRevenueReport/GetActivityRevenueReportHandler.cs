@@ -69,10 +69,12 @@ public sealed class GetActivityRevenueReportHandler(
             from collection in ledger.Installments
             join purchase in db.CustomerPackages.AsNoTracking()
                 on collection.CustomerPackageId equals purchase.Id
-            join sale in db.Sales.AsNoTracking() on purchase.SaleId equals sale.Id
+            join linkedSale in db.Sales.AsNoTracking().Where(x => x.TenantId == tenantId)
+                on purchase.SaleId equals linkedSale.Id into saleGroup
+            from sale in saleGroup.DefaultIfEmpty()
             join customer in db.Customers.AsNoTracking() on purchase.CustomerId equals customer.Id
-            join branch in db.Branches.AsNoTracking() on sale.BranchId equals branch.Id
-            where purchase.TenantId == tenantId && sale.TenantId == tenantId &&
+            join branch in db.Branches.AsNoTracking() on purchase.BranchId equals branch.Id
+            where purchase.TenantId == tenantId &&
                   customer.TenantId == tenantId && branch.TenantId == tenantId &&
                   collection.ConfirmedAtUtc >= range.FromUtc &&
                   collection.ConfirmedAtUtc < range.ToUtc
@@ -85,7 +87,7 @@ public sealed class GetActivityRevenueReportHandler(
                 collection.CustomerPackageId,
                 purchase.PackageId,
                 purchase.PurchaseSnapshotJson,
-                SaleId = sale.Id,
+                SaleId = sale == null ? null : sale.Id,
                 CustomerName = customer.FullName,
                 Mobile = customer.MobileNumber,
                 Branch = branch.Name

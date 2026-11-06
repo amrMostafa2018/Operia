@@ -133,6 +133,7 @@ public sealed class CreateBookingHandler(
                 tenantId,
                 customer.Id,
                 booking.Id,
+                booking.BranchId,
                 request.Items,
                 catalog,
                 ownedCatalogPackageIds,
@@ -265,6 +266,7 @@ public sealed class CreateBookingHandler(
         string tenantId,
         string customerId,
         string bookingId,
+        string branchId,
         IReadOnlyList<CreateBookingItemInput> items,
         IReadOnlyDictionary<string, Package> catalog,
         IReadOnlySet<string> ownedCatalogPackageIds,
@@ -310,7 +312,8 @@ public sealed class CreateBookingHandler(
                     for (var unit = 0; unit < Math.Max(0, item.Quantity - 1); unit++)
                     {
                         newPurchases.Add(BookingItemPricing.CreatePackagePurchase(
-                            product, tenantId, customerId, today, originBookingId: bookingId));
+                            product, tenantId, customerId, today, originBookingId: bookingId,
+                            branchId: branchId));
                     }
                 }
 
@@ -326,7 +329,8 @@ public sealed class CreateBookingHandler(
                     {
                         var installment = BookingItemPricing.IsInstallmentPurchase(item);
                         var purchase = BookingItemPricing.CreatePackagePurchase(
-                            product, tenantId, customerId, today, installment, bookingId);
+                            product, tenantId, customerId, today, installment, bookingId,
+                            branchId);
                         newPurchases.Add(purchase);
                         if (!installment)
                         {
@@ -351,7 +355,8 @@ public sealed class CreateBookingHandler(
                 for (var unit = 0; unit < item.Quantity; unit++)
                 {
                     var purchase = BookingItemPricing.CreatePackagePurchase(
-                        product, tenantId, customerId, today, originBookingId: bookingId);
+                        product, tenantId, customerId, today, originBookingId: bookingId,
+                        branchId: branchId);
                     newPurchases.Add(purchase);
                     if (unit == 0)
                     {
@@ -371,6 +376,8 @@ public sealed class CreateBookingHandler(
                     CustomerId = customerId,
                     PackageId = product.Id,
                     OriginBookingId = bookingId,
+                    BranchId = branchId,
+                    BranchAttributionSource = "OriginBooking",
                     PurchasePrice = BookingItemPricing.CashPrice(product),
                     AmountDue = BookingItemPricing.CashPrice(product),
                     PurchaseSnapshotJson = PackagePurchaseSnapshot.Capture(

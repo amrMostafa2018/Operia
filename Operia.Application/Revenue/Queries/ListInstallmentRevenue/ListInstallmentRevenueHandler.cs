@@ -10,7 +10,8 @@ namespace Operia.Application.Revenue.Queries.ListInstallmentRevenue;
 
 public sealed class ListInstallmentRevenueHandler(
     IApplicationDbContext db,
-    ICurrentUserService currentUser) : IRequestHandler<ListInstallmentRevenueQuery, InstallmentRevenuePage>
+    ICurrentUserService currentUser,
+    IBranchScope branchScope) : IRequestHandler<ListInstallmentRevenueQuery, InstallmentRevenuePage>
 {
     public async Task<InstallmentRevenuePage> Handle(
         ListInstallmentRevenueQuery request, CancellationToken cancellationToken)
@@ -21,9 +22,13 @@ public sealed class ListInstallmentRevenueHandler(
             throw UnauthorizedException.FromCode(ApiErrorCodes.Access.TenantContextRequired, "revenue");
         }
 
+        var allowed = await branchScope.GetAllowedBranchIdsAsync(
+            currentUser.UserId ?? string.Empty, cancellationToken);
         var query = db.InstallmentCollections.AsNoTracking()
             .Where(x => x.TenantId == tenantId && x.CustomerPackage != null &&
-                        x.CustomerPackage.TenantId == tenantId);
+                        x.CustomerPackage.TenantId == tenantId &&
+                        x.CustomerPackage.BranchId != null &&
+                        allowed.Contains(x.CustomerPackage.BranchId));
         var total = await query.CountAsync(cancellationToken);
         var page = Math.Clamp(request.Page, 1, 100_000);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);

@@ -15,6 +15,13 @@ internal static class SaleCollectionActivation
     {
         var items = JsonSerializer.Deserialize<ConfirmedSaleItemSnapshot[]>(sale.ItemsSnapshotJson)
             ?? [];
+        var timezoneId = await db.Tenants.AsNoTracking()
+            .Where(x => x.Id == tenantId)
+            .Select(x => x.Timezone)
+            .SingleAsync(token);
+        var localCollectionDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(clock.UtcNow, DateTimeKind.Utc),
+            TimeZoneInfo.FindSystemTimeZoneById(timezoneId)));
         var direct = await db.Customers.AsNoTracking().AnyAsync(x =>
             x.TenantId == tenantId && x.Id == sale.CustomerId && x.IsDirect, token);
         if (!direct)
@@ -39,6 +46,8 @@ internal static class SaleCollectionActivation
                         CustomerId = sale.CustomerId,
                         PackageId = item.OfferId,
                         SaleId = sale.Id,
+                        BranchId = sale.BranchId,
+                        BranchAttributionSource = "Sale",
                         SaleItemIndex = index,
                         SaleUnitIndex = unit,
                         PurchasePrice = terms.PurchasePrice,
@@ -74,6 +83,7 @@ internal static class SaleCollectionActivation
                                 CustomerPackageId = purchase.Id,
                                 Number = row.Number,
                                 Amount = row.Amount,
+                                DueOn = localCollectionDate.AddMonths(row.Number),
                                 CumulativeAvailableSessions = row.CumulativeAvailableSessions
                             });
                         }

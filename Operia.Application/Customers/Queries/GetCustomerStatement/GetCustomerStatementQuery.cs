@@ -13,7 +13,8 @@ public sealed record StatementPaymentDto(
     DateTime? PaidAtUtc,
     string? PaymentMethod,
     string? RecordedBy,
-    string? Notes);
+    string? Notes,
+    DateOnly? DueOn = null);
 
 public sealed record StatementFirstPaymentDto(
     decimal Amount,
@@ -34,7 +35,7 @@ public sealed record StatementPurchaseDto(
     PurchaseBalanceDto? Pulses,
     IReadOnlyList<CompletedPurchaseSessionDto> CompletedSessions,
     decimal Refunded = 0m,
-    decimal NetCollected = 0m,
+    decimal? NetCollected = null,
     string RefundStatus = "none");
 
 public sealed record CustomerStatementDto(

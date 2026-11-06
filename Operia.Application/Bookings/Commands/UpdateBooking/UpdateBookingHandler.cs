@@ -599,6 +599,8 @@ public sealed class UpdateBookingHandler(
             CustomerId = booking.CustomerId,
             PackageId = product.Id,
             OriginBookingId = booking.Id,
+            BranchId = booking.BranchId,
+            BranchAttributionSource = "OriginBooking",
             PurchasePrice = purchasePrice,
             AmountDue = purchasePrice,
             PurchaseSnapshotJson = snapshot.ToJson(),
@@ -688,7 +690,8 @@ public sealed class UpdateBookingHandler(
                 }
 
                 var purchase = BookingItemPricing.CreatePackagePurchase(
-                    product, tenantId, booking.CustomerId, today, originBookingId: booking.Id);
+                    product, tenantId, booking.CustomerId, today, originBookingId: booking.Id,
+                    branchId: booking.BranchId);
                 purchase.ReservedSessions = 1;
                 db.CustomerPackages.Add(purchase);
                 db.BookingPackageReservations.Add(new BookingPackageReservation
@@ -733,7 +736,8 @@ public sealed class UpdateBookingHandler(
                 for (var unit = 0; unit < extraPurchases; unit++)
                 {
                     var purchase = BookingItemPricing.CreatePackagePurchase(
-                        product, tenantId, booking.CustomerId, today, originBookingId: booking.Id);
+                        product, tenantId, booking.CustomerId, today, originBookingId: booking.Id,
+                        branchId: booking.BranchId);
                     db.CustomerPackages.Add(purchase);
                     billedTotal += purchase.PurchasePrice!.Value;
                 }

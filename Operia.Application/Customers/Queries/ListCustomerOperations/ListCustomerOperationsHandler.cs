@@ -17,10 +17,10 @@ public sealed class ListCustomerOperationsHandler(CustomerOperationsReader reade
             rows.Count,
             page,
             pageSize,
-            rows.Sum(x => x.Total),
-            rows.Sum(x => x.Collected),
-            rows.Sum(x => x.Remaining),
+            rows.Sum(x => x.Total ?? 0m),
+            rows.Sum(x => x.Collected ?? 0m),
+            rows.Sum(x => x.Remaining ?? 0m),
             skip >= rows.Count ? [] : rows.Skip((int)skip).Take(pageSize).ToArray(),
-            rows.Sum(x => x.Refunded), rows.Sum(x => x.NetCollected));
+            rows.Sum(x => x.Refunded), rows.Sum(x => x.NetCollected ?? 0m));
     }
 }

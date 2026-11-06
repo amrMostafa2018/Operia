@@ -19,7 +19,8 @@ public sealed record PackagePurchaseSnapshot(
     decimal CashListPrice,
     decimal? CashDiscountPercent,
     decimal? FirstPayment,
-    IReadOnlyList<PurchaseInstallmentSnapshot> Installments)
+    IReadOnlyList<PurchaseInstallmentSnapshot> Installments,
+    string? CashDiscountCode = null)
 {
     public static PackagePurchaseSnapshot Capture(Package offer, string paymentOption, decimal purchasePrice)
     {
@@ -36,7 +37,7 @@ public sealed record PackagePurchaseSnapshot(
             paymentOption,
             purchasePrice,
             offer.Price,
-            offer.DiscountPercent,
+            installment ? null : offer.DiscountPercent,
             installment ? offer.FirstPayment : null,
             installment
                 ? offer.Installments.OrderBy(row => row.Number)
@@ -46,7 +47,9 @@ public sealed record PackagePurchaseSnapshot(
                         row.SessionsUnlocked,
                         row.CumulativeAvailableSessions))
                     .ToArray()
-                : []);
+                : [],
+            installment || string.IsNullOrWhiteSpace(offer.DiscountCode)
+                ? null : offer.DiscountCode.Trim());
     }
 
     public string ToJson() => JsonSerializer.Serialize(this);

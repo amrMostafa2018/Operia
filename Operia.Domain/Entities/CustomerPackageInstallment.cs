@@ -12,6 +12,8 @@ public sealed class CustomerPackageInstallment : Entity, ITenantScoped
     /// <summary>Zero is the first payment; positive numbers follow the catalog schedule.</summary>
     public int Number { get; set; }
     public decimal Amount { get; set; }
+    /// <summary>Contractual local calendar due date; null for unproven legacy schedules.</summary>
+    public DateOnly? DueOn { get; set; }
     public int CumulativeAvailableSessions { get; set; }
     public DateTime? CollectedAtUtc { get; set; }
     public string? PaymentMethod { get; set; }

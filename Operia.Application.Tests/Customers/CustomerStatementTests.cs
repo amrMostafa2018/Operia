@@ -21,6 +21,76 @@ namespace Operia.Application.Tests.Customers;
 public sealed class CustomerStatementTests
 {
     [Fact]
+    public async Task HistoricalStatementUsesSavedPlanAndProvenBranchWithoutSale()
+    {
+        var clock = new Mock<IDateTimeProvider>();
+        clock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 11, 6, 9, 0, 0, DateTimeKind.Utc));
+        var user = new Mock<ICurrentUserService>();
+        user.SetupGet(x => x.TenantId).Returns("tenant-1");
+        user.SetupGet(x => x.UserId).Returns("operator-1");
+        var scope = new Mock<IBranchScope>();
+        scope.Setup(x => x.GetAllowedBranchIdsAsync("operator-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["branch-1"]);
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"HistoricalStatement_{Guid.NewGuid()}").Options;
+        await using var db = new TestApplicationDbContext(options, clock.Object, user.Object);
+        db.Customers.Add(new Customer
+        {
+            Id = "customer-1",
+            TenantId = "tenant-1",
+            FullName = "Historical customer"
+        });
+        db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "purchase-1",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "offer-1",
+            BranchId = "branch-1",
+            PurchasePrice = 20000m,
+            AmountDue = 15000m,
+            Total = 3
+        });
+        db.CustomerPackageInstallments.AddRange(
+            new CustomerPackageInstallment
+            {
+                TenantId = "tenant-1",
+                CustomerPackageId = "purchase-1",
+                Number = 1,
+                Amount = 7500m
+            },
+            new CustomerPackageInstallment
+            {
+                TenantId = "tenant-1",
+                CustomerPackageId = "purchase-1",
+                Number = 2,
+                Amount = 7500m
+            });
+        await db.SaveChangesAsync();
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(It.IsAny<GetCustomerPurchaseDetailsQuery>(),
+            It.IsAny<CancellationToken>())).ReturnsAsync(new CustomerPurchaseDetailsDto(
+                "purchase-1", clock.Object.UtcNow, null, null, null, "active", "partial",
+                new PurchaseBalanceDto(3, 0, 3), null, 20000m, 5000m, 15000m,
+                1, 2, [], [], true, 7500m, [], []));
+        var handler = new GetCustomerStatementHandler(db, user.Object, scope.Object, mediator.Object);
+
+        var result = await handler.Handle(new GetCustomerStatementQuery(
+            "customer-1", "purchase-1"), CancellationToken.None);
+        result.OperationCount.Should().Be(1);
+        result.Purchase.AmountPaid.Should().Be(5000m);
+        result.Installments.Should().HaveCount(2);
+        result.Installments[0].Status.Should().Be("due");
+        result.Installments[0].DueOn.Should().BeNull();
+
+        scope.Setup(x => x.GetAllowedBranchIdsAsync("operator-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["branch-2"]);
+        var denied = () => handler.Handle(new GetCustomerStatementQuery(
+            "customer-1", "purchase-1"), CancellationToken.None);
+        await denied.Should().ThrowAsync<ApiNotFoundException>();
+    }
+
+    [Fact]
     public async Task SelectedPurchaseUsesItsOwnPlanAndCollectionsWithinAllowedBranch()
     {
         var clock = new Mock<IDateTimeProvider>();
@@ -54,6 +124,31 @@ public sealed class CustomerStatementTests
             Purchase("purchase-1", "customer-1", "sale-1", snapshot),
             Purchase("purchase-2", "customer-1", "sale-2", snapshot),
             Purchase("purchase-3", "customer-2", "sale-3", snapshot));
+        db.CustomerPackageInstallments.AddRange(
+            new CustomerPackageInstallment
+            {
+                TenantId = "tenant-1",
+                CustomerPackageId = "purchase-1",
+                Number = 1,
+                Amount = 5000m,
+                DueOn = new DateOnly(2026, 11, 29)
+            },
+            new CustomerPackageInstallment
+            {
+                TenantId = "tenant-1",
+                CustomerPackageId = "purchase-1",
+                Number = 2,
+                Amount = 5000m,
+                DueOn = new DateOnly(2026, 12, 29)
+            },
+            new CustomerPackageInstallment
+            {
+                TenantId = "tenant-1",
+                CustomerPackageId = "purchase-1",
+                Number = 3,
+                Amount = 5000m,
+                DueOn = new DateOnly(2027, 1, 29)
+            });
         db.SaleCollections.Add(new SaleCollection
         {
             TenantId = "tenant-1",
@@ -104,6 +199,7 @@ public sealed class CustomerStatementTests
         result.Installments.Select(x => x.Status).Should().Equal("paid", "due", "due");
         result.Installments[0].PaymentMethod.Should().Be("card");
         result.Installments[1].PaidAtUtc.Should().BeNull();
+        result.Installments[1].DueOn.Should().Be(new DateOnly(2026, 12, 29));
         result.FirstPayment!.PaidAtUtc.Should().Be(clock.Object.UtcNow.AddDays(1));
         result.Purchase.AmountPaid.Should().Be(10000m);
         result.SessionBalance.Should().Be(new PurchaseBalanceDto(3, 0, 3));

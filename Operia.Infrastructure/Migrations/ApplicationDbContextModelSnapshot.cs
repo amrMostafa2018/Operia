@@ -826,6 +826,14 @@ namespace Operia.Infrastructure.Migrations
 
             modelBuilder.Entity("Operia.Domain.Entities.CustomerPackage", b =>
                 {
+                    b.Property<string>("BranchAttributionSource")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("BranchId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
                     b.Property<string>("Id")
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
@@ -911,6 +919,7 @@ namespace Operia.Infrastructure.Migrations
                     b.HasIndex("PackageId");
 
                     b.HasIndex("SaleId");
+                    b.HasIndex("TenantId", "BranchId");
                     b.HasIndex("TenantId", "OriginBookingId");
 
                     b.HasIndex("TenantId", "CustomerId", "IsActive");
@@ -937,6 +946,9 @@ namespace Operia.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<DateOnly?>("DueOn")
+                        .HasColumnType("date");
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");

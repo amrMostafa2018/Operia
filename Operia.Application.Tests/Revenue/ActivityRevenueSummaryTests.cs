@@ -330,6 +330,36 @@ public sealed class ActivityRevenueSummaryTests
     }
 
     [Fact]
+    public async Task AttributedHistoricalInstallmentCountsWithoutASale()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        fixture.Db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "historical-purchase",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "offer-1",
+            BranchId = "branch-1",
+            BranchAttributionSource = "Reservation",
+            Total = 1
+        });
+        fixture.Db.InstallmentCollections.Add(new InstallmentCollection
+        {
+            TenantId = "tenant-1",
+            CustomerPackageId = "historical-purchase",
+            InstallmentNumber = 1,
+            Amount = 2000m,
+            ConfirmedAtUtc = TodayFrom.AddHours(13)
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        (await fixture.Summary()).Today.GrossCollected.Should().Be(7000m);
+        fixture.Scope.Setup(x => x.GetAllowedBranchIdsAsync("operator", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["branch-2"]);
+        (await fixture.Summary()).Today.GrossCollected.Should().Be(7000m);
+    }
+
+    [Fact]
     public async Task AnotherTenantCannotReadCollectionsEvenWithBranchId()
     {
         await using var fixture = await Fixture.CreateAsync();
@@ -428,6 +458,7 @@ public sealed class ActivityRevenueSummaryTests
                 CustomerId = "customer-1",
                 PackageId = "offer-1",
                 SaleId = "sale-old",
+                BranchId = "branch-1",
                 Total = 1
             });
             db.SaleCollections.AddRange(

@@ -47,6 +47,7 @@ public static class AuditActions
     public const string BookingClosed = "BookingClosed";
     public const string InstallmentCollected = "InstallmentCollected";
     public const string PurchaseCancelled = "PurchaseCancelled";
+    public const string PurchaseBranchAttributed = "PurchaseBranchAttributed";
     public const string RefundPosted = "RefundPosted";
     public const string CustomerBlocked = "CustomerBlocked";
     public const string CustomerUnblocked = "CustomerUnblocked";

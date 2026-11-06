@@ -19,21 +19,31 @@ public sealed class GetCustomerActionHandler(
         var allowed = await branchScope.GetAllowedBranchIdsAsync(
             currentUser.UserId ?? string.Empty, token);
         var source = await (from purchase in db.CustomerPackages.AsNoTracking()
-                            join sale in db.Sales.AsNoTracking() on purchase.SaleId equals sale.Id
+                            join linkedSale in db.Sales.AsNoTracking().Where(x => x.TenantId == tenantId)
+                                on purchase.SaleId equals linkedSale.Id into saleGroup
+                            from sale in saleGroup.DefaultIfEmpty()
                             join customer in db.Customers.AsNoTracking() on purchase.CustomerId equals customer.Id
-                            where purchase.TenantId == tenantId && sale.TenantId == tenantId &&
+                            where purchase.TenantId == tenantId &&
                                   customer.TenantId == tenantId &&
                                   purchase.Id == request.PurchaseId &&
                                   purchase.CustomerId == request.CustomerId &&
-                                  sale.CustomerId == request.CustomerId &&
-                                  allowed.Contains(sale.BranchId)
-                            select new { Purchase = purchase, Customer = customer, SaleId = sale.Id })
+                                  (sale == null || sale.CustomerId == request.CustomerId) &&
+                                  allowed.Contains(purchase.BranchId ?? sale!.BranchId)
+                            select new
+                            {
+                                Purchase = purchase,
+                                Customer = customer,
+                                SaleId = sale == null ? null : sale.Id
+                            })
             .SingleOrDefaultAsync(token)
             ?? throw ApiNotFoundException.FromCode(ApiErrorCodes.Customers.PurchaseNotFound);
         var confirmed = await db.SaleCollections.AsNoTracking().AnyAsync(x =>
             x.TenantId == tenantId && x.SaleId == source.SaleId && x.Confirmed, token);
         var snapshot = PackagePurchaseSnapshot.FromJson(source.Purchase.PurchaseSnapshotJson);
-        var initial = !confirmed ? 0m : snapshot?.PaymentOption == "installment"
+        var initial = source.SaleId is null
+            ? source.Purchase.PurchasePrice is { } price && source.Purchase.AmountDue is { } due
+                ? Math.Max(0m, price - due) : 0m
+            : !confirmed ? 0m : snapshot?.PaymentOption == "installment"
             ? snapshot.FirstPayment ?? 0m : source.Purchase.PurchasePrice ?? 0m;
         var installments = await db.InstallmentCollections.AsNoTracking()
             .Where(x => x.TenantId == tenantId && x.CustomerPackageId == request.PurchaseId)
@@ -41,7 +51,7 @@ public sealed class GetCustomerActionHandler(
         var refunded = await db.RefundTransactions.AsNoTracking()
             .Where(x => x.TenantId == tenantId && x.CustomerPackageId == request.PurchaseId)
             .SumAsync(x => (decimal?)x.Amount, token) ?? 0m;
-        var paid = initial + installments;
+        var paid = source.SaleId is null ? initial : initial + installments;
         return new(source.Customer.Id, source.Customer.FullName,
             source.Customer.MobileNumber, Convert.ToBase64String(source.Customer.Version),
             source.Customer.IsBlocked, source.Customer.BlockReason,

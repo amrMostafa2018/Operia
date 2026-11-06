@@ -28,6 +28,35 @@ namespace Operia.Application.Tests.Sales;
 public sealed class ConfirmSaleHandlerTests
 {
     [Fact]
+    public async Task CashCodePricesAndCollectsFinalAmountOnceWhileInstallmentsStaySeparate()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var offer = await fixture.Db.Packages.SingleAsync(x => x.Id == "package");
+        offer.DiscountCode = "SAVE10";
+        offer.DiscountPercent = 10m;
+        await fixture.Db.SaveChangesAsync();
+
+        var cashItems = new[] { Item("package", "cash") };
+        var cashQuote = await fixture.Quote(cashItems);
+        cashQuote.Items.Single().AppliedDiscountCode.Should().Be("SAVE10");
+        cashQuote.Items.Single().FinalAmount.Should().Be(162m);
+        var installmentQuote = await fixture.Quote([Item("package", "installment")]);
+        installmentQuote.Items.Single().AppliedDiscountCode.Should().BeNull();
+        installmentQuote.Items.Single().FinalAmount.Should().Be(200m);
+
+        var sale = await fixture.Confirm(cashItems, cashQuote, "cash-code");
+        var collection = await fixture.Collect(sale.SaleId, "cash-code-payment", true);
+        collection.AmountCollected.Should().Be(162m);
+        var purchase = await fixture.Db.CustomerPackages.SingleAsync(x => x.SaleId == sale.SaleId);
+        purchase.PurchasePrice.Should().Be(162m);
+        purchase.AmountDue.Should().Be(0m);
+        var terms = Operia.Application.Packages.PackagePurchaseSnapshot.FromJson(
+            purchase.PurchaseSnapshotJson);
+        terms!.CashDiscountCode.Should().Be("SAVE10");
+        terms.CashDiscountPercent.Should().Be(10m);
+    }
+
+    [Fact]
     public async Task FailedThenConfirmedCollection_UsesSavedTermsAndCountsOnlyReceivedAmount()
     {
         await using var fixture = await Fixture.CreateAsync();
@@ -54,6 +83,11 @@ public sealed class ConfirmSaleHandlerTests
         purchases[0].PurchasePrice.Should().Be(200m);
         purchases[0].AmountDue.Should().Be(150m);
         purchases[0].ReleasedSessions.Should().Be(0);
+        purchases[0].BranchId.Should().Be("branch-1");
+        var dueDates = await fixture.Db.CustomerPackageInstallments
+            .Where(x => x.CustomerPackageId == purchases[0].Id && x.Number > 0)
+            .OrderBy(x => x.Number).Select(x => x.DueOn).ToArrayAsync();
+        dueDates.Should().Equal(new DateOnly(2026, 11, 27), new DateOnly(2026, 12, 27));
         purchases[0].PurchaseSnapshotJson.Should().Contain("Package");
         purchases[1].PurchasePrice.Should().Be(30m);
         purchases[1].AmountDue.Should().Be(0m);

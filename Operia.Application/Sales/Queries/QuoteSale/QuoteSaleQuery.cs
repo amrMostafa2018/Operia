@@ -30,7 +30,8 @@ public sealed record SaleQuoteLineDto(
     decimal DiscountAmount,
     decimal FinalAmount,
     decimal DueNow,
-    Operia.Application.Packages.PackagePurchaseSnapshot? PurchaseTerms);
+    Operia.Application.Packages.PackagePurchaseSnapshot? PurchaseTerms,
+    string? AppliedDiscountCode = null);
 
 public sealed record SaleQuoteDto(
     IReadOnlyList<SaleQuoteLineDto> Items,

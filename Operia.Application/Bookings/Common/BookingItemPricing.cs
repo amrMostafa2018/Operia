@@ -131,7 +131,8 @@ public static class BookingItemPricing
         string customerId,
         DateOnly today,
         bool installment = false,
-        string? originBookingId = null)
+        string? originBookingId = null,
+        string? branchId = null)
     {
         var total = product.PulseCount is > 0 ? product.PulseCount.Value : product.SessionCount ?? 0;
         if (total <= 0)
@@ -156,6 +157,8 @@ public static class BookingItemPricing
             CustomerId = customerId,
             PackageId = product.Id,
             OriginBookingId = originBookingId,
+            BranchId = branchId,
+            BranchAttributionSource = branchId is null ? null : "OriginBooking",
             PurchasePrice = price,
             AmountDue = price,
             PurchaseSnapshotJson = PackagePurchaseSnapshot.Capture(

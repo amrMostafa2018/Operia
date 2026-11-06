@@ -17,6 +17,9 @@ public sealed class CustomerPackageConfiguration : IEntityTypeConfiguration<Cust
         builder.Property(x => x.CustomerId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.PackageId).IsRequired().HasMaxLength(36);
         builder.Property(x => x.SaleId).HasMaxLength(36);
+        builder.Property(x => x.BranchId).HasMaxLength(36);
+        builder.Property(x => x.BranchAttributionSource).HasMaxLength(40);
+        builder.HasIndex(x => new { x.TenantId, x.BranchId });
         builder.HasIndex(x => new { x.TenantId, x.SaleId, x.SaleItemIndex, x.SaleUnitIndex })
             .IsUnique()
             .HasFilter("[SaleId] IS NOT NULL");

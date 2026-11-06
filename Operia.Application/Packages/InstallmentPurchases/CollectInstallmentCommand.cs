@@ -71,9 +71,10 @@ public sealed class CollectInstallmentHandler(
                 }
             }
 
+            var oldRemaining = purchase.AmountDue.Value;
             row.CollectedAtUtc = clock.UtcNow;
             row.PaymentMethod = request.PaymentMethod;
-            db.InstallmentCollections.Add(new InstallmentCollection
+            var collection = new InstallmentCollection
             {
                 TenantId = tenantId,
                 CustomerPackageId = purchase.Id,
@@ -83,7 +84,8 @@ public sealed class CollectInstallmentHandler(
                 IdempotencyKey = "legacy:" + row.Id,
                 CollectedByUserId = currentUser.UserId ?? string.Empty,
                 ConfirmedAtUtc = row.CollectedAtUtc.Value
-            });
+            };
+            db.InstallmentCollections.Add(collection);
             purchase.AmountDue -= row.Amount;
             var fullyPaid = purchase.AmountDue == 0;
             purchase.ReleasedSessions = InstallmentSessionRelease.AvailableAfterPayment(
@@ -110,7 +112,9 @@ public sealed class CollectInstallmentHandler(
                     row.Number,
                     row.Amount,
                     row.PaymentMethod,
-                    purchase.AmountDue,
+                    collectionId = collection.Id,
+                    OldRemaining = oldRemaining,
+                    Remaining = purchase.AmountDue,
                     purchase.ReleasedSessions
                 });
             try

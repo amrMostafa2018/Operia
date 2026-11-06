@@ -181,6 +181,9 @@ public sealed class QuoteSaleHandler(
             offer.OfferType == OfferType.Package ? "package" : "singleSession",
             offer.SessionDurationMinutes, offer.SessionCount, item.Quantity,
             item.PaymentOption, listPrice, listPrice - finalAmount, finalAmount, dueNow,
-            PackagePurchaseSnapshot.Capture(offer, item.PaymentOption, finalAmount / item.Quantity));
+            PackagePurchaseSnapshot.Capture(offer, item.PaymentOption, finalAmount / item.Quantity),
+            item.PaymentOption == "cash" && offer.DiscountPercent is > 0 &&
+                !string.IsNullOrWhiteSpace(offer.DiscountCode)
+                ? offer.DiscountCode.Trim() : null);
     }
 }

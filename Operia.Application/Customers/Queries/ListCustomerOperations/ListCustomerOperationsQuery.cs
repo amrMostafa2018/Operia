@@ -28,9 +28,9 @@ public sealed record CustomerOperationDto(
     string ServiceType,
     DateTime OperationDate,
     string PaymentType,
-    decimal Total,
-    decimal Collected,
-    decimal Remaining,
+    decimal? Total,
+    decimal? Collected,
+    decimal? Remaining,
     int? UnitsTotal,
     int? UnitsRemaining,
     string CustomerRestriction,
@@ -38,7 +38,7 @@ public sealed record CustomerOperationDto(
     string PaymentStatus,
     string InstallmentDueStatus,
     decimal Refunded = 0m,
-    decimal NetCollected = 0m,
+    decimal? NetCollected = null,
     string RefundStatus = "none");
 
 public sealed record CustomerOperationsPageDto(

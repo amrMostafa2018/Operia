@@ -21,6 +21,82 @@ namespace Operia.Application.Tests.Customers;
 public sealed class CustomerOperationsTests
 {
     [Fact]
+    public async Task HistoricalPurchasesRequireEstablishedAllowedBranchAndKeepUnknownPricesBlank()
+    {
+        var clock = new Mock<IDateTimeProvider>();
+        clock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 11, 6, 9, 0, 0, DateTimeKind.Utc));
+        var user = new Mock<ICurrentUserService>();
+        user.SetupGet(x => x.TenantId).Returns("tenant-1");
+        user.SetupGet(x => x.UserId).Returns("operator-1");
+        var scope = new Mock<IBranchScope>();
+        scope.Setup(x => x.GetAllowedBranchIdsAsync("operator-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["branch-1"]);
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"HistoricalOperations_{Guid.NewGuid()}").Options;
+        await using var db = new TestApplicationDbContext(options, clock.Object, user.Object);
+        db.Branches.AddRange(
+            new Branch { Id = "branch-1", TenantId = "tenant-1", Name = "Allowed" },
+            new Branch { Id = "branch-2", TenantId = "tenant-1", Name = "Hidden" });
+        db.Customers.Add(new Customer
+        {
+            Id = "customer-1",
+            TenantId = "tenant-1",
+            FullName = "Historical customer",
+            MobileNumber = "01012345678"
+        });
+        db.CustomerPackages.AddRange(
+            new CustomerPackage
+            {
+                Id = "known",
+                TenantId = "tenant-1",
+                CustomerId = "customer-1",
+                PackageId = "offer-1",
+                BranchId = "branch-1",
+                PurchasePrice = 20000m,
+                AmountDue = 15000m,
+                Total = 10
+            },
+            new CustomerPackage
+            {
+                Id = "unknown-price",
+                TenantId = "tenant-1",
+                CustomerId = "customer-1",
+                PackageId = "offer-1",
+                BranchId = "branch-1",
+                Total = 10
+            },
+            new CustomerPackage
+            {
+                Id = "unresolved",
+                TenantId = "tenant-1",
+                CustomerId = "customer-1",
+                PackageId = "offer-1",
+                PurchasePrice = 20000m,
+                Total = 10
+            },
+            new CustomerPackage
+            {
+                Id = "other-branch",
+                TenantId = "tenant-1",
+                CustomerId = "customer-1",
+                PackageId = "offer-1",
+                BranchId = "branch-2",
+                PurchasePrice = 20000m,
+                Total = 10
+            });
+        await db.SaveChangesAsync();
+
+        var page = await new ListCustomerOperationsHandler(new CustomerOperationsReader(
+            db, user.Object, scope.Object, clock.Object)).Handle(
+            new ListCustomerOperationsQuery(new CustomerOperationsFilter()), CancellationToken.None);
+
+        page.Rows.Select(x => x.Id).Should().BeEquivalentTo(["known", "unknown-price"]);
+        page.TotalSales.Should().Be(20000m);
+        page.TotalCollected.Should().Be(5000m);
+        page.Rows.Single(x => x.Id == "unknown-price").Total.Should().BeNull();
+    }
+
+    [Fact]
     public async Task ExportIncludesEveryMatchingRowBeyondTheGridPage()
     {
         var clock = new Mock<IDateTimeProvider>();

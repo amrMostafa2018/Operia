@@ -26,19 +26,22 @@ public sealed class GetCustomerActionHistoryHandler(
         var allowed = await branchScope.GetAllowedBranchIdsAsync(
             currentUser.UserId ?? string.Empty, token);
         var purchaseId = request.SaleOnly ? null : request.OperationId;
+        var purchase = request.SaleOnly ? null : await (
+            from balance in db.CustomerPackages.AsNoTracking()
+            join linkedSale in db.Sales.AsNoTracking().Where(x => x.TenantId == tenantId)
+                on balance.SaleId equals linkedSale.Id into saleGroup
+            from sale in saleGroup.DefaultIfEmpty()
+            where balance.TenantId == tenantId && balance.Id == purchaseId &&
+                  balance.CustomerId == request.CustomerId &&
+                  (sale == null || sale.CustomerId == request.CustomerId) &&
+                  allowed.Contains(balance.BranchId ?? sale!.BranchId)
+            select new { balance.Id, balance.SaleId }).SingleOrDefaultAsync(token);
         var saleId = request.SaleOnly
             ? await db.Sales.AsNoTracking().Where(x => x.TenantId == tenantId &&
                 x.Id == request.OperationId && x.CustomerId == request.CustomerId &&
                 allowed.Contains(x.BranchId)).Select(x => x.Id).SingleOrDefaultAsync(token)
-            : await (from purchase in db.CustomerPackages.AsNoTracking()
-                     join sale in db.Sales.AsNoTracking() on purchase.SaleId equals sale.Id
-                     where purchase.TenantId == tenantId && sale.TenantId == tenantId &&
-                           purchase.Id == purchaseId &&
-                           purchase.CustomerId == request.CustomerId &&
-                           sale.CustomerId == request.CustomerId &&
-                           allowed.Contains(sale.BranchId)
-                     select sale.Id).SingleOrDefaultAsync(token);
-        if (saleId is null)
+            : purchase?.SaleId;
+        if (request.SaleOnly ? saleId is null : purchase is null)
         {
             throw ApiNotFoundException.FromCode(request.SaleOnly
                 ? ApiErrorCodes.Sales.NotFound : ApiErrorCodes.Customers.PurchaseNotFound);
@@ -61,7 +64,9 @@ public sealed class GetCustomerActionHistoryHandler(
                  x.Action == AuditActions.CustomerBlockReasonChanged) ||
              x.EntityType == nameof(CustomerPackage) && x.EntityId == purchaseId &&
                 (x.Action == AuditActions.PurchaseCancelled ||
-                 x.Action == AuditActions.InstallmentCollected) ||
+                 x.Action == AuditActions.InstallmentCollected ||
+                 x.Action == AuditActions.PackageInstallmentCollected ||
+                 x.Action == AuditActions.PurchaseBranchAttributed) ||
              x.EntityType == nameof(RefundTransaction) && refundIds.Contains(x.EntityId) &&
                 x.Action == AuditActions.RefundPosted ||
              x.EntityType == nameof(SaleCollection) && saleCollectionIds.Contains(x.EntityId) &&
@@ -109,7 +114,7 @@ public sealed class GetCustomerActionHistoryHandler(
             hasMore ? visible[^1].Id : null,
             visible.Select(x => Map(x.Id, x.CreatedAt, x.Action,
                 x.UserDisplayName ?? x.UserId, x.EntityId,
-                x.DetailsJson, purchaseId ?? saleId)).ToArray());
+                x.DetailsJson, purchaseId ?? saleId!)).ToArray());
     }
 
     private static CustomerActionHistoryRow Map(string id, DateTime atUtc, string action,
@@ -119,8 +124,8 @@ public sealed class GetCustomerActionHistoryHandler(
         using var details = string.IsNullOrWhiteSpace(detailsJson)
             ? JsonDocument.Parse("{}") : JsonDocument.Parse(detailsJson);
         var root = details.RootElement;
-        string? oldValue = null;
-        string? newValue = null;
+        string? oldValue = String(root, "oldValue");
+        string? newValue = String(root, "newValue");
         string? reason = null;
         string? oldReason = null;
         string? newReason = null;
@@ -149,6 +154,11 @@ public sealed class GetCustomerActionHistoryHandler(
                 oldValue = String(root, "oldStatus");
                 newValue = String(root, "newStatus");
                 break;
+            case AuditActions.PurchaseBranchAttributed:
+                oldValue = String(root, "oldValue");
+                newValue = String(root, "newValue");
+                reason = String(root, "evidenceReference") ?? String(root, "evidence");
+                break;
             case AuditActions.RefundPosted:
                 referenceType = "refund";
                 referenceId = entityId;
@@ -163,11 +173,16 @@ public sealed class GetCustomerActionHistoryHandler(
                 }
                 break;
             case AuditActions.InstallmentCollected:
+            case AuditActions.PackageInstallmentCollected:
                 referenceType = "payment";
-                referenceId = String(root, "id") ?? entityId;
+                referenceId = String(root, "id") ?? String(root, "collectionId") ?? entityId;
                 amount = Decimal(root, "amount");
-                oldValue = Decimal(root, "oldRemaining")?.ToString(CultureInfo.InvariantCulture);
-                newValue = Decimal(root, "remaining")?.ToString(CultureInfo.InvariantCulture);
+                var newRemaining = Decimal(root, "remaining") ?? Decimal(root, "amountDue");
+                var oldRemaining = Decimal(root, "oldRemaining") ??
+                    (newRemaining is not null && amount is not null
+                        ? newRemaining + amount : null);
+                oldValue = oldRemaining?.ToString(CultureInfo.InvariantCulture);
+                newValue = newRemaining?.ToString(CultureInfo.InvariantCulture);
                 break;
             case AuditActions.SaleConfirmed:
                 referenceType = "sale";

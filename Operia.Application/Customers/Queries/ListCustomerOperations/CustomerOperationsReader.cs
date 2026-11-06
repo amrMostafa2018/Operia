@@ -70,11 +70,6 @@ public sealed class CustomerOperationsReader(
             x.SaleId, x.CreatedAt, x.ItemsJson, x.Status, x.CustomerId,
             x.CustomerName, x.Mobile, x.CustomerActive, x.CustomerBlocked,
             x.BranchName)).ToList();
-        if (scopedSales.Count == 0)
-        {
-            return [];
-        }
-
         var saleIds = scopedSales.Select(x => x.Id).ToArray();
         var purchases = await db.CustomerPackages.AsNoTracking()
             .Where(x => x.TenantId == tenantId && x.SaleId != null && saleIds.Contains(x.SaleId))
@@ -128,6 +123,78 @@ public sealed class CustomerOperationsReader(
             }
         }
 
+        var historical = from purchase in db.CustomerPackages.AsNoTracking()
+                         join customer in db.Customers.AsNoTracking()
+                             on purchase.CustomerId equals customer.Id
+                         join branch in db.Branches.AsNoTracking()
+                             on purchase.BranchId equals branch.Id
+                         where purchase.TenantId == tenantId && customer.TenantId == tenantId &&
+                               branch.TenantId == tenantId && purchase.SaleId == null &&
+                               purchase.BranchId != null && branches.Contains(purchase.BranchId)
+                         select new { purchase, customer, branch.Name };
+        if (filter.FromDate is { } historicalFrom)
+        {
+            historical = historical.Where(x => x.purchase.CreatedAt >=
+                historicalFrom.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        }
+        if (filter.ToDate is { } historicalTo && historicalTo != DateOnly.MaxValue)
+        {
+            historical = historical.Where(x => x.purchase.CreatedAt <
+                historicalTo.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        }
+        if (!string.IsNullOrWhiteSpace(filter.Customer))
+        {
+            historical = historical.Where(x => x.customer.FullName.Contains(filter.Customer.Trim()));
+        }
+        if (!string.IsNullOrWhiteSpace(filter.Mobile))
+        {
+            historical = historical.Where(x => x.customer.MobileNumber.Contains(filter.Mobile.Trim()));
+        }
+        var historicalRows = await historical.Select(x => new
+        {
+            x.purchase.Id,
+            x.purchase.CustomerId,
+            x.purchase.CreatedAt,
+            x.purchase.PurchasePrice,
+            x.purchase.AmountDue,
+            x.purchase.PurchaseSnapshotJson,
+            PurchaseActive = x.purchase.IsActive,
+            x.purchase.ExpiresOn,
+            x.purchase.Total,
+            x.purchase.Used,
+            x.customer.FullName,
+            x.customer.MobileNumber,
+            CustomerActive = x.customer.IsActive,
+            x.customer.IsBlocked,
+            BranchName = x.Name
+        }).ToListAsync(cancellationToken);
+        foreach (var purchase in historicalRows)
+        {
+            var snapshot = PackagePurchaseSnapshot.FromJson(purchase.PurchaseSnapshotJson);
+            var total = purchase.PurchasePrice ?? snapshot?.PurchasePrice;
+            var collected = total is not null && purchase.AmountDue is not null
+                ? Math.Clamp(total.Value - purchase.AmountDue.Value, 0m, total.Value)
+                : (decimal?)null;
+            var remaining = collected is null ? null : purchase.PurchaseActive
+                ? total - collected : 0m;
+            var status = !purchase.PurchaseActive ? "cancelled"
+                : purchase.ExpiresOn is { } expiry && expiry < today ? "expired"
+                : purchase.Total > 0 && purchase.Used >= purchase.Total ? "completed" : "active";
+            var paymentStatus = total is null || collected is null ? "unknown"
+                : collected >= total ? "fullyPaid" : collected > 0m ? "partial" : "unpaid";
+            rows.Add(new CustomerOperationDto(
+                purchase.Id, string.Empty, purchase.CustomerId, purchase.FullName,
+                purchase.MobileNumber, purchase.BranchName, snapshot?.OfferName ?? string.Empty,
+                snapshot is null ? "unknown" :
+                    snapshot.OfferType == Operia.Domain.Enums.OfferType.Package ? "package" : "session",
+                purchase.CreatedAt, snapshot?.PaymentOption ?? "unknown", total, collected,
+                remaining, purchase.Total, Math.Max(0, purchase.Total - purchase.Used),
+                purchase.IsBlocked ? "blocked" : purchase.CustomerActive ? "active" : "inactive",
+                status, paymentStatus,
+                snapshot?.PaymentOption == "installment" && purchase.AmountDue > 0m ? "due" : "none",
+                0m, collected, "none"));
+        }
+
         if (!string.IsNullOrWhiteSpace(filter.Service))
         {
             var service = filter.Service.Trim();
@@ -145,7 +212,9 @@ public sealed class CustomerOperationsReader(
         {
             rows = rows.Where(x => x.PaymentType == filter.PaymentType).ToList();
         }
-        return rows;
+        return rows.OrderByDescending(x => x.OperationDate)
+            .ThenByDescending(x => x.Id, StringComparer.Ordinal)
+            .ToList();
     }
 
     private static CustomerOperationDto CreateRow(
