@@ -9,6 +9,9 @@ namespace Operia.Infrastructure.Persistence;
 
 public static partial class E2EDataSeeder
 {
+    private static readonly JsonSerializerOptions CustomerActionAuditJsonOptions =
+        new(JsonSerializerDefaults.Web);
+
     private const string ActionOffer = "e2e70000-0000-4000-8000-000000000200";
     private const string RefundCustomer = "e2e70000-0000-4000-8000-000000000201";
     private const string RefundSale = "e2e70000-0000-4000-8000-000000000202";
@@ -141,7 +144,7 @@ public static partial class E2EDataSeeder
             TenantId = TenantA,
             CustomerPackageId = RevenueInstallmentPurchase,
             InstallmentNumber = 1,
-            Amount = 250m,
+            Amount = 500m,
             PaymentMethod = "cash",
             IdempotencyKey = "e2e-us23-numbered-prerequisite",
             CollectedByUserId = UserA,
@@ -163,7 +166,7 @@ public static partial class E2EDataSeeder
                 SaleItemIndex = 0,
                 SaleUnitIndex = 0,
                 PurchasePrice = 2000m,
-                AmountDue = 1250m,
+                AmountDue = 1000m,
                 ReleasedSessions = 3,
                 PurchaseSnapshotJson = PackagePurchaseSnapshot
                     .Capture(installmentOffer, "installment", 2000m).ToJson(),
@@ -231,7 +234,7 @@ public static partial class E2EDataSeeder
                     NewState = false,
                     OldReason = $"review {index}",
                     NewReason = $"review {index + 1}"
-                })
+                }, CustomerActionAuditJsonOptions)
             });
         }
         db.AuditLogs.Add(new AuditLog
@@ -260,7 +263,7 @@ public static partial class E2EDataSeeder
                 NewState = true,
                 OldReason = (string?)null,
                 NewReason = "Existing center restriction"
-            })
+            }, CustomerActionAuditJsonOptions)
         });
     }
 
