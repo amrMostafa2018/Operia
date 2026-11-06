@@ -17,8 +17,8 @@ using Operia.Infrastructure.Identity;
 
 namespace Operia.Infrastructure.Persistence;
 
-/// <summary>Restores the US-07 through US-20 prerequisites in reserved local development tenants.</summary>
-public static class E2EDataSeeder
+/// <summary>Restores story prerequisites in reserved local development tenants.</summary>
+public static partial class E2EDataSeeder
 {
     private const string TenantA = "e2e70000-0000-4000-8000-000000000001";
     private const string UserA = "e2e70000-0000-4000-8000-000000000002";
@@ -1372,11 +1372,12 @@ public static class E2EDataSeeder
             ExpiresAtUtc = DateTime.UtcNow.AddDays(2),
             IdempotencyKey = "e2e-us16-seeded-hold"
         });
+        SeedCustomerActionsAndRevenue(db, today, saleInstallmentOffer, pendingItems);
         await db.SaveChangesAsync();
 
         await transaction.CommitAsync();
         logger.LogInformation(
-            "Restored US-07 through US-18 E2E prerequisites in the local development database");
+            "Restored US-07 through US-23 E2E prerequisites in the local development database");
     }
 
     private static void AssertLocalDevelopmentDatabase(ApplicationDbContext db)
