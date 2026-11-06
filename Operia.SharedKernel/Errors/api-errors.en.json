@@ -415,5 +415,11 @@
   { "Name": "BookingCustomerNameTooLong", "Value": "Customer name cannot exceed 200 characters." },
   { "Name": "BookingCustomerSearchTermInvalid", "Value": "Search for a customer with 2 to 100 characters." },
   { "Name": "BookingRequestInvalid", "Value": "Review the booking details and try again." },
-  { "Name": "BookingCustomerSelectionRequired", "Value": "Select a registered customer or choose Direct Customer." }
+  { "Name": "BookingCustomerSelectionRequired", "Value": "Select a registered customer or choose Direct Customer." },
+  { "Name": "RevenueDateRangeInvalid", "Value": "The start date must be on or before the end date." },
+  { "Name": "RevenueServiceInvalid", "Value": "Choose a valid service." },
+  { "Name": "RevenueReviewUnavailable", "Value": "This payment cannot be reviewed in its current state." },
+  { "Name": "RevenueProofInvalid", "Value": "Choose a valid transfer proof image." },
+  { "Name": "RevenueProofNotFound", "Value": "No transfer proof is available for this payment." },
+  { "Name": "RevenuePaymentNotFound", "Value": "This payment was not found." }
 ]

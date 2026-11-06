@@ -117,6 +117,7 @@ public static class ApiErrorCodes
         public const string PackageCashUnavailable = "PACKAGE_CASH_UNAVAILABLE";
         public const string PackageStaffInvalid = "PACKAGE_STAFF_INVALID";
         public const string PackageStaffUnavailable = "PACKAGE_STAFF_UNAVAILABLE";
+        public const string PackageInstallmentUnavailable = "PACKAGE_INSTALLMENT_UNAVAILABLE";
         public const string PackageNotFound = "PACKAGE_NOT_FOUND";
         public const string PackageAlreadyCancelled = "PACKAGE_ALREADY_CANCELLED";
     }
@@ -157,6 +158,16 @@ public static class ApiErrorCodes
         public const string RevenueRangeInvalid = "DashboardRevenueRangeInvalid";
     }
 
+    public static class Revenue
+    {
+        public const string DateRangeInvalid = "RevenueDateRangeInvalid";
+        public const string ServiceInvalid = "RevenueServiceInvalid";
+        public const string ReviewUnavailable = "RevenueReviewUnavailable";
+        public const string ProofInvalid = "RevenueProofInvalid";
+        public const string ProofNotFound = "RevenueProofNotFound";
+        public const string PaymentNotFound = "RevenuePaymentNotFound";
+    }
+
     /// <summary>Booking access, availability, state, and reservation failures.</summary>
     public static class Bookings
     {
@@ -188,6 +199,9 @@ public static class ApiErrorCodes
         public const string PackageEditNotAllowed = "BookingPackageEditNotAllowed";
         public const string PaymentMethodUnavailable = "BookingPaymentMethodUnavailable";
         public const string PaymentCollectionRequired = "BookingPaymentCollectionRequired";
+        public const string InstallmentPurchaseOnly = "BookingInstallmentPurchaseOnly";
+        public const string InstallmentEditNotAllowed = "BookingInstallmentEditNotAllowed";
+        public const string InstallmentCollectionInvalid = "BookingInstallmentCollectionInvalid";
         public const string ItemsRequired = "BookingItemsRequired";
         public const string NotBookedStatus = "BookingNotBookedStatus";
         public const string PulsesExceedRemaining = "PulsesExceedRemaining";

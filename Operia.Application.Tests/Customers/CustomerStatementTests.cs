@@ -61,7 +61,8 @@ public sealed class CustomerStatementTests
             Confirmed = true,
             PaymentMethod = "cash",
             CollectedByUserId = "operator-1",
-            AttemptedAtUtc = clock.Object.UtcNow
+            AttemptedAtUtc = clock.Object.UtcNow,
+            ConfirmedAtUtc = clock.Object.UtcNow.AddDays(1)
         });
         db.InstallmentCollections.AddRange(
             new InstallmentCollection
@@ -103,11 +104,19 @@ public sealed class CustomerStatementTests
         result.Installments.Select(x => x.Status).Should().Equal("paid", "due", "due");
         result.Installments[0].PaymentMethod.Should().Be("card");
         result.Installments[1].PaidAtUtc.Should().BeNull();
+        result.FirstPayment!.PaidAtUtc.Should().Be(clock.Object.UtcNow.AddDays(1));
         result.Purchase.AmountPaid.Should().Be(10000m);
         result.SessionBalance.Should().Be(new PurchaseBalanceDto(3, 0, 3));
         mediator.Verify(x => x.Send(It.Is<GetCustomerPurchaseDetailsQuery>(q =>
             q.PurchaseId == "purchase-1" && q.AllowedBranchIds!.Contains("branch-1")),
             It.IsAny<CancellationToken>()), Times.Once);
+
+        var legacyCollection = await db.SaleCollections.SingleAsync();
+        legacyCollection.ConfirmedAtUtc = null;
+        await db.SaveChangesAsync();
+        var legacy = await handler.Handle(
+            new GetCustomerStatementQuery("customer-1", "purchase-1"), CancellationToken.None);
+        legacy.FirstPayment!.PaidAtUtc.Should().Be(clock.Object.UtcNow);
 
         var denied = () => handler.Handle(
             new GetCustomerStatementQuery("customer-1", "purchase-2"), CancellationToken.None);

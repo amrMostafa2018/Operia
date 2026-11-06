@@ -86,6 +86,54 @@ public sealed class CustomerRefundAndBlockTests
     }
 
     [Fact]
+    public async Task SaleActionAllowsBlockingCustomerWithoutPurchase_WithinBranchScope()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        fixture.Db.Customers.Add(new Customer
+        {
+            Id = "customer-without-purchase",
+            TenantId = "tenant-1",
+            FullName = "Service Customer",
+            MobileNumber = "01099999999",
+            NormalizedMobileNumber = "01099999999"
+        });
+        fixture.Db.Sales.Add(new Sale
+        {
+            Id = "service-sale",
+            TenantId = "tenant-1",
+            BranchId = "branch-1",
+            CustomerId = "customer-without-purchase",
+            Status = "ReadyToBook"
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var reader = new GetCustomerSaleActionHandler(fixture.Db, fixture.User.Object,
+            fixture.Scope.Object);
+        var action = await reader.Handle(new GetCustomerSaleActionQuery(
+            "customer-without-purchase", "service-sale"), CancellationToken.None);
+        action.CustomerName.Should().Be("Service Customer");
+        action.IsBlocked.Should().BeFalse();
+
+        var blocker = new SetCustomerBlockHandler(fixture.Db, fixture.User.Object,
+            new AuditWriter(fixture.Db, fixture.User.Object));
+        await blocker.Handle(new SetCustomerBlockCommand("customer-without-purchase", true,
+            "Safety review", action.CustomerVersion), CancellationToken.None);
+        var updated = await reader.Handle(new GetCustomerSaleActionQuery(
+            "customer-without-purchase", "service-sale"), CancellationToken.None);
+        updated.IsBlocked.Should().BeTrue();
+        updated.BlockReason.Should().Be("Safety review");
+
+        var wrongCustomer = () => reader.Handle(new GetCustomerSaleActionQuery(
+            "customer-1", "service-sale"), CancellationToken.None);
+        await wrongCustomer.Should().ThrowAsync<ApiNotFoundException>();
+        fixture.Scope.Setup(x => x.GetAllowedBranchIdsAsync("admin-1",
+            It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        var outsideBranch = () => reader.Handle(new GetCustomerSaleActionQuery(
+            "customer-without-purchase", "service-sale"), CancellationToken.None);
+        await outsideBranch.Should().ThrowAsync<ApiNotFoundException>();
+    }
+
+    [Fact]
     public async Task HistoryShowsSavedRefundAndBlockTransitionsForSelectedCustomer()
     {
         await using var fixture = await Fixture.CreateAsync();
@@ -201,6 +249,65 @@ public sealed class CustomerRefundAndBlockTests
         var otherCustomer = () => handler.Handle(new GetCustomerActionHistoryQuery(
             "customer-2", "sale-1", true), CancellationToken.None);
         await otherCustomer.Should().ThrowAsync<ApiNotFoundException>();
+    }
+
+    [Fact]
+    public async Task PurchaseAndSaleHistoryIncludeReviewedPaymentEvents()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var paymentId = await fixture.Db.SaleCollections.Select(x => x.Id).SingleAsync();
+        const string cancelledPaymentId = "cancelled-payment";
+        fixture.Db.SaleCollections.Add(new SaleCollection
+        {
+            Id = cancelledPaymentId,
+            TenantId = "tenant-1",
+            SaleId = "sale-1",
+            ReviewStatus = "Cancelled"
+        });
+        fixture.Db.AuditLogs.AddRange(
+            new AuditLog
+            {
+                TenantId = "tenant-1",
+                EntityType = nameof(SaleCollection),
+                EntityId = paymentId,
+                Action = AuditActions.RevenuePaymentSubmitted,
+                DetailsJson = """{"amount":5000,"newStatus":"UnderReview"}"""
+            },
+            new AuditLog
+            {
+                TenantId = "tenant-1",
+                EntityType = nameof(SaleCollection),
+                EntityId = paymentId,
+                Action = AuditActions.RevenuePaymentConfirmed,
+                DetailsJson = """{"amount":5000,"oldStatus":"UnderReview","newStatus":"Paid"}"""
+            },
+            new AuditLog
+            {
+                TenantId = "tenant-1",
+                EntityType = nameof(SaleCollection),
+                EntityId = cancelledPaymentId,
+                Action = AuditActions.RevenuePaymentCancelled,
+                DetailsJson = """{"amount":5000,"oldStatus":"UnderReview","newStatus":"Cancelled"}"""
+            });
+        await fixture.Db.SaveChangesAsync();
+
+        var handler = new GetCustomerActionHistoryHandler(fixture.Db,
+            fixture.User.Object, fixture.Scope.Object);
+        foreach (var saleOnly in new[] { false, true })
+        {
+            var history = await handler.Handle(new GetCustomerActionHistoryQuery(
+                "customer-1", saleOnly ? "sale-1" : "purchase-1", saleOnly),
+                CancellationToken.None);
+            history.Items.Should().Contain(x => x.Action == AuditActions.RevenuePaymentSubmitted &&
+                x.ReferenceType == "payment" && x.ReferenceId == paymentId &&
+                x.NewValue == "UnderReview" && x.Amount == null);
+            history.Items.Should().Contain(x => x.Action == AuditActions.RevenuePaymentConfirmed &&
+                x.ReferenceType == "payment" && x.ReferenceId == paymentId &&
+                x.OldValue == "UnderReview" && x.NewValue == "Paid" && x.Amount == 5000m);
+            history.Items.Should().Contain(x => x.Action == AuditActions.RevenuePaymentCancelled &&
+                x.ReferenceType == "payment" && x.ReferenceId == cancelledPaymentId &&
+                x.OldValue == "UnderReview" && x.NewValue == "Cancelled" && x.Amount == null);
+        }
     }
 
     private sealed class Fixture : IAsyncDisposable

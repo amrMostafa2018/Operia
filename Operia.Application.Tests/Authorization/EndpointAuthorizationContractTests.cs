@@ -85,6 +85,8 @@ public sealed class EndpointAuthorizationContractTests
 
             ["PackagesController.List"] = Policies.PackagesRead,
             ["PackagesController.Get"] = Policies.PackagesRead,
+            ["PackagesController.GetInstallmentPurchase"] = Policies.PackagesSell,
+            ["PackagesController.CollectInstallment"] = Policies.PackagesSell,
             ["PackagesController.ListServiceCategories"] = Policies.PackagesRead,
             ["PackagesController.ListSubServiceCategories"] = Policies.PackagesRead,
             ["PackagesController.ListAvailableStaff"] = Policies.PackagesRead,
@@ -107,6 +109,14 @@ public sealed class EndpointAuthorizationContractTests
             ["RevenueController.Collections"] = Policies.RevenueRead,
             ["RevenueController.Summary"] = Policies.RevenueRead,
             ["RevenueController.Branches"] = Policies.RevenueRead,
+            ["RevenueController.Services"] = Policies.RevenueRead,
+            ["RevenueController.Report"] = Policies.RevenueRead,
+            ["RevenueController.ExportReport"] = Policies.RevenueExport,
+            ["RevenueController.SubmitPaymentReview"] = Policies.RevenueReview,
+            ["RevenueController.ConfirmPayment"] = Policies.RevenueReview,
+            ["RevenueController.CancelPayment"] = Policies.RevenueReview,
+            ["RevenueController.PaymentProof"] = Policies.RevenueRead,
+            ["RevenueController.PaymentHistory"] = Policies.RevenueRead,
             ["DashboardController.Revenue"] = Policies.DashboardRead,
 
             ["OnboardingController.GetStatus"] = Policies.AuthenticatedUser,

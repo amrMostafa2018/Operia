@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using FluentValidation.Results;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.SharedKernel.Errors;
@@ -35,6 +36,34 @@ internal sealed class RevenuePeriods(
             ToUtc(month, timezone), ToUtc(month.AddMonths(1), timezone));
     }
 
+    public async Task<RevenueReportBounds> ReportAsync(
+        DateOnly? fromDate, DateOnly? toDate, CancellationToken cancellationToken)
+    {
+        var tenantId = currentUser.TenantId
+            ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
+        var timezoneId = await db.Tenants.AsNoTracking()
+            .Where(x => x.Id == tenantId)
+            .Select(x => x.Timezone)
+            .SingleOrDefaultAsync(cancellationToken)
+            ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
+        var timezone = TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(clock.UtcNow, DateTimeKind.Utc), timezone));
+        var from = fromDate ?? new DateOnly(today.Year, today.Month, 1);
+        var to = toDate ?? today;
+        if (from > to || to == DateOnly.MaxValue)
+        {
+            throw new ValidationException([
+                new ValidationFailure("fromDate", ApiErrorCodes.Revenue.DateRangeInvalid)
+                { ErrorCode = ApiErrorCodes.Revenue.DateRangeInvalid }
+            ]);
+        }
+
+        return new RevenueReportBounds(from, to, timezone.Id,
+            ToUtc(from.ToDateTime(TimeOnly.MinValue), timezone),
+            ToUtc(to.AddDays(1).ToDateTime(TimeOnly.MinValue), timezone));
+    }
+
     private static DateTime ToUtc(DateTime local, TimeZoneInfo timezone)
     {
         while (timezone.IsInvalidTime(local))
@@ -57,3 +86,7 @@ internal sealed record RevenuePeriodBounds(
     DateTime TodayToUtc,
     DateTime MonthFromUtc,
     DateTime MonthToUtc);
+
+internal sealed record RevenueReportBounds(
+    DateOnly FromDate, DateOnly ToDate, string TimezoneId,
+    DateTime FromUtc, DateTime ToUtc);

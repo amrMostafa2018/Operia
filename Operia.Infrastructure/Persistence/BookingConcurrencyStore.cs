@@ -1,4 +1,5 @@
 using System.Data;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Bookings.Commands.CancelBooking;
 using Operia.Application.Bookings.Commands.CreateBooking;
@@ -206,10 +207,21 @@ public sealed class BookingConcurrencyStore(ApplicationDbContext db) : IBookingC
     }
 
     /// <summary>Acquires the database application lock shared by booking mutations.</summary>
-    private Task AcquireLockAsync(string resource, CancellationToken cancellationToken) =>
-        db.Database.ExecuteSqlInterpolatedAsync(
-            $"EXEC dbo.AcquireBookingMutationLock @Resource={resource}",
-            cancellationToken);
+    private async Task AcquireLockAsync(string resource, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"EXEC dbo.AcquireBookingMutationLock @Resource={resource}",
+                cancellationToken);
+        }
+        catch (SqlException exception) when (exception.Number == 51000)
+        {
+            throw ConflictException.FromCode(
+                ApiErrorCodes.Bookings.SlotUnavailable,
+                "scheduledDate");
+        }
+    }
 
     /// <summary>Discards staged create records when the same idempotency key already committed.</summary>
     private void DetachPendingChanges()

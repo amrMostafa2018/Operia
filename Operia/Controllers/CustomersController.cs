@@ -113,6 +113,12 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
         CancellationToken cancellationToken) =>
         mediator.Send(new GetCustomerActionQuery(customerId, purchaseId), cancellationToken);
 
+    [HttpGet("{customerId}/sales/{saleId}/action")]
+    [Authorize(Policy = Policies.CustomersRead)]
+    public Task<CustomerBlockActionDto> SaleAction(string customerId, string saleId,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new GetCustomerSaleActionQuery(customerId, saleId), cancellationToken);
+
     [HttpPost("purchases/{purchaseId}/cancel-refund")]
     [Authorize(Policy = Policies.CustomersRefund)]
     public Task<CancelAndRefundPurchaseResult> CancelAndRefund(string purchaseId,

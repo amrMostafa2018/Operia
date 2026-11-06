@@ -95,7 +95,8 @@ public sealed class GetCustomerStatementHandler(
             }).ToArray();
         var firstPayment = confirmedSale is not null && snapshot?.FirstPayment is > 0m
             ? new StatementFirstPaymentDto(snapshot.FirstPayment.Value,
-                confirmedSale.AttemptedAtUtc, confirmedSale.PaymentMethod,
+                confirmedSale.ConfirmedAtUtc ?? confirmedSale.AttemptedAtUtc,
+                confirmedSale.PaymentMethod,
                 RecorderName(confirmedSale.CollectedByUserId, recorders))
             : null;
         var paid = snapshot?.PaymentOption == "installment"

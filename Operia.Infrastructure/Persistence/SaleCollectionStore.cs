@@ -12,9 +12,19 @@ public sealed class SaleCollectionStore(ApplicationDbContext db) : ISaleCollecti
         Func<CancellationToken, Task<CollectSaleResult>> collect,
         CancellationToken cancellationToken)
     {
+        return await ExecuteAsync<CollectSaleResult>(tenantId, saleId, collect,
+            cancellationToken);
+    }
+
+    public async Task<TResult> ExecuteAsync<TResult>(
+        string tenantId,
+        string saleId,
+        Func<CancellationToken, Task<TResult>> action,
+        CancellationToken cancellationToken)
+    {
         if (!db.Database.IsRelational())
         {
-            return await collect(cancellationToken);
+            return await action(cancellationToken);
         }
 
         await using var transaction = await db.Database.BeginTransactionAsync(
@@ -22,7 +32,7 @@ public sealed class SaleCollectionStore(ApplicationDbContext db) : ISaleCollecti
         await db.Database.ExecuteSqlInterpolatedAsync(
             $"EXEC dbo.AcquireBookingMutationLock @Resource={"sale-collection:" + tenantId + ":" + saleId}",
             cancellationToken);
-        var result = await collect(cancellationToken);
+        var result = await action(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return result;
     }

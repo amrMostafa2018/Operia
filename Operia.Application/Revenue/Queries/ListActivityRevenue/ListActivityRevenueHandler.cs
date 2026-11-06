@@ -47,7 +47,7 @@ public sealed class ListActivityRevenueHandler(
                 sale.ItemsSnapshotJson,
                 collection.Amount,
                 collection.PaymentMethod,
-                ConfirmedAtUtc = collection.AttemptedAtUtc
+                ConfirmedAtUtc = collection.ConfirmedAtUtc ?? collection.AttemptedAtUtc
             };
         var total = await installments.CountAsync(cancellationToken) +
             await saleCollections.CountAsync(cancellationToken);

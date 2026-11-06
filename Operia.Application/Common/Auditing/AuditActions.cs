@@ -30,7 +30,11 @@ public static class AuditActions
     public const string SaleConfirmed = "SaleConfirmed";
     public const string SaleCollectionAttempted = "SaleCollectionAttempted";
     public const string SalePaymentConfirmed = "SalePaymentConfirmed";
+    public const string RevenuePaymentSubmitted = "RevenuePaymentSubmitted";
+    public const string RevenuePaymentConfirmed = "RevenuePaymentConfirmed";
+    public const string RevenuePaymentCancelled = "RevenuePaymentCancelled";
     public const string SaleBooked = "SaleBooked";
+    public const string PackageInstallmentCollected = "PackageInstallmentCollected";
 
     /// <summary>Booking creation committed with its reservations.</summary>
     public const string BookingCreated = "BookingCreated";

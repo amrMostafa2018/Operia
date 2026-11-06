@@ -407,5 +407,11 @@
   { "Name": "BookingCustomerNameTooLong", "Value": "لا يمكن أن يتجاوز اسم العميل 200 حرف." },
   { "Name": "BookingCustomerSearchTermInvalid", "Value": "ابحث عن عميل باستخدام 2 إلى 100 حرف." },
   { "Name": "BookingRequestInvalid", "Value": "راجع تفاصيل الحجز وحاول مرة أخرى." },
-  { "Name": "BookingCustomerSelectionRequired", "Value": "اختر عميلاً مسجلاً أو حدّد العميل المباشر." }
+  { "Name": "BookingCustomerSelectionRequired", "Value": "اختر عميلاً مسجلاً أو حدّد العميل المباشر." },
+  { "Name": "RevenueDateRangeInvalid", "Value": "يجب أن يكون تاريخ البداية قبل تاريخ النهاية أو مساويًا له." },
+  { "Name": "RevenueServiceInvalid", "Value": "اختر خدمة صحيحة." },
+  { "Name": "RevenueReviewUnavailable", "Value": "لا يمكن مراجعة عملية الدفع في حالتها الحالية." },
+  { "Name": "RevenueProofInvalid", "Value": "اختر صورة إثبات تحويل صالحة." },
+  { "Name": "RevenueProofNotFound", "Value": "لا يوجد إثبات تحويل متاح لعملية الدفع هذه." },
+  { "Name": "RevenuePaymentNotFound", "Value": "لم يتم العثور على عملية الدفع هذه." }
 ]

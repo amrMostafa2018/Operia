@@ -162,6 +162,54 @@ public sealed class CloseBookingHandlerTests
             .Contain(ApiErrorCodes.Bookings.PulsesExceedRemaining);
     }
 
+    [Fact]
+    public async Task Handle_DuplicatePurchaseSelection_DoesNotConsumeReservationTwice()
+    {
+        await SeedAsync();
+        _db.CustomerPackages.AddRange(
+            new CustomerPackage
+            {
+                Id = "owned-service-1",
+                TenantId = "tenant-1",
+                CustomerId = "customer-1",
+                PackageId = "service-1",
+                Total = 1,
+                ReservedSessions = 0,
+                IsActive = true
+            },
+            new CustomerPackage
+            {
+                Id = "owned-service-2",
+                TenantId = "tenant-1",
+                CustomerId = "customer-1",
+                PackageId = "service-1",
+                Total = 1,
+                ReservedSessions = 0,
+                IsActive = true
+            });
+        await _db.SaveChangesAsync();
+        var created = await CreateHandler().Handle(
+            new CreateBookingCommand("duplicate-close-purchase", "customer-1", "branch-1",
+                "employee-1", _scheduledDate, 720, 780,
+                [new CreateBookingItemInput("service-1", "owned-service-1", 1),
+                 new CreateBookingItemInput("service-1", "owned-service-2", 1)]),
+            CancellationToken.None);
+        var booking = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == created.Id);
+        var purchaseId = (await _db.BookingPackageReservations
+            .FirstAsync(x => x.BookingId == created.Id)).CustomerPackageId;
+        var inputs = booking.Items.Select(x =>
+            new CloseBookingItemInput(x.Id, purchaseId, "complete", null, null)).ToList();
+
+        var action = () => CloseHandler().Handle(
+            new CloseBookingCommand(created.Id, created.Version, inputs), CancellationToken.None);
+
+        var error = await action.Should().ThrowAsync<ConflictException>();
+        error.Which.ErrorCode.Should().Be(ApiErrorCodes.Bookings.Changed);
+        (await _db.Bookings.SingleAsync(x => x.Id == created.Id)).Status.Should().Be(BookingStatus.Booked);
+        (await _db.CustomerPackages.Where(x => x.PackageId == "service-1")
+            .SumAsync(x => x.Used)).Should().Be(0);
+    }
+
     private CloseBookingHandler CloseHandler() =>
         new(
             _db,
