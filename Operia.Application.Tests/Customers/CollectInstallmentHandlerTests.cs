@@ -5,6 +5,7 @@ using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Customers.Commands.CollectInstallment;
+using Operia.Application.Customers.Queries.GetCustomerPurchaseDetails;
 using Operia.Application.Packages;
 using Operia.Application.Revenue.Queries.ListInstallmentRevenue;
 using Operia.Application.Tests.Helpers;
@@ -105,6 +106,41 @@ public sealed class CollectInstallmentHandlerTests
     }
 
     [Fact]
+    public async Task ZeroAmountRow_ReleasesSessionsOnlyAfterConfirmation_AndDoesNotBlockLaterPayment()
+    {
+        await using var fixture = await Fixture.CreateAsync("tenant-1");
+        var purchase = await fixture.Db.CustomerPackages.Include(x => x.Installments).SingleAsync();
+        var snapshot = PackagePurchaseSnapshot.FromJson(purchase.PurchaseSnapshotJson)!;
+        purchase.PurchaseSnapshotJson = (snapshot with
+        {
+            Installments = [new PurchaseInstallmentSnapshot(1, 0m, 2, 2),
+                new PurchaseInstallmentSnapshot(2, 10m, 0, 2)]
+        }).ToJson();
+        purchase.Installments.Single(x => x.Number == 1).Amount = 0m;
+        purchase.Installments.Single(x => x.Number == 2).Amount = 10m;
+        await fixture.Db.SaveChangesAsync();
+
+        var details = await fixture.Details();
+        details.NextInstallmentNumber.Should().Be(1);
+        details.NextInstallmentAmount.Should().Be(0m);
+        details.NextInstallmentEligible.Should().BeTrue();
+        PurchaseSessionEntitlement.Released(purchase).Should().Be(0);
+
+        var confirmed = await fixture.Collect("zero-amount");
+        confirmed.InstallmentNumber.Should().Be(1);
+        confirmed.AmountRemaining.Should().Be(10m);
+        confirmed.ReleasedSessions.Should().Be(2);
+        (await fixture.Collect("zero-amount")).CollectionId.Should().Be(confirmed.CollectionId);
+
+        (await fixture.Details()).NextInstallmentNumber.Should().Be(2);
+        purchase.Used = 2;
+        await fixture.Db.SaveChangesAsync();
+        var final = await fixture.Collect("final");
+        final.FullyPaid.Should().BeTrue();
+        final.ReleasedSessions.Should().Be(5);
+    }
+
+    [Fact]
     public async Task UnconfirmedEntitlementIsNeverBookable()
     {
         await using var fixture = await Fixture.CreateAsync("tenant-1");
@@ -150,6 +186,10 @@ public sealed class CollectInstallmentHandlerTests
         private readonly Mock<IDateTimeProvider> _clock;
         public string Database { get; }
         public TestApplicationDbContext Db { get; }
+
+        public Task<CustomerPurchaseDetailsDto> Details() =>
+            new GetCustomerPurchaseDetailsHandler(Db, _user.Object, _clock.Object)
+                .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1"), CancellationToken.None);
 
         private Fixture(string database, TestApplicationDbContext db,
             Mock<ICurrentUserService> user, Mock<IDateTimeProvider> clock)

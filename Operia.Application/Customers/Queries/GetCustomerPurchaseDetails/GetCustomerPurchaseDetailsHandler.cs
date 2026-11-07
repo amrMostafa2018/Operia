@@ -43,6 +43,10 @@ public sealed class GetCustomerPurchaseDetailsHandler(
                 x.PurchasePrice,
                 x.AmountDue,
                 x.PurchaseSnapshotJson,
+                UnconfirmedZeroAmountRows = x.Installments
+                    .Where(row => row.Number > 0 && row.Amount == 0m && row.CollectedAtUtc == null)
+                    .Select(row => row.Number)
+                    .ToArray(),
                 CurrentOfferType = x.Package!.OfferType,
                 CurrentPulseCount = x.Package.PulseCount
             })
@@ -84,10 +88,12 @@ public sealed class GetCustomerPurchaseDetailsHandler(
             .Select(x =>
             {
                 cumulativeDue += x.Amount;
+                var requiresZeroAmountConfirmation = purchase.AmountDue > 0m &&
+                    purchase.UnconfirmedZeroAmountRows.Contains(x.Number);
                 return new PurchaseInstallmentDto(
                     x.Number,
                     x.Amount,
-                    paid is not null && paid >= cumulativeDue ? "paid"
+                    paid is not null && paid >= cumulativeDue && !requiresZeroAmountConfirmation ? "paid"
                         : purchase.IsActive ? "due" : "cancelled");
             })
             .ToArray() ?? [];

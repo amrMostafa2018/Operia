@@ -11,6 +11,45 @@ public sealed class InstallmentPlanValidatorTests
     private readonly CreatePackageValidator _validator = new();
 
     [Fact]
+    public async Task ScreenshotPlan_LeavesThreeSessionsForFullPayment()
+    {
+        var command = Plan() with
+        {
+            Installments = [
+                new PackageInstallmentInput(5000m, 2),
+                new PackageInstallmentInput(5000m, 3),
+                new PackageInstallmentInput(5000m, 2)
+            ]
+        };
+
+        (await _validator.ValidateAsync(command)).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task FullFirstPayment_AllowsZeroAmountRowsWithoutAssignedSessions()
+    {
+        var command = Plan() with
+        {
+            FirstPayment = 20000m,
+            InstallmentCount = 1,
+            Installments = [new PackageInstallmentInput(0m, 0)]
+        };
+
+        (await _validator.ValidateAsync(command)).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task PriceOutsideCurrencyPrecision_IsRejected()
+    {
+        foreach (var price in new[] { 20000.001m, decimal.MaxValue })
+        {
+            var errors = (await _validator.ValidateAsync(Plan() with { InstallmentPrice = price })).Errors;
+            errors.Should().Contain(error => error.PropertyName == "installmentPrice" &&
+                error.ErrorCode == ApiErrorCodes.Packages.PackageInstallmentPricePrecision);
+        }
+    }
+
+    [Fact]
     public async Task BalancedPlan_WithUnequalAmounts_IsAccepted()
     {
         var command = Plan() with
@@ -43,14 +82,14 @@ public sealed class InstallmentPlanValidatorTests
     }
 
     [Fact]
-    public async Task PlanThatDoesNotReleaseEverySession_IsRejected()
+    public async Task PlanThatAssignsMoreThanThePackageTotal_IsRejected()
     {
         var command = Plan() with
         {
             Installments = [
                 new PackageInstallmentInput(5000m, 2),
-                new PackageInstallmentInput(5000m, 2),
-                new PackageInstallmentInput(5000m, 2)
+                new PackageInstallmentInput(5000m, 3),
+                new PackageInstallmentInput(5000m, 6)
             ]
         };
 

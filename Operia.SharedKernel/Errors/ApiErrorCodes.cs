@@ -104,6 +104,7 @@ public static class ApiErrorCodes
         public const string PackagePaymentOptionRequired = "PACKAGE_PAYMENT_OPTION_REQUIRED";
         public const string PackageInstallmentPriceRequired = "PACKAGE_INSTALLMENT_PRICE_REQUIRED";
         public const string PackageInstallmentPriceMin = "PACKAGE_INSTALLMENT_PRICE_MIN";
+        public const string PackageInstallmentPricePrecision = "PACKAGE_INSTALLMENT_PRICE_PRECISION";
         public const string PackageInstallmentOnlyPackage = "PACKAGE_INSTALLMENT_ONLY_PACKAGE";
         public const string PackageInstallmentPayloadNotAllowed = "PACKAGE_INSTALLMENT_PAYLOAD_NOT_ALLOWED";
         public const string PackageFirstPaymentRequired = "PACKAGE_FIRST_PAYMENT_REQUIRED";

@@ -357,6 +357,7 @@
     "Name": "PACKAGE_INSTALLMENT_PRICE_MIN",
     "Value": "Installment price must be greater than zero when installments are enabled and cannot be negative."
   },
+  { "Name": "PACKAGE_INSTALLMENT_PRICE_PRECISION", "Value": "Enter an installment price with up to 16 whole digits and two decimal places." },
   {
     "Name": "PACKAGE_CASH_UNAVAILABLE",
     "Value": "Cash purchase is not available for this offer."
@@ -369,7 +370,7 @@
   { "Name": "PACKAGE_INSTALLMENT_ROWS_COUNT", "Value": "The number of installment rows must match the installment count." },
   { "Name": "PACKAGE_INSTALLMENT_AMOUNT_INVALID", "Value": "Each installment amount must be nonnegative with at most two decimal places." },
   { "Name": "PACKAGE_INSTALLMENT_TOTAL_MISMATCH", "Value": "Installments must total the installment price minus the first payment." },
-  { "Name": "PACKAGE_INSTALLMENT_SESSIONS_INVALID", "Value": "Released sessions cannot be negative or exceed the package session count." },
+  { "Name": "PACKAGE_INSTALLMENT_SESSIONS_INVALID", "Value": "Installments require a session package. Assign whole, nonnegative session counts that stay within the package total." },
   { "Name": "PACKAGE_INSTALLMENT_RELEASE_CAP", "Value": "Before full payment, released sessions cannot exceed 70% of package sessions, rounded to the nearest whole session with halves down." },
   { "Name": "PACKAGE_STAFF_INVALID", "Value": "Choose active staff assigned to an accessible branch, or select All Staff." },
   { "Name": "PACKAGE_STAFF_UNAVAILABLE", "Value": "The selected employee is not available for this service or offer." },

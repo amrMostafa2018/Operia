@@ -8,6 +8,8 @@ namespace Operia.Application.Packages;
 
 internal static class InstallmentPlanRules
 {
+    private const decimal MaxAmount = 9_999_999_999_999_999.99m;
+
     public static int PrepaymentReleaseLimit(int sessions) =>
         Math.Min(Math.Max(0, sessions - 1), (int)Math.Ceiling(sessions * 0.7m - 0.5m));
 
@@ -42,15 +44,24 @@ internal static class InstallmentPlanRules
             }
 
             var installmentPrice = price(command);
+            if (installmentPrice is { } configuredPrice &&
+                (configuredPrice > MaxAmount || decimal.Round(configuredPrice, 2) != configuredPrice))
+            {
+                Add(context, "installmentPrice", ApiErrorCodes.Packages.PackageInstallmentPricePrecision);
+                return;
+            }
+
             var upfront = firstPayment(command);
             if (!upfront.HasValue)
             {
                 Add(context, "firstPayment", ApiErrorCodes.Packages.PackageFirstPaymentRequired);
+                return;
             }
-            else if (upfront < 0 || decimal.Round(upfront.Value, 2) != upfront ||
+            if (upfront is < 0 or > MaxAmount || decimal.Round(upfront.Value, 2) != upfront ||
                 (installmentPrice.HasValue && upfront > installmentPrice))
             {
                 Add(context, "firstPayment", ApiErrorCodes.Packages.PackageFirstPaymentRange);
+                return;
             }
 
             var count = installmentCount(command);
@@ -64,14 +75,14 @@ internal static class InstallmentPlanRules
                 return;
             }
 
-            if (planRows.Any(row => row is null || row.Amount < 0 ||
+            if (planRows.Any(row => row is null || row.Amount is < 0 or > MaxAmount ||
                 decimal.Round(row.Amount, 2) != row.Amount))
             {
                 Add(context, "installments", ApiErrorCodes.Packages.PackageInstallmentAmountInvalid);
                 return;
             }
-            if (installmentPrice.HasValue && upfront.HasValue &&
-                planRows.Sum(row => row.Amount) != installmentPrice - upfront)
+            if (installmentPrice.HasValue &&
+                planRows.Sum(row => row.Amount) != installmentPrice - upfront.Value)
             {
                 Add(context, "installments", ApiErrorCodes.Packages.PackageInstallmentTotalMismatch);
             }
@@ -83,7 +94,7 @@ internal static class InstallmentPlanRules
                 return;
             }
             var cumulativeSessions = 0;
-            var cumulativePayment = upfront.GetValueOrDefault();
+            var cumulativePayment = upfront.Value;
             foreach (var row in planRows)
             {
                 if (row.SessionsUnlocked < 0 || row.SessionsUnlocked > sessions - cumulativeSessions)
@@ -99,10 +110,6 @@ internal static class InstallmentPlanRules
                     Add(context, "installments", ApiErrorCodes.Packages.PackageInstallmentReleaseCap);
                     return;
                 }
-            }
-            if (cumulativeSessions != sessions)
-            {
-                Add(context, "installments", ApiErrorCodes.Packages.PackageInstallmentSessionsInvalid);
             }
         });
     }

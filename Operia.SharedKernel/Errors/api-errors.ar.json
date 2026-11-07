@@ -349,6 +349,7 @@
     "Name": "PACKAGE_INSTALLMENT_PRICE_MIN",
     "Value": "يجب أن يكون سعر التقسيط أكبر من صفر عند تفعيله، ولا يمكن أن يكون سالبًا."
   },
+  { "Name": "PACKAGE_INSTALLMENT_PRICE_PRECISION", "Value": "أدخل سعر تقسيط بحد أقصى 16 رقمًا صحيحًا ومنزلتين عشريتين." },
   {
     "Name": "PACKAGE_CASH_UNAVAILABLE",
     "Value": "الشراء النقدي غير متاح لهذا العرض."
@@ -361,7 +362,7 @@
   { "Name": "PACKAGE_INSTALLMENT_ROWS_COUNT", "Value": "يجب أن يساوي عدد صفوف التقسيط عدد الأقساط." },
   { "Name": "PACKAGE_INSTALLMENT_AMOUNT_INVALID", "Value": "يجب ألا يكون مبلغ القسط سالبًا، وبحد أقصى منزلتان عشريتان." },
   { "Name": "PACKAGE_INSTALLMENT_TOTAL_MISMATCH", "Value": "يجب أن يساوي مجموع الأقساط سعر التقسيط بعد طرح الدفعة الأولى." },
-  { "Name": "PACKAGE_INSTALLMENT_SESSIONS_INVALID", "Value": "لا يمكن أن تكون الجلسات المحررة سالبة أو تتجاوز عدد جلسات الباقة." },
+  { "Name": "PACKAGE_INSTALLMENT_SESSIONS_INVALID", "Value": "التقسيط يتطلب باقة جلسات. وزّع الجلسات بأعداد صحيحة غير سالبة لا يتجاوز مجموعها عدد جلسات الباقة." },
   { "Name": "PACKAGE_INSTALLMENT_RELEASE_CAP", "Value": "قبل السداد الكامل، لا يجوز تحرير أكثر من 70٪ من جلسات الباقة بعد التقريب لأقرب جلسة مع تقريب النصف للأسفل." },
   { "Name": "PACKAGE_STAFF_INVALID", "Value": "اختر موظفين نشطين تابعين لفرع مسموح، أو اختر جميع الموظفين." },
   { "Name": "PACKAGE_STAFF_UNAVAILABLE", "Value": "الموظف المختار غير متاح لهذه الخدمة أو العرض." },

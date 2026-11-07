@@ -78,13 +78,15 @@ public sealed class CollectInstallmentHandler(
             foreach (var row in ordered)
             {
                 cumulative += row.Amount;
-                if (paid < cumulative)
+                var requiresZeroAmountConfirmation = row.Amount == 0m &&
+                    purchase.Installments.Any(x => x.Number == row.Number && x.CollectedAtUtc == null);
+                if (paid < cumulative || requiresZeroAmountConfirmation)
                 {
                     next = row;
                     break;
                 }
             }
-            if (next is null || next.Amount <= 0m || purchase.AmountDue < next.Amount)
+            if (next is null || next.Amount < 0m || purchase.AmountDue < next.Amount)
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Customers.InstallmentUnavailable);
             }
