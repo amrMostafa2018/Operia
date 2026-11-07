@@ -33,6 +33,7 @@ public sealed class GetCustomerPurchaseDetailsHandler(
                 x.Id,
                 x.CustomerId,
                 x.PackageId,
+                x.SaleId,
                 x.CreatedAt,
                 x.ExpiresOn,
                 x.IsActive,
@@ -43,10 +44,6 @@ public sealed class GetCustomerPurchaseDetailsHandler(
                 x.PurchasePrice,
                 x.AmountDue,
                 x.PurchaseSnapshotJson,
-                UnconfirmedZeroAmountRows = x.Installments
-                    .Where(row => row.Number > 0 && row.Amount == 0m && row.CollectedAtUtc == null)
-                    .Select(row => row.Number)
-                    .ToArray(),
                 CurrentOfferType = x.Package!.OfferType,
                 CurrentPulseCount = x.Package.PulseCount
             })
@@ -74,7 +71,6 @@ public sealed class GetCustomerPurchaseDetailsHandler(
         var historicalDue = price is not null ? purchase.AmountDue : null;
         decimal? paid = price is not null && historicalDue is not null
             ? Math.Max(0, price.Value - historicalDue.Value) : null;
-        var due = purchase.IsActive ? historicalDue : 0m;
         var paymentStatus = paid is null ? "unknown" : historicalDue == 0
             ? "fullyPaid" : paid > 0 ? "partial" : "unpaid";
         var today = DateOnly.FromDateTime(clock.UtcNow);
@@ -83,31 +79,115 @@ public sealed class GetCustomerPurchaseDetailsHandler(
             : purchase.Total > 0 && purchase.Used >= purchase.Total ? "completed"
             : "active";
 
-        var cumulativeDue = snapshot?.FirstPayment ?? 0m;
-        var rows = snapshot?.Installments.OrderBy(x => x.Number)
-            .Select(x =>
-            {
-                cumulativeDue += x.Amount;
-                var requiresZeroAmountConfirmation = purchase.AmountDue > 0m &&
-                    purchase.UnconfirmedZeroAmountRows.Contains(x.Number);
-                return new PurchaseInstallmentDto(
+        var savedPlan = await db.CustomerPackageInstallments.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.CustomerPackageId == purchase.Id)
+            .OrderBy(x => x.Number)
+            .Select(x => new SavedInstallmentRow(
+                x.Id,
+                x.Number,
+                x.Amount,
+                x.CumulativeAvailableSessions,
+                x.CollectedAtUtc,
+                x.PaymentMethod))
+            .ToListAsync(cancellationToken);
+        var savedNumberedPlan = savedPlan.Where(x => x.Number > 0).ToArray();
+        var hasSavedNumberedPlan = savedNumberedPlan.Length > 0;
+        var schedule = hasSavedNumberedPlan
+            ? savedNumberedPlan.Select(x => new InstallmentScheduleRow(
+                x.Number,
+                x.Amount,
+                x.CumulativeAvailableSessions,
+                x.CollectedAtUtc)).ToArray()
+            : snapshot?.Installments.OrderBy(x => x.Number)
+                .Select(x => new InstallmentScheduleRow(
                     x.Number,
                     x.Amount,
-                    paid is not null && paid >= cumulativeDue && !requiresZeroAmountConfirmation ? "paid"
-                        : purchase.IsActive ? "due" : "cancelled");
-            })
-            .ToArray() ?? [];
+                    x.CumulativeAvailableSessions,
+                    null)).ToArray() ?? [];
+        var cumulativeDue = snapshot?.FirstPayment ?? 0m;
+        var rows = schedule.Select(x =>
+        {
+            cumulativeDue += x.Amount;
+            var isPaid = hasSavedNumberedPlan
+                ? x.CollectedAtUtc is not null
+                : paid is not null && paid >= cumulativeDue;
+            return new PurchaseInstallmentDto(
+                x.Number,
+                x.Amount,
+                isPaid ? "paid" : purchase.IsActive ? "due" : "cancelled");
+        }).ToArray();
         var nextNumber = rows.FirstOrDefault(x => x.Status == "due")?.Number;
-        var previous = snapshot?.Installments.LastOrDefault(x => x.Number < nextNumber);
+        var previous = schedule.LastOrDefault(x => x.Number < nextNumber);
         var eligible = nextNumber is not null && purchase.IsActive &&
             (purchase.ExpiresOn is null || purchase.ExpiresOn >= today) &&
             (previous is null || purchase.Used >= previous.CumulativeAvailableSessions);
-        var collections = await db.InstallmentCollections.AsNoTracking()
+        var numberedCollections = await db.InstallmentCollections.AsNoTracking()
             .Where(x => x.TenantId == tenantId && x.CustomerPackageId == purchase.Id)
             .OrderBy(x => x.InstallmentNumber)
-            .Select(x => new PurchaseCollectionDto(x.Id, x.InstallmentNumber, x.Amount,
-                x.PaymentMethod, x.ConfirmedAtUtc, x.IdempotencyKey))
+            .Select(x => new
+            {
+                x.Id,
+                x.InstallmentNumber,
+                x.Amount,
+                x.PaymentMethod,
+                x.ConfirmedAtUtc,
+                x.IdempotencyKey,
+                x.CollectedByUserId
+            })
             .ToListAsync(cancellationToken);
+        var confirmedSale = purchase.SaleId is null
+            ? null
+            : await db.SaleCollections.AsNoTracking()
+                .Where(x => x.TenantId == tenantId && x.SaleId == purchase.SaleId && x.Confirmed)
+                .OrderBy(x => x.AttemptedAtUtc)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.PaymentMethod,
+                    x.ConfirmedAtUtc,
+                    x.AttemptedAtUtc,
+                    x.IdempotencyKey,
+                    x.CollectedByUserId
+                })
+                .FirstOrDefaultAsync(cancellationToken);
+        var recorderIds = numberedCollections.Select(x => x.CollectedByUserId)
+            .Append(confirmedSale?.CollectedByUserId ?? string.Empty)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct()
+            .ToArray();
+        var recorders = await db.Employees.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && recorderIds.Contains(x.IdentityUserId))
+            .ToDictionaryAsync(x => x.IdentityUserId, x => x.FullName, cancellationToken);
+        var collections = new List<PurchaseCollectionDto>();
+        var savedFirstPayment = savedPlan.FirstOrDefault(x => x.Number == 0);
+        if (snapshot?.PaymentOption == "installment" &&
+            (confirmedSale is not null || savedFirstPayment?.CollectedAtUtc is not null))
+        {
+            collections.Add(confirmedSale is not null
+                ? new PurchaseCollectionDto(
+                    confirmedSale.Id,
+                    0,
+                    savedFirstPayment?.Amount ?? snapshot.FirstPayment ?? 0m,
+                    confirmedSale.PaymentMethod,
+                    confirmedSale.ConfirmedAtUtc ?? confirmedSale.AttemptedAtUtc,
+                    confirmedSale.IdempotencyKey,
+                    RecorderName(confirmedSale.CollectedByUserId, recorders))
+                : new PurchaseCollectionDto(
+                    savedFirstPayment!.Id,
+                    0,
+                    savedFirstPayment.Amount,
+                    savedFirstPayment.PaymentMethod ?? string.Empty,
+                    savedFirstPayment.CollectedAtUtc!.Value,
+                    string.Empty));
+        }
+        collections.AddRange(numberedCollections.Select(x => new PurchaseCollectionDto(
+            x.Id,
+            x.InstallmentNumber,
+            x.Amount,
+            x.PaymentMethod,
+            x.ConfirmedAtUtc,
+            x.IdempotencyKey,
+            RecorderName(x.CollectedByUserId, recorders))));
         IReadOnlyList<string> methods = eligible
             ? await BookingPaymentMethods.GetEnabledAsync(db, tenantId, cancellationToken)
             : [];
@@ -126,13 +206,13 @@ public sealed class GetCustomerPurchaseDetailsHandler(
             pulses,
             price,
             paid,
-            due,
+            historicalDue,
             nextNumber,
             rows.Length,
             rows,
             completed,
             eligible,
-            rows.FirstOrDefault(x => x.Number == nextNumber)?.Amount,
+            schedule.FirstOrDefault(x => x.Number == nextNumber)?.Amount,
             methods,
             collections);
     }
@@ -189,10 +269,10 @@ public sealed class GetCustomerPurchaseDetailsHandler(
             .ToListAsync(cancellationToken);
         var itemIds = await db.BookingItems.AsNoTracking()
             .Where(x => x.TenantId == tenantId && bookingIds.Contains(x.BookingId) && x.PackageId == packageId)
-            .Select(x => new { x.BookingId, x.Id })
+            .Select(x => new { x.BookingId, x.Id, x.Name })
             .ToListAsync(cancellationToken);
         var itemsByBooking = itemIds.GroupBy(x => x.BookingId)
-            .ToDictionary(x => x.Key, x => x.Select(item => item.Id).ToHashSet());
+            .ToDictionary(x => x.Key, x => x.ToDictionary(item => item.Id, item => item.Name));
         var historyByBooking = histories.GroupBy(x => x.BookingId)
             .ToDictionary(x => x.Key, x => x.First().ChangesJson);
         var result = new List<CompletedPurchaseSessionDto>();
@@ -218,7 +298,7 @@ public sealed class GetCustomerPurchaseDetailsHandler(
                 if (!item.TryGetProperty("Status", out var status) ||
                     !string.Equals(status.GetString(), "complete", StringComparison.OrdinalIgnoreCase) ||
                     !item.TryGetProperty("BookingItemId", out var itemId) ||
-                    !matchingItems.Contains(itemId.GetString() ?? string.Empty))
+                    !matchingItems.TryGetValue(itemId.GetString() ?? string.Empty, out var sessionType))
                 {
                     continue;
                 }
@@ -245,11 +325,33 @@ public sealed class GetCustomerPurchaseDetailsHandler(
                     booking.StartMinutes,
                     performers.GetValueOrDefault(booking.EmployeeId),
                     pulsesUsed,
-                    notes));
+                    notes,
+                    sessionType));
                 break;
             }
         }
 
         return result.OrderBy(x => x.Date).ThenBy(x => x.StartMinutes).ThenBy(x => x.SessionNumber).ToArray();
     }
+
+    private static string? RecorderName(
+        string userId,
+        IReadOnlyDictionary<string, string> names) =>
+        string.IsNullOrWhiteSpace(userId)
+            ? null
+            : names.TryGetValue(userId, out var name) ? name : userId;
+
+    private sealed record SavedInstallmentRow(
+        string Id,
+        int Number,
+        decimal Amount,
+        int CumulativeAvailableSessions,
+        DateTime? CollectedAtUtc,
+        string? PaymentMethod);
+
+    private sealed record InstallmentScheduleRow(
+        int Number,
+        decimal Amount,
+        int CumulativeAvailableSessions,
+        DateTime? CollectedAtUtc);
 }

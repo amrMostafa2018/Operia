@@ -144,7 +144,7 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
         result.Installments.Should().OnlyContain(x => x.Status == "due");
         result.CompletedSessions.Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new CompletedPurchaseSessionDto(
-                1, new DateOnly(2026, 10, 20), 600, null, 2500, "Performed"));
+                1, new DateOnly(2026, 10, 20), 600, null, 2500, "Performed", "Original offer"));
         var outsideBranch = await new GetCustomerPurchaseDetailsHandler(db, user.Object, clock.Object)
             .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1", ["branch-2"]), CancellationToken.None);
         outsideBranch.CompletedSessions.Should().BeEmpty();
@@ -156,6 +156,144 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
             .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1"), CancellationToken.None);
         afterCollection.Installments.Select(x => x.Status).Should().Equal("paid", "due", "due");
         afterCollection.NextInstallmentNumber.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task UsesPersistedCollectionsAndKeepsCancelledPurchaseFinancialHistory()
+    {
+        var user = User("tenant-1");
+        var clock = Clock();
+        await using var db = Context($"PurchaseInquiry_{Guid.NewGuid()}", clock.Object, user.Object);
+        db.Packages.Add(new Package
+        {
+            Id = "offer-1",
+            TenantId = "tenant-1",
+            Name = "Current offer",
+            OfferType = OfferType.Package,
+            SessionCount = 10
+        });
+        db.Customers.Add(new Customer
+        {
+            Id = "customer-1",
+            TenantId = "tenant-1",
+            FullName = "Customer",
+            MobileNumber = "01012345678",
+            NormalizedMobileNumber = "01012345678"
+        });
+        db.Employees.Add(new Employee
+        {
+            Id = "employee-1",
+            TenantId = "tenant-1",
+            IdentityUserId = "cashier-1",
+            FullName = "Reception User"
+        });
+        db.Sales.Add(new Sale
+        {
+            Id = "sale-1",
+            TenantId = "tenant-1",
+            BranchId = "branch-1",
+            CustomerId = "customer-1"
+        });
+        var snapshot = new PackagePurchaseSnapshot(
+            "Original offer", OfferType.Package, 60, 10, null, 12, "category-1", null,
+            "installment", 20000m, 20000m, null, 5000m,
+            [new PurchaseInstallmentSnapshot(1, 5000m, 2, 2),
+             new PurchaseInstallmentSnapshot(2, 5000m, 2, 4),
+             new PurchaseInstallmentSnapshot(3, 5000m, 3, 7)]);
+        var purchase = new CustomerPackage
+        {
+            Id = "purchase-1",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "offer-1",
+            SaleId = "sale-1",
+            Total = 10,
+            Used = 2,
+            PurchasePrice = 20000m,
+            AmountDue = 10000m,
+            PurchaseSnapshotJson = snapshot.ToJson(),
+            ExpiresOn = new DateOnly(2027, 1, 1),
+            IsActive = false
+        };
+        purchase.Installments.Add(new CustomerPackageInstallment
+        {
+            Id = "first-payment",
+            TenantId = "tenant-1",
+            CustomerPackageId = purchase.Id,
+            Number = 0,
+            Amount = 5000m,
+            CollectedAtUtc = new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc),
+            PaymentMethod = "cash"
+        });
+        purchase.Installments.Add(new CustomerPackageInstallment
+        {
+            TenantId = "tenant-1",
+            CustomerPackageId = purchase.Id,
+            Number = 1,
+            Amount = 5000m,
+            CumulativeAvailableSessions = 2,
+            CollectedAtUtc = new DateTime(2026, 10, 15, 8, 0, 0, DateTimeKind.Utc),
+            PaymentMethod = "cash"
+        });
+        purchase.Installments.Add(new CustomerPackageInstallment
+        {
+            TenantId = "tenant-1",
+            CustomerPackageId = purchase.Id,
+            Number = 2,
+            Amount = 5000m,
+            CumulativeAvailableSessions = 4
+        });
+        purchase.Installments.Add(new CustomerPackageInstallment
+        {
+            TenantId = "tenant-1",
+            CustomerPackageId = purchase.Id,
+            Number = 3,
+            Amount = 5000m,
+            CumulativeAvailableSessions = 7
+        });
+        db.CustomerPackages.Add(purchase);
+        db.SaleCollections.Add(new SaleCollection
+        {
+            Id = "sale-collection-1",
+            TenantId = "tenant-1",
+            SaleId = "sale-1",
+            Amount = 5000m,
+            PaymentMethod = "cash",
+            Confirmed = true,
+            IdempotencyKey = "sale-key",
+            CollectedByUserId = "cashier-1",
+            AttemptedAtUtc = new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc),
+            ConfirmedAtUtc = new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc)
+        });
+        db.InstallmentCollections.Add(new InstallmentCollection
+        {
+            Id = "installment-collection-1",
+            TenantId = "tenant-1",
+            CustomerPackageId = purchase.Id,
+            InstallmentNumber = 1,
+            Amount = 5000m,
+            PaymentMethod = "cash",
+            IdempotencyKey = "installment-key",
+            CollectedByUserId = "cashier-1",
+            ConfirmedAtUtc = new DateTime(2026, 10, 15, 8, 0, 0, DateTimeKind.Utc)
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new GetCustomerPurchaseDetailsHandler(db, user.Object, clock.Object)
+            .Handle(new GetCustomerPurchaseDetailsQuery(purchase.Id), CancellationToken.None);
+
+        result.AmountPaid.Should().Be(10000m);
+        result.AmountRemaining.Should().Be(10000m);
+        result.PaymentStatus.Should().Be("partial");
+        result.PackageStatus.Should().Be("cancelled");
+        result.Installments.Select(x => x.Status).Should().Equal("paid", "cancelled", "cancelled");
+        result.NextInstallmentNumber.Should().BeNull();
+        result.Collections.Should().HaveCount(2);
+        result.Collections[0].Should().BeEquivalentTo(new PurchaseCollectionDto(
+            "sale-collection-1", 0, 5000m, "cash",
+            new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc),
+            "sale-key", "Reception User"));
+        result.Collections[1].RecordedBy.Should().Be("Reception User");
     }
 
     [Fact]

@@ -12,7 +12,7 @@ public sealed record PurchaseInstallmentDto(int Number, decimal Amount, string S
 
 public sealed record PurchaseCollectionDto(
     string Id, int InstallmentNumber, decimal Amount, string PaymentMethod,
-    DateTime ConfirmedAtUtc, string IdempotencyKey);
+    DateTime ConfirmedAtUtc, string IdempotencyKey, string? RecordedBy = null);
 
 public sealed record CompletedPurchaseSessionDto(
     int SessionNumber,
@@ -20,7 +20,8 @@ public sealed record CompletedPurchaseSessionDto(
     int StartMinutes,
     string? Performer,
     int? PulsesUsed,
-    string? Notes);
+    string? Notes,
+    string? SessionType = null);
 
 public sealed record CustomerPurchaseDetailsDto(
     string Id,
