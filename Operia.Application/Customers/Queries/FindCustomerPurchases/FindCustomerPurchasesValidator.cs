@@ -1,4 +1,5 @@
 using FluentValidation;
+using Operia.Application.Common.PhoneNumbers;
 using Operia.SharedKernel.Errors;
 
 namespace Operia.Application.Customers.Queries.FindCustomerPurchases;
@@ -13,7 +14,7 @@ public sealed class FindCustomerPurchasesValidator : AbstractValidator<FindCusto
             .WithErrorCode(ApiErrorCodes.Auth.PhoneRequired)
             .Matches(@"^\+?[\d\s()-]{8,20}$")
             .WithErrorCode(ApiErrorCodes.Auth.PhoneInvalid)
-            .Must(mobile => string.Concat(mobile.Where(char.IsDigit)).Length is >= 8 and <= 15)
+            .Must(PhoneNumberHelper.IsValidMobile)
             .WithErrorCode(ApiErrorCodes.Auth.PhoneInvalid);
     }
 }

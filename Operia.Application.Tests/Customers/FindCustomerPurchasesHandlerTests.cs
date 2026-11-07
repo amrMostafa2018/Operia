@@ -66,9 +66,11 @@ public sealed class FindCustomerPurchasesHandlerTests
                 PurchaseSnapshotJson = snapshot
             });
         await db.SaveChangesAsync();
+        offer.Name = "Renamed current offer";
+        await db.SaveChangesAsync();
 
         var result = await new FindCustomerPurchasesHandler(db, user.Object, clock.Object)
-            .Handle(new FindCustomerPurchasesQuery("010 1234 5678"), CancellationToken.None);
+            .Handle(new FindCustomerPurchasesQuery("+20 10 1234 5678"), CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.FullName.Should().Be("After rename");
@@ -77,6 +79,31 @@ public sealed class FindCustomerPurchasesHandlerTests
         result.Purchases.Select(x => x.Id).Should().BeEquivalentTo(["purchase-1", "purchase-2"]);
         result.Purchases.Select(x => x.OfferName).Should().OnlyContain(x => x == "Current name");
         result.Purchases.Single(x => x.Id == "purchase-2").Status.Should().Be("cancelled");
+    }
+
+    [Fact]
+    public async Task FindsLegacyLocalMobileWhenSearchUsesTheSupportedLocalFormat()
+    {
+        var clock = new Mock<IDateTimeProvider>();
+        clock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 10, 27, 8, 0, 0, DateTimeKind.Utc));
+        var user = User("tenant-1");
+        await using var db = Context($"Inquiry_{Guid.NewGuid()}", clock.Object, user.Object);
+        db.Customers.Add(new Customer
+        {
+            Id = "customer-1",
+            TenantId = "tenant-1",
+            FullName = "Legacy customer",
+            MobileNumber = "01012345678",
+            NormalizedMobileNumber = "01012345678",
+            IsActive = true
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new FindCustomerPurchasesHandler(db, user.Object, clock.Object)
+            .Handle(new FindCustomerPurchasesQuery("(010) 1234-5678"), CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.CustomerId.Should().Be("customer-1");
     }
 
     [Fact]

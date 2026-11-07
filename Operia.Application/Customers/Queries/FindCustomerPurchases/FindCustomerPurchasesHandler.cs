@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Common.PhoneNumbers;
 using Operia.Application.Packages;
 using Operia.Domain.Enums;
 using Operia.SharedKernel.Errors;
@@ -24,10 +25,15 @@ public sealed class FindCustomerPurchasesHandler(
             throw UnauthorizedException.FromCode(ApiErrorCodes.Access.TenantContextRequired, "detail");
         }
 
-        var mobile = string.Concat(request.Mobile.Where(char.IsDigit));
+        var mobile = PhoneNumberHelper.ToE164(request.Mobile).TrimStart('+');
+        var legacyLocalMobile = mobile.StartsWith("20", StringComparison.Ordinal) &&
+                                mobile.Length == 12
+            ? "0" + mobile[2..]
+            : mobile;
         var customer = await db.Customers.AsNoTracking()
             .Where(x => x.TenantId == tenantId && !x.IsDirect &&
-                x.NormalizedMobileNumber == mobile)
+                (x.NormalizedMobileNumber == mobile ||
+                 x.NormalizedMobileNumber == legacyLocalMobile))
             .Select(x => new { x.Id, x.FullName, x.MobileNumber, x.CreatedAt, x.IsActive })
             .SingleOrDefaultAsync(cancellationToken);
 
