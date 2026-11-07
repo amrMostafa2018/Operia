@@ -48,7 +48,8 @@ public sealed record PackagePurchaseSnapshot(
                         row.CumulativeAvailableSessions))
                     .ToArray()
                 : [],
-            installment || string.IsNullOrWhiteSpace(offer.DiscountCode)
+            installment || offer.DiscountPercent is not > 0 ||
+                string.IsNullOrWhiteSpace(offer.DiscountCode)
                 ? null : offer.DiscountCode.Trim());
     }
 

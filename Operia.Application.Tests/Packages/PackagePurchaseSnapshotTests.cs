@@ -80,4 +80,15 @@ public sealed class PackagePurchaseSnapshotTests
         snapshot.CashDiscountCode.Should().Be("SAVE10");
         snapshot.CashDiscountPercent.Should().Be(10m);
     }
+
+    [Fact]
+    public void CodeWithoutPositiveDiscountIsNotRecordedAsApplied()
+    {
+        var offer = new Package { Price = 18000m, DiscountCode = "SAVE10", DiscountPercent = 0m };
+
+        var snapshot = PackagePurchaseSnapshot.Capture(offer, "cash", 18000m);
+
+        snapshot.CashDiscountCode.Should().BeNull();
+        snapshot.PurchasePrice.Should().Be(18000m);
+    }
 }
