@@ -54,7 +54,7 @@ public sealed class CreatePackageHandler(
             InstallmentPrice = request.InstallmentEnabled ? request.InstallmentPrice : null,
             FirstPayment = request.InstallmentEnabled ? request.FirstPayment : null,
             InstallmentCount = request.InstallmentEnabled ? request.InstallmentCount : null,
-            AllStaff = request.AllStaff,
+            AllStaff = request.StaffIds is not { Count: > 0 },
             DiscountCode = request.DiscountCode.Trim(),
             DiscountPercent = request.DiscountPercent,
             Status = PackageMapper.FromIsActive(request.IsActive)

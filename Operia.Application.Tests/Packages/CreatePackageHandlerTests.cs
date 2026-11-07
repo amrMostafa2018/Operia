@@ -156,10 +156,19 @@ public sealed class CreatePackageHandlerTests
         _db.Employees.Add(BranchTestData.Employee(
             "staff-1", "tenant-1", "business-tenant-1", "staff-user", "E1",
             "Mona", "mona@example.com", "01000000000"));
+        _db.Employees.Add(BranchTestData.Employee(
+            "staff-2", "tenant-1", "business-tenant-1", "second-staff-user", "E2",
+            "Omar", "omar@example.com", "01000000001"));
         _db.UserBranches.Add(new UserBranch
         {
             TenantId = "tenant-1",
             EmployeeId = "staff-1",
+            BranchId = "branch-1"
+        });
+        _db.UserBranches.Add(new UserBranch
+        {
+            TenantId = "tenant-1",
+            EmployeeId = "staff-2",
             BranchId = "branch-1"
         });
         await _db.SaveChangesAsync();
@@ -168,11 +177,15 @@ public sealed class CreatePackageHandlerTests
             .ReturnsAsync(["branch-1"]);
         var identity = new Mock<IIdentityService>();
         identity.Setup(x => x.GetRolesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Dictionary<string, string> { ["staff-user"] = "Staff" });
+            .ReturnsAsync(new Dictionary<string, string>
+            {
+                ["staff-user"] = "Staff",
+                ["second-staff-user"] = "Staff"
+            });
         var command = ValidCommand("cat-1") with
         {
             AllStaff = false,
-            StaffIds = ["staff-1"]
+            StaffIds = ["staff-1", "staff-2"]
         };
 
         var result = await new CreatePackageHandler(
@@ -180,10 +193,32 @@ public sealed class CreatePackageHandlerTests
             branches.Object, identity.Object).Handle(command, default);
 
         result.AllStaff.Should().BeFalse();
-        result.StaffIds.Should().Equal("staff-1");
-        (await _db.PackageStaff.SingleAsync()).TenantId.Should().Be("tenant-1");
+        result.StaffIds.Should().BeEquivalentTo(new[] { "staff-1", "staff-2" });
+        (await _db.PackageStaff.ToListAsync()).Should().HaveCount(2)
+            .And.OnlyContain(staff => staff.TenantId == "tenant-1");
         var audit = await _db.AuditLogs.SingleAsync(x => x.Action == AuditActions.PackageCreated);
         audit.DetailsJson.Should().Contain("staff-1");
+        audit.DetailsJson.Should().Contain("staff-2");
+    }
+
+    [Fact]
+    public async Task CreatePackage_EmptyStaffSelection_MeansAllStaff()
+    {
+        await SeedCategoryAsync("cat-1");
+        var command = ValidCommand("cat-1") with
+        {
+            AllStaff = false,
+            StaffIds = []
+        };
+
+        var result = await new CreatePackageHandler(
+            _db, _currentUserServiceMock.Object, _auditWriter,
+            new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object)
+            .Handle(command, default);
+
+        result.AllStaff.Should().BeTrue();
+        result.StaffIds.Should().BeEmpty();
+        (await _db.PackageStaff.CountAsync()).Should().Be(0);
     }
 
     [Fact]

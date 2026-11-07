@@ -50,11 +50,11 @@ internal static class PackageStaffEligibility
         CancellationToken cancellationToken)
     {
         var ids = employeeIds ?? [];
-        if (allStaff && ids.Count == 0)
+        if (ids.Count == 0)
         {
             return;
         }
-        if (allStaff || ids.Count == 0 || ids.Any(string.IsNullOrWhiteSpace) ||
+        if (allStaff || ids.Any(string.IsNullOrWhiteSpace) ||
             ids.Distinct(StringComparer.Ordinal).Count() != ids.Count)
         {
             throw Invalid();

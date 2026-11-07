@@ -41,15 +41,16 @@ public sealed class UpdatePackageHandler(
             request.SubServiceCategoryId,
             cancellationToken);
         var updateStaff = request.AllStaff.HasValue || request.StaffIds is not null;
-        var allStaff = request.AllStaff ?? (request.StaffIds is null && package.AllStaff);
-        var staffIds = request.StaffIds ?? (allStaff
+        var requestedAllStaff = request.AllStaff ?? (request.StaffIds is null && package.AllStaff);
+        var staffIds = request.StaffIds ?? (requestedAllStaff
             ? []
             : package.AvailableStaff.Select(staff => staff.EmployeeId).ToArray());
+        var allStaff = staffIds.Count == 0;
         if (updateStaff)
         {
             await PackageStaffEligibility.ValidateSelectionAsync(
                 db, currentUser, branchScope, identity, tenantId,
-                allStaff, staffIds, cancellationToken);
+                requestedAllStaff, staffIds, cancellationToken);
         }
 
         var previous = PackageAuditDetails.ForPackage(package);

@@ -123,6 +123,30 @@ public sealed class UpdatePackageHandlerTests
     }
 
     [Fact]
+    public async Task UpdatePackage_EmptyStaffSelection_RemovesAssignmentsAndMeansAllStaff()
+    {
+        await SeedPackageAsync("pkg-1", "cat-1", PackageStatus.Active);
+        var package = await _db.Packages.SingleAsync(x => x.Id == "pkg-1");
+        package.AllStaff = false;
+        package.AvailableStaff.Add(new Operia.Domain.Entities.PackageStaff
+        {
+            TenantId = "tenant-1",
+            PackageId = package.Id,
+            EmployeeId = "staff-1"
+        });
+        await _db.SaveChangesAsync();
+
+        var result = await new UpdatePackageHandler(
+            _db, _currentUserServiceMock.Object, _auditWriter,
+            new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object)
+            .Handle(ValidUpdateCommand("pkg-1", "cat-1") with { AllStaff = false, StaffIds = [] }, default);
+
+        result.AllStaff.Should().BeTrue();
+        result.StaffIds.Should().BeEmpty();
+        (await _db.PackageStaff.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
     public async Task UpdatePackage_PackageNotFound_ThrowsNotFoundException()
     {
         var handler = new UpdatePackageHandler(_db, _currentUserServiceMock.Object, _auditWriter, new Mock<IBranchScope>().Object, new Mock<IIdentityService>().Object);
