@@ -12,6 +12,8 @@ public static class SwaggerExtensions
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
         {
+            options.CustomSchemaIds(GetSchemaId);
+
             options.SwaggerDoc(DocumentName, new OpenApiInfo
             {
                 Title = "Operia API",
@@ -48,5 +50,20 @@ public static class SwaggerExtensions
         });
 
         return app;
+    }
+
+    private static string GetSchemaId(Type type)
+    {
+        if (type.IsArray)
+            return $"{GetSchemaId(type.GetElementType()!)}Array";
+
+        if (!type.IsGenericType)
+            return (type.FullName ?? type.Name).Replace('+', '.');
+
+        var genericName = (type.GetGenericTypeDefinition().FullName ?? type.Name)
+            .Replace('+', '.')
+            .Replace('`', '_');
+        var argumentNames = string.Join("_", type.GetGenericArguments().Select(GetSchemaId));
+        return $"{genericName}_{argumentNames}";
     }
 }

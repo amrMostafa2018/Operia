@@ -25,10 +25,11 @@ public sealed class RevenueController(IMediator mediator) : ControllerBase
 {
     [HttpPost("payments/review")]
     [Authorize(Policy = Policies.RevenueReview)]
+    [Consumes("multipart/form-data")]
     public async Task<SubmittedRevenuePayment> SubmitPaymentReview(
         [FromForm] string saleId,
         [FromForm] string idempotencyKey,
-        [FromForm] IFormFile? proof,
+        IFormFile? proof,
         CancellationToken cancellationToken)
     {
         byte[]? content = null;
