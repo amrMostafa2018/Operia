@@ -44,9 +44,9 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
         var snapshot = new PackagePurchaseSnapshot(
             "Original offer", OfferType.Package, 60, null, 8000, 12, "category-1", null,
             "installment", 20000m, 20000m, null, 5000m,
-            [new PurchaseInstallmentSnapshot(1, 5000m, 0, 0),
-             new PurchaseInstallmentSnapshot(2, 5000m, 0, 0),
-             new PurchaseInstallmentSnapshot(3, 5000m, 0, 0)]);
+            [new PurchaseInstallmentSnapshot(1, 5000m, 0, 3000),
+             new PurchaseInstallmentSnapshot(2, 5000m, 0, 5000),
+             new PurchaseInstallmentSnapshot(3, 5000m, 0, 7000)]);
         db.CustomerPackages.Add(new CustomerPackage
         {
             Id = "purchase-1",
@@ -55,6 +55,7 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
             PackageId = "offer-1",
             Total = 8000,
             Used = 2500,
+            ReleasedSessions = 3000,
             PurchasePrice = 20000m,
             AmountDue = 15000m,
             StartedOn = new DateOnly(2026, 10, 12),
@@ -138,7 +139,7 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
         result.PurchasePrice.Should().Be(20000m);
         result.AmountPaid.Should().Be(5000m);
         result.AmountRemaining.Should().Be(15000m);
-        result.Pulses.Should().Be(new PurchaseBalanceDto(8000, 2500, 5500));
+        result.Pulses.Should().Be(new PurchaseBalanceDto(8000, 2500, 5500, 500, 3000));
         result.Sessions.Should().BeNull();
         result.StartsOn.Should().Be(new DateOnly(2026, 10, 12));
         result.NextInstallmentNumber.Should().Be(1);
@@ -152,11 +153,29 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
 
         var storedPurchase = await db.CustomerPackages.SingleAsync(x => x.Id == "purchase-1");
         storedPurchase.AmountDue = 10000m;
+        storedPurchase.ReleasedSessions = 5000;
         await db.SaveChangesAsync();
         var afterCollection = await new GetCustomerPurchaseDetailsHandler(db, user.Object, clock.Object)
             .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1"), CancellationToken.None);
+        afterCollection.Pulses!.Released.Should().Be(5000);
         afterCollection.Installments.Select(x => x.Status).Should().Equal("paid", "due", "due");
         afterCollection.NextInstallmentNumber.Should().Be(2);
+
+        storedPurchase.IsActive = false;
+        storedPurchase.ReleasedSessions = storedPurchase.Used;
+        db.InstallmentCollections.Add(new InstallmentCollection
+        {
+            TenantId = "tenant-1",
+            CustomerPackageId = storedPurchase.Id,
+            InstallmentNumber = 2,
+            Amount = 5000m,
+            IdempotencyKey = "confirmed-installment"
+        });
+        await db.SaveChangesAsync();
+        var cancelled = await new GetCustomerPurchaseDetailsHandler(db, user.Object, clock.Object)
+            .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1"), CancellationToken.None);
+        cancelled.Pulses!.Released.Should().Be(5000);
+        cancelled.Pulses.Bookable.Should().Be(0);
     }
 
     [Fact]

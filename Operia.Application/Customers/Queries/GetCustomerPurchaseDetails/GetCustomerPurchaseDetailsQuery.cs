@@ -6,7 +6,7 @@ public sealed record GetCustomerPurchaseDetailsQuery(
     string PurchaseId,
     IReadOnlyCollection<string>? AllowedBranchIds = null) : IRequest<CustomerPurchaseDetailsDto>;
 
-public sealed record PurchaseBalanceDto(int Total, int Used, int Remaining, int Bookable = 0);
+public sealed record PurchaseBalanceDto(int Total, int Used, int Remaining, int Bookable = 0, int Released = 0);
 
 public sealed record PurchaseInstallmentDto(int Number, decimal Amount, string Status);
 

@@ -55,18 +55,19 @@ public sealed class GetCustomerPurchaseDetailsHandler(
         var snapshot = PackagePurchaseSnapshot.FromJson(purchase.PurchaseSnapshotJson);
         var pulseCount = snapshot?.PulseCount ?? purchase.CurrentPulseCount;
         var usesPulses = (snapshot?.OfferType ?? purchase.CurrentOfferType) == OfferType.Package && pulseCount is > 0;
-        var released = snapshot?.PaymentOption == "installment" && purchase.AmountDue > 0m
-            ? purchase.ReleasedSessions ?? 0
+        var released = snapshot?.PaymentOption == "installment"
+            ? purchase.ReleasedSessions ?? (purchase.AmountDue == 0m ? purchase.Total : 0)
             : purchase.Total;
         var sessions = !usesPulses
             ? new PurchaseBalanceDto(purchase.Total, purchase.Used,
                 Math.Max(0, purchase.Total - purchase.Used),
                 purchase.IsActive
                     ? Math.Max(0, released - purchase.Used - (purchase.ReservedSessions ?? 0))
-                    : 0)
+                    : 0, released)
             : null;
         var pulses = usesPulses
-            ? new PurchaseBalanceDto(purchase.Total, purchase.Used, Math.Max(0, purchase.Total - purchase.Used))
+            ? new PurchaseBalanceDto(purchase.Total, purchase.Used, Math.Max(0, purchase.Total - purchase.Used),
+                purchase.IsActive ? Math.Max(0, released - purchase.Used) : 0, released)
             : null;
 
         var price = snapshot?.PurchasePrice ?? purchase.PurchasePrice;
@@ -137,6 +138,28 @@ public sealed class GetCustomerPurchaseDetailsHandler(
                 x.CollectedByUserId
             })
             .ToListAsync(cancellationToken);
+        if (!purchase.IsActive && snapshot?.PaymentOption == "installment")
+        {
+            // Cancellation reduces the usable ceiling to Used. Recover the previously
+            // released ceiling from confirmed plan rows without reopening entitlement.
+            var collectedNumbers = numberedCollections.Select(x => x.InstallmentNumber).ToHashSet();
+            var historicalRelease = purchase.AmountDue == 0m
+                ? purchase.Total
+                : schedule
+                    .Where(x => x.CollectedAtUtc is not null || collectedNumbers.Contains(x.Number))
+                    .Select(x => x.CumulativeAvailableSessions)
+                    .DefaultIfEmpty(0)
+                    .Max();
+            historicalRelease = Math.Clamp(Math.Max(released, historicalRelease), 0, purchase.Total);
+            if (sessions is not null)
+            {
+                sessions = sessions with { Released = historicalRelease };
+            }
+            if (pulses is not null)
+            {
+                pulses = pulses with { Released = historicalRelease };
+            }
+        }
         var confirmedSale = purchase.SaleId is null
             ? null
             : await db.SaleCollections.AsNoTracking()
