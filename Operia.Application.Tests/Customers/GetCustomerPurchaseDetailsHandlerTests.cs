@@ -152,6 +152,12 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
         outsideBranch.CompletedSessions.Should().BeEmpty();
 
         var storedPurchase = await db.CustomerPackages.SingleAsync(x => x.Id == "purchase-1");
+        storedPurchase.ExpiresOn = DateOnly.FromDateTime(clock.Object.UtcNow).AddDays(-1);
+        await db.SaveChangesAsync();
+        var expired = await new GetCustomerPurchaseDetailsHandler(db, user.Object, clock.Object)
+            .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1"), CancellationToken.None);
+        expired.Pulses!.Bookable.Should().Be(0);
+        storedPurchase.ExpiresOn = new DateOnly(2027, 1, 1);
         storedPurchase.AmountDue = 10000m;
         storedPurchase.ReleasedSessions = 5000;
         await db.SaveChangesAsync();

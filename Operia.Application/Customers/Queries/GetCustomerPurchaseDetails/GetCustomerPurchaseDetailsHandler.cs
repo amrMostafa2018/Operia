@@ -58,16 +58,18 @@ public sealed class GetCustomerPurchaseDetailsHandler(
         var released = snapshot?.PaymentOption == "installment"
             ? purchase.ReleasedSessions ?? (purchase.AmountDue == 0m ? purchase.Total : 0)
             : purchase.Total;
+        var today = DateOnly.FromDateTime(clock.UtcNow);
+        var isBookable = purchase.IsActive && (purchase.ExpiresOn is null || purchase.ExpiresOn >= today);
         var sessions = !usesPulses
             ? new PurchaseBalanceDto(purchase.Total, purchase.Used,
                 Math.Max(0, purchase.Total - purchase.Used),
-                purchase.IsActive
+                isBookable
                     ? Math.Max(0, released - purchase.Used - (purchase.ReservedSessions ?? 0))
                     : 0, released)
             : null;
         var pulses = usesPulses
             ? new PurchaseBalanceDto(purchase.Total, purchase.Used, Math.Max(0, purchase.Total - purchase.Used),
-                purchase.IsActive ? Math.Max(0, released - purchase.Used) : 0, released)
+                isBookable ? Math.Max(0, released - purchase.Used) : 0, released)
             : null;
 
         var price = snapshot?.PurchasePrice ?? purchase.PurchasePrice;
@@ -76,7 +78,6 @@ public sealed class GetCustomerPurchaseDetailsHandler(
             ? Math.Max(0, price.Value - historicalDue.Value) : null;
         var paymentStatus = paid is null ? "unknown" : historicalDue == 0
             ? "fullyPaid" : paid > 0 ? "partial" : "unpaid";
-        var today = DateOnly.FromDateTime(clock.UtcNow);
         var packageStatus = !purchase.IsActive ? "cancelled"
             : purchase.ExpiresOn is not null && purchase.ExpiresOn < today ? "expired"
             : purchase.Total > 0 && purchase.Used >= purchase.Total ? "completed"
