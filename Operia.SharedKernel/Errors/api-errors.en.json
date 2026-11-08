@@ -418,6 +418,7 @@
   { "Name": "BookingDirectCustomerSelectionInvalid", "Value": "Choose either a registered customer or Direct Customer." },
   { "Name": "BookingDirectCustomerPackageUnavailable", "Value": "Direct customers cannot use or buy packages in this booking." },
   { "Name": "BookingDirectCustomerItemsReadOnly", "Value": "Direct customer booking items cannot be changed after confirmation." },
+  { "Name": "BookingSaleUnlistedEditNotAllowed", "Value": "This booking cannot be edited because it contains an unlisted service from a confirmed sale." },
   { "Name": "BookingCustomerNameTooLong", "Value": "Customer name cannot exceed 200 characters." },
   { "Name": "BookingCustomerSearchTermInvalid", "Value": "Search for a customer with 2 to 100 characters." },
   { "Name": "BookingRequestInvalid", "Value": "Review the booking details and try again." },

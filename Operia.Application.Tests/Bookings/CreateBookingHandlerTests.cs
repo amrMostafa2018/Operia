@@ -196,6 +196,46 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
+    public async Task EditingSaleBooking_CannotRemoveUnlistedSnapshotWithoutReconcilingPayment()
+    {
+        await SeedAsync();
+        var created = await CreateHandler().Handle(Command("sale-with-unlisted", 600, 690), CancellationToken.None);
+        var booking = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == created.Id);
+        booking.SaleId = "confirmed-sale";
+        booking.Source = "Sale";
+        booking.TotalAmount = 125m;
+        booking.PaidAmount = 125m;
+        booking.Items.Add(new BookingItem
+        {
+            TenantId = "tenant-1",
+            BookingId = booking.Id,
+            Type = BookingItemType.UnlistedService,
+            Name = "Custom service",
+            Quantity = 1,
+            DurationMinutes = 30,
+            UnitPrice = 125m
+        });
+        await _db.SaveChangesAsync();
+        var historyCount = await _db.BookingHistory.CountAsync();
+        var auditCount = await _db.AuditLogs.CountAsync();
+
+        var action = () => new UpdateBookingHandler(_db, _user.Object, _branchScope.Object,
+                new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object)
+            .Handle(new UpdateBookingCommand(booking.Id, Convert.ToBase64String(booking.Version),
+                [new CreateBookingItemInput("package-1", "owned-1", 1)]), CancellationToken.None);
+
+        (await action.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Bookings.SaleUnlistedEditNotAllowed);
+        _db.ChangeTracker.Clear();
+        var saved = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == booking.Id);
+        saved.TotalAmount.Should().Be(125m);
+        saved.PaidAmount.Should().Be(125m);
+        saved.Items.Should().ContainSingle(x => x.Type == BookingItemType.UnlistedService && x.UnitPrice == 125m);
+        (await _db.BookingHistory.CountAsync()).Should().Be(historyCount);
+        (await _db.AuditLogs.CountAsync()).Should().Be(auditCount);
+    }
+
+    [Fact]
     public async Task Handle_PersistsBookingHistoryAuditAndOnePackageReservation()
     {
         await SeedAsync();

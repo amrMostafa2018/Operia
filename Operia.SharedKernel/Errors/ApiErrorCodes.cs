@@ -190,6 +190,7 @@ public static class ApiErrorCodes
         public const string DirectCustomerSelectionInvalid = "BookingDirectCustomerSelectionInvalid";
         public const string DirectCustomerPackageUnavailable = "BookingDirectCustomerPackageUnavailable";
         public const string DirectCustomerItemsReadOnly = "BookingDirectCustomerItemsReadOnly";
+        public const string SaleUnlistedEditNotAllowed = "BookingSaleUnlistedEditNotAllowed";
         public const string EmployeeNotFound = "BookingEmployeeNotFound";
         public const string EmployeeNotInBranch = "BookingEmployeeNotInBranch";
         public const string OutsideWorkingHours = "BookingOutsideWorkingHours";

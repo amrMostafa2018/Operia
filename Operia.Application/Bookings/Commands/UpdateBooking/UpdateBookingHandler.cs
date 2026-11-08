@@ -33,6 +33,13 @@ public sealed class UpdateBookingHandler(
         var booking = await LoadEditableBookingAsync(tenantId, request, cancellationToken);
         var itemsChanged = HasItemsChanged(booking.Items, request.Items) ||
             await HasExplicitReservationChangedAsync(booking, request.Items, tenantId, cancellationToken);
+        // The update contract cannot identify or retain an unlisted sale snapshot. Replacing
+        // items would otherwise drop it without reconciling the confirmed sale or payment.
+        if (itemsChanged && booking.SaleId is not null && booking.Items.Any(item =>
+                item.Type == BookingItemType.UnlistedService && item.PackageId is null))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.SaleUnlistedEditNotAllowed, "items");
+        }
         IReadOnlyDictionary<string, Package> catalog = new Dictionary<string, Package>(StringComparer.Ordinal);
         if (itemsChanged)
         {
