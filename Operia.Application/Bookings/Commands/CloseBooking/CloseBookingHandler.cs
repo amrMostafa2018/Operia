@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Bookings.Commands.CancelBooking;
 using Operia.Application.Bookings.Common;
+using Operia.Application.Common.Authorization;
 using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
@@ -30,7 +31,7 @@ public sealed class CloseBookingHandler(
     public async Task<CloseBookingResult> Handle(CloseBookingCommand request, CancellationToken cancellationToken)
     {
         var tenantId = BookingAccess.RequireTenant(currentUser);
-        var booking = await db.Bookings.AsNoTracking()
+        var booking = await ScopedBookings(tenantId).AsNoTracking()
             .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.BookingId, cancellationToken)
             ?? throw ApiNotFoundException.FromCode(ApiErrorCodes.Bookings.NotFound);
         var allowedBranches = await BookingAccess.GetAllowedBranchesAsync(currentUser, branchScope, cancellationToken);
@@ -62,7 +63,7 @@ public sealed class CloseBookingHandler(
         byte[] version,
         CancellationToken cancellationToken)
     {
-        var booking = await db.Bookings
+        var booking = await ScopedBookings(tenantId)
             .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.BookingId, cancellationToken)
             ?? throw ApiNotFoundException.FromCode(ApiErrorCodes.Bookings.NotFound);
         BookingAccess.RequireBranch(allowedBranches, booking.BranchId);
@@ -175,6 +176,17 @@ public sealed class CloseBookingHandler(
             booking.Id,
             booking.Status.ToString(),
             Convert.ToBase64String(booking.Version));
+    }
+
+    private IQueryable<Booking> ScopedBookings(string tenantId)
+    {
+        var query = db.Bookings.Where(x => x.TenantId == tenantId);
+        if (currentUser.IsInRole(Roles.Staff))
+        {
+            var userId = currentUser.UserId;
+            query = query.Where(x => x.Employee != null && x.Employee.IdentityUserId == userId);
+        }
+        return query;
     }
 
     /// <summary>Rejects close when the booking is not in Booked status.</summary>

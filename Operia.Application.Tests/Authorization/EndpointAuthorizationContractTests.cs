@@ -49,7 +49,7 @@ public sealed class EndpointAuthorizationContractTests
             ["BookingsController.List"] = Policies.BookingsRead,
             ["BookingsController.History"] = Policies.BookingsRead,
             ["BookingsController.Cancel"] = Policies.BookingsCancel,
-            ["BookingsController.Close"] = Policies.BookingsManage,
+            ["BookingsController.Close"] = Policies.BookingsChangeStatus,
             ["BookingsController.Update"] = Policies.BookingsManage,
             ["BookingsController.PaymentMethods"] = Policies.BookingsRead,
             ["BookingsController.Export"] = Policies.BookingsExport,

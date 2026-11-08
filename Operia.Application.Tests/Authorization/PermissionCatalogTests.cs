@@ -48,7 +48,7 @@ public sealed class PermissionCatalogTests
         foreach (var name in names)
         {
             Assert.Single(claims[name], claim => claim.Type == "operia.permission-baseline" &&
-                                                 claim.Value == "v5");
+                                                 claim.Value == "v6");
             var permissions = claims[name]
                 .Where(claim => claim.Type == Policies.PermissionClaimType)
                 .Select(claim => claim.Value)
@@ -62,6 +62,10 @@ public sealed class PermissionCatalogTests
             else if (name is Roles.Reception)
             {
                 Assert.Equal([Policies.CustomersCollectInstallment], permissions);
+            }
+            else if (name is Roles.Staff)
+            {
+                Assert.Equal([Policies.BookingsChangeStatus], permissions);
             }
             else
             {
@@ -154,6 +158,7 @@ public sealed class PermissionCatalogTests
         Assert.Equal(
         [
             Policies.BookingsRead,
+            Policies.BookingsChangeStatus,
             Policies.SupportRead,
             Policies.NotificationsRead
         ], permissions);

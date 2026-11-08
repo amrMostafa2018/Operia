@@ -52,7 +52,7 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
 
     /// <summary>Closes a Booked appointment, finalises per-item usage, and marks it Completed.</summary>
     [HttpPost("{id}/close")]
-    [Authorize(Policy = Policies.BookingsManage)]
+    [Authorize(Policy = Policies.BookingsChangeStatus)]
     public Task<CloseBookingResult> Close(
         string id,
         CloseBookingRequest request,

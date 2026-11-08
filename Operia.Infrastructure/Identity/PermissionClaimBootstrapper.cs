@@ -8,7 +8,7 @@ namespace Operia.Infrastructure.Identity;
 public static class PermissionClaimBootstrapper
 {
     private const string BaselineVersionClaimType = "operia.permission-baseline";
-    private const string BaselineVersion = "v5";
+    private const string BaselineVersion = "v6";
 
     public static readonly IReadOnlySet<string> AdminExcludedPermissions =
         new HashSet<string>(StringComparer.Ordinal)
@@ -56,6 +56,7 @@ public static class PermissionClaimBootstrapper
     private static readonly IReadOnlyList<string> StaffPermissions =
     [
         Policies.BookingsRead,
+        Policies.BookingsChangeStatus,
         Policies.SupportRead,
         Policies.NotificationsRead
     ];
@@ -90,12 +91,16 @@ public static class PermissionClaimBootstrapper
             }
 
             // Upgrades add only newly introduced grants. Existing customizations remain.
-            if (priorBaselines.Any(claim => claim.Value is not ("v1" or "v2" or "v3" or "v4")))
+            if (priorBaselines.Any(claim => claim.Value is not ("v1" or "v2" or "v3" or "v4" or "v5")))
             {
                 continue;
             }
             var additions = priorBaselines.Length == 0
                 ? permissions
+                : roleName is Roles.Staff
+                    ? new[] { Policies.BookingsChangeStatus }
+                : priorBaselines.Any(claim => claim.Value == "v5")
+                    ? []
                 : roleName is Roles.Admin or Roles.SuperAdmin
                     ? new[] { Policies.CustomersCollectInstallment,
                         Policies.CustomersRefund, Policies.CustomersBlock,

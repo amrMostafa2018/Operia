@@ -40,6 +40,30 @@ public sealed class CloseBookingHandlerTests
     }
 
     [Fact]
+    public async Task Staff_CanCloseOwnBooking_ButNotColleaguesBooking()
+    {
+        await SeedAsync();
+        var created = await CreateHandler().Handle(
+            new CreateBookingCommand("staff-close", "customer-1", "branch-1", "employee-1",
+                _scheduledDate, 600, 660, [new CreateBookingItemInput("package-1", "owned-1", 1)]),
+            CancellationToken.None);
+        var booking = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == created.Id);
+        var command = new CloseBookingCommand(booking.Id, created.Version,
+            [new CloseBookingItemInput(booking.Items.Single().Id, "owned-1", "complete", null, null)]);
+        _user.Setup(x => x.IsInRole("Staff")).Returns(true);
+
+        var denied = () => CloseHandler().Handle(command, CancellationToken.None);
+        await denied.Should().ThrowAsync<ApiNotFoundException>();
+        (await _db.Bookings.SingleAsync(x => x.Id == booking.Id)).Status.Should().Be(BookingStatus.Booked);
+
+        _user.SetupGet(x => x.UserId).Returns("employee-user");
+        _branchScope.Setup(x => x.GetAllowedBranchIdsAsync("employee-user", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["branch-1"]);
+        var result = await CloseHandler().Handle(command, CancellationToken.None);
+        result.Status.Should().Be(nameof(BookingStatus.Completed));
+    }
+
+    [Fact]
     public async Task Handle_PackageComplete_IncrementsUsedAndMarksBookingCompleted()
     {
         await SeedAsync();

@@ -15,6 +15,7 @@ public sealed class PermissionBaselineUpgradeTests
     [InlineData("v3")]
     [InlineData("v4")]
     [InlineData("v1")]
+    [InlineData("v5")]
     public async Task EarlierRolesReceiveOnlyNewPermissions(string previousVersion)
     {
         var roleNames = new[]
@@ -65,14 +66,14 @@ public sealed class PermissionBaselineUpgradeTests
         foreach (var name in roleNames)
         {
             Assert.Single(claims[name], claim => claim.Type == "operia.permission-baseline" &&
-                                                 claim.Value == "v5");
-            Assert.Equal(name is Roles.SuperAdmin or Roles.Admin or Roles.Reception ? 1 : 0,
+                                                 claim.Value == "v6");
+            Assert.Equal(previousVersion != "v5" && (name is Roles.SuperAdmin or Roles.Admin or Roles.Reception) ? 1 : 0,
                 claims[name].Count(claim => claim.Type == Policies.PermissionClaimType &&
                                             claim.Value == Policies.CustomersCollectInstallment));
         }
         Assert.DoesNotContain(claims[Roles.Reception], claim =>
             claim.Type == Policies.PermissionClaimType && claim.Value == Policies.BookingsExport);
-        foreach (var role in new[] { Roles.SuperAdmin, Roles.Admin })
+        foreach (var role in previousVersion == "v5" ? Array.Empty<string>() : new[] { Roles.SuperAdmin, Roles.Admin })
         {
             foreach (var permission in new[] { Policies.CustomersRefund, Policies.CustomersBlock,
                          Policies.CustomersHistory })
@@ -82,6 +83,7 @@ public sealed class PermissionBaselineUpgradeTests
             }
         }
 
+        if (previousVersion == "v5") return;
         var removedGrant = claims[Roles.Reception].Single(claim =>
             claim.Type == Policies.PermissionClaimType && claim.Value == Policies.CustomersCollectInstallment);
         claims[Roles.Reception].Remove(removedGrant);
