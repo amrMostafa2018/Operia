@@ -302,6 +302,29 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
+    public async Task EligibleEmployees_AccountsForSaleOnlyUnlistedServiceDuration()
+    {
+        await SeedAsync();
+        var handler = new GetEligibleBookingEmployeesHandler(
+            _db, _user.Object, _branchScope.Object, _identity.Object, _clock.Object);
+        var items = new[] { new CreateBookingItemInput("package-1", "owned-1", 1) };
+
+        var tooShort = new GetEligibleBookingEmployeesQuery(
+            "branch-1", _scheduledDate, 600, 660, items, 30);
+        (await handler.Handle(tooShort, CancellationToken.None)).Should().BeEmpty();
+
+        var fullSlot = tooShort with { EndMinutes = 690 };
+        (await handler.Handle(fullSlot, CancellationToken.None)).Select(x => x.Id)
+            .Should().ContainSingle().Which.Should().Be("employee-1");
+
+        var unlistedOnly = new GetEligibleBookingEmployeesQuery(
+            "branch-1", _scheduledDate, 600, 630, [], 30);
+        new GetEligibleBookingEmployeesValidator().Validate(unlistedOnly).IsValid.Should().BeTrue();
+        (await handler.Handle(unlistedOnly, CancellationToken.None)).Select(x => x.Id)
+            .Should().ContainSingle().Which.Should().Be("employee-1");
+    }
+
+    [Fact]
     public async Task DirectCustomer_CannotAttachOwnedSessionOrBuyPackage()
     {
         await SeedAsync();

@@ -7,6 +7,7 @@ using Operia.Application.Bookings.Common;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
 using Operia.SharedKernel.Errors;
+using Operia.SharedKernel.Interfaces;
 
 namespace Operia.Application.Sales.Queries.QuoteSale;
 
@@ -14,12 +15,20 @@ namespace Operia.Application.Sales.Queries.QuoteSale;
 public sealed class QuoteSaleHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
-    IBranchScope branchScope) : IRequestHandler<QuoteSaleQuery, SaleQuoteDto>
+    IBranchScope branchScope,
+    IDateTimeProvider clock) : IRequestHandler<QuoteSaleQuery, SaleQuoteDto>
 {
     public async Task<SaleQuoteDto> Handle(QuoteSaleQuery request, CancellationToken cancellationToken)
     {
         var tenantId = currentUser.TenantId
             ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
+        var timezoneId = await db.Tenants.AsNoTracking()
+            .Where(tenant => tenant.Id == tenantId)
+            .Select(tenant => tenant.Timezone)
+            .SingleAsync(cancellationToken);
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(clock.UtcNow, DateTimeKind.Utc),
+            TimeZoneInfo.FindSystemTimeZoneById(timezoneId)));
         if (request.DirectCustomer && !string.IsNullOrWhiteSpace(request.CustomerId))
         {
             throw ConflictException.FromCode(ApiErrorCodes.Sales.DirectCustomerSelectionInvalid,
@@ -75,7 +84,7 @@ public sealed class QuoteSaleHandler(
                     request.CustomerId is null ||
                     !owned.TryGetValue(item.OwnedCustomerPackageId, out var purchase) ||
                     purchase.CustomerId != request.CustomerId || !purchase.IsActive ||
-                    purchase.ExpiresOn < DateOnly.FromDateTime(DateTime.UtcNow) ||
+                    purchase.ExpiresOn < today ||
                     !usedOwnedIds.Add(purchase.Id) || item.PaymentOption != "owned")
                 {
                     throw ConflictException.FromCode(ApiErrorCodes.Sales.OwnedSessionUnavailable, "items");
@@ -108,7 +117,7 @@ public sealed class QuoteSaleHandler(
             {
                 if (!offers.TryGetValue(item.OfferId, out var offer) ||
                     offer.Status != PackageStatus.Active ||
-                    offer.EndsAt is { } endsAt && endsAt < DateOnly.FromDateTime(DateTime.UtcNow))
+                    offer.EndsAt is { } endsAt && endsAt < today)
                 {
                     throw ConflictException.FromCode(ApiErrorCodes.Sales.OfferUnavailable, "items");
                 }

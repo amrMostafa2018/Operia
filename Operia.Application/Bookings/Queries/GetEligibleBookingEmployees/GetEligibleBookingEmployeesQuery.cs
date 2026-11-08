@@ -9,7 +9,8 @@ public sealed record GetEligibleBookingEmployeesQuery(
     DateOnly ScheduledDate,
     int StartMinutes,
     int EndMinutes,
-    IReadOnlyList<CreateBookingItemInput> Items)
+    IReadOnlyList<CreateBookingItemInput> Items,
+    int UnlistedDurationMinutes = 0)
     : IRequest<IReadOnlyList<EligibleBookingEmployee>>;
 
 public sealed record EligibleBookingEmployee(string Id, string FullName);

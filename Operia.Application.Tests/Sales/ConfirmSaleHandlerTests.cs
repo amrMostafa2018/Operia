@@ -57,6 +57,29 @@ public sealed class ConfirmSaleHandlerTests
     }
 
     [Fact]
+    public async Task Quote_UsesCenterLocalDayForOfferExpiry()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var offer = await fixture.Db.Packages.SingleAsync(x => x.Id == "service");
+        offer.EndsAt = new DateOnly(2026, 11, 28);
+        await fixture.Db.SaveChangesAsync();
+        var clock = new Mock<IDateTimeProvider>();
+        var quote = new QuoteSaleHandler(
+            fixture.Db, fixture.User.Object, fixture.BranchScope.Object, clock.Object);
+        var request = new QuoteSaleQuery("customer-1", "branch-1", [Item("service", "cash")]);
+
+        clock.SetupGet(x => x.UtcNow).Returns(
+            new DateTime(2026, 11, 28, 21, 30, 0, DateTimeKind.Utc));
+        (await quote.Handle(request, CancellationToken.None)).DueNow.Should().Be(30m);
+
+        clock.SetupGet(x => x.UtcNow).Returns(
+            new DateTime(2026, 11, 28, 22, 30, 0, DateTimeKind.Utc));
+        var expired = () => quote.Handle(request, CancellationToken.None);
+        (await expired.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.OfferUnavailable);
+    }
+
+    [Fact]
     public async Task FailedThenConfirmedCollection_UsesSavedTermsAndCountsOnlyReceivedAmount()
     {
         await using var fixture = await Fixture.CreateAsync();
@@ -565,13 +588,13 @@ public sealed class ConfirmSaleHandlerTests
         private readonly QuoteSaleHandler _quoteHandler;
 
         private Fixture(string database, TestApplicationDbContext db, Mock<IBranchScope> branchScope,
-            Mock<ICurrentUserService> user)
+            Mock<ICurrentUserService> user, Mock<IDateTimeProvider> clock)
         {
             _database = database;
             Db = db;
             BranchScope = branchScope;
             _user = user;
-            _quoteHandler = new QuoteSaleHandler(db, user.Object, branchScope.Object);
+            _quoteHandler = new QuoteSaleHandler(db, user.Object, branchScope.Object, clock.Object);
         }
 
         public static async Task<Fixture> CreateAsync()
@@ -655,7 +678,7 @@ public sealed class ConfirmSaleHandlerTests
                     CumulativeAvailableSessions = 3
                 });
             await db.SaveChangesAsync();
-            return new Fixture(database, db, branchScope, user);
+            return new Fixture(database, db, branchScope, user, clock);
         }
 
         public async Task AddForeignOfferAsync()

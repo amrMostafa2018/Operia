@@ -13,7 +13,11 @@ public sealed class GetEligibleBookingEmployeesValidator : AbstractValidator<Get
         RuleFor(x => x.EndMinutes).InclusiveBetween(1, 1440)
             .GreaterThan(x => x.StartMinutes)
             .WithErrorCode(ApiErrorCodes.Bookings.RequestInvalid);
-        RuleFor(x => x.Items).NotEmpty().WithErrorCode(ApiErrorCodes.Bookings.ItemsRequired);
+        RuleFor(x => x.Items).NotNull().WithErrorCode(ApiErrorCodes.Bookings.ItemsRequired);
+        RuleFor(x => x.UnlistedDurationMinutes).InclusiveBetween(0, 1440)
+            .WithErrorCode(ApiErrorCodes.Bookings.RequestInvalid);
+        RuleFor(x => x).Must(x => (x.Items?.Count ?? 0) > 0 || x.UnlistedDurationMinutes > 0)
+            .WithErrorCode(ApiErrorCodes.Bookings.ItemsRequired);
         RuleForEach(x => x.Items).ChildRules(item =>
         {
             item.RuleFor(x => x.PackageId).NotEmpty()

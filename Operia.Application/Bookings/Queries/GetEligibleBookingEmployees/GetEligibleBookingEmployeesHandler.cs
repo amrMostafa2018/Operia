@@ -36,7 +36,8 @@ public sealed class GetEligibleBookingEmployeesHandler(
             throw ApiNotFoundException.FromCode(ApiErrorCodes.Packages.PackageNotFound, "items");
         }
 
-        var required = BookingDuration.RequiredMinutes(request.Items, offers);
+        var required = BookingDuration.RequiredMinutes(request.Items, offers) +
+            request.UnlistedDurationMinutes;
         var end = request.EndMinutes;
         if (end - request.StartMinutes < required)
         {
