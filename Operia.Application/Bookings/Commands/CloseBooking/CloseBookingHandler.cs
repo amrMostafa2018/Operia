@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Operia.Application.Bookings.Commands.CancelBooking;
 using Operia.Application.Bookings.Common;
+using Operia.Application.Packages;
 using Operia.Application.Common.Authorization;
 using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
@@ -365,7 +366,8 @@ public sealed class CloseBookingHandler(
             owned.Used,
             owned.ReservedSessions,
             owned.Package?.OfferType ?? OfferType.SingleSession,
-            owned.Package?.PulseCount);
+            owned.Package?.PulseCount,
+            PurchaseSessionEntitlement.Released(owned));
         if (input.PulsesUsed.Value > remaining)
         {
             throw Invalid(ApiErrorCodes.Bookings.PulsesExceedRemaining, $"items[{inputIndex}].pulsesUsed");

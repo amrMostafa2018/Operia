@@ -21,6 +21,7 @@ internal static class InstallmentPlanRules
         Func<T, decimal?> firstPayment,
         Func<T, int?> installmentCount,
         Func<T, int?> sessionCount,
+        Func<T, int?> pulseCount,
         Func<T, IReadOnlyList<PackageInstallmentInput>?> rows)
     {
         validator.RuleFor(command => command).Custom((command, context) =>
@@ -87,7 +88,9 @@ internal static class InstallmentPlanRules
                 Add(context, "installments", ApiErrorCodes.Packages.PackageInstallmentTotalMismatch);
             }
 
-            var sessions = sessionCount(command).GetValueOrDefault();
+            var sessions = sessionCount(command).GetValueOrDefault() > 0
+                ? sessionCount(command).GetValueOrDefault()
+                : pulseCount(command).GetValueOrDefault();
             if (sessions <= 0)
             {
                 Add(context, "installments", ApiErrorCodes.Packages.PackageInstallmentSessionsInvalid);

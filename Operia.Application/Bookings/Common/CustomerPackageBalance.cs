@@ -22,7 +22,7 @@ public static class CustomerPackageBalance
         int? pulseCount,
         int? releasedSessions = null) =>
         UsesPulses(offerType, pulseCount)
-            ? Math.Max(0, total - used)
+            ? Math.Max(0, Math.Min(total, releasedSessions ?? total) - used)
             : Math.Max(0, Math.Min(total, releasedSessions ?? total) - used - (reservedSessions ?? 0));
 
     /// <summary>True when the purchase still has remaining balance using the offer-type rules.</summary>

@@ -261,7 +261,7 @@ public sealed class GetCalendarBookingsHandler(
     private static int EffectiveReleased(PackageBalanceRow balance)
     {
         var snapshot = Operia.Application.Packages.PackagePurchaseSnapshot.FromJson(balance.PurchaseSnapshotJson);
-        if (snapshot?.PaymentOption == "installment" && snapshot.PulseCount is not > 0)
+        if (snapshot?.PaymentOption == "installment")
         {
             return balance.AmountDue == 0m ? balance.Total : balance.ReleasedSessions ?? 0;
         }

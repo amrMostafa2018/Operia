@@ -8,7 +8,7 @@ public static class PurchaseSessionEntitlement
     public static int Released(CustomerPackage purchase)
     {
         var snapshot = PackagePurchaseSnapshot.FromJson(purchase.PurchaseSnapshotJson);
-        if (snapshot?.PaymentOption == "installment" && snapshot.PulseCount is not > 0)
+        if (snapshot?.PaymentOption == "installment")
         {
             return purchase.AmountDue == 0m
                 ? purchase.Total

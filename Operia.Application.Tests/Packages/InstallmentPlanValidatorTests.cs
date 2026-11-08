@@ -154,22 +154,27 @@ public sealed class InstallmentPlanValidatorTests
     }
 
     [Fact]
-    public async Task PulsePackage_CannotCarrySessionReleasePlan()
+    public async Task PulsePackage_UsesTheSameReleaseLimit()
     {
         var command = Plan() with
         {
             SessionCount = null,
             PulseCount = 1000,
             Installments = [
-                new PackageInstallmentInput(5000m, 0),
-                new PackageInstallmentInput(5000m, 0),
-                new PackageInstallmentInput(5000m, 0)
+                new PackageInstallmentInput(5000m, 350),
+                new PackageInstallmentInput(5000m, 350),
+                new PackageInstallmentInput(5000m, 300)
             ]
         };
 
-        var errors = (await _validator.ValidateAsync(command)).Errors;
+        (await _validator.ValidateAsync(command)).IsValid.Should().BeTrue();
+        var errors = (await _validator.ValidateAsync(command with
+        {
+            Installments = [new PackageInstallmentInput(5000m, 351),
+                new PackageInstallmentInput(5000m, 350), new PackageInstallmentInput(5000m, 299)]
+        })).Errors;
         errors.Should().Contain(error => error.ErrorCode ==
-            ApiErrorCodes.Packages.PackageInstallmentSessionsInvalid);
+            ApiErrorCodes.Packages.PackageInstallmentReleaseCap);
     }
 
     private static CreatePackageCommand Plan() => new(

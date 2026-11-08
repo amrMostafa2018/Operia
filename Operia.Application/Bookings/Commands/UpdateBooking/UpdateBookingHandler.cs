@@ -375,7 +375,8 @@ public sealed class UpdateBookingHandler(
         return balances
             .Where(x => catalog.TryGetValue(x.PackageId, out var product) &&
                         ((x.OriginBookingId != bookingId && reservedIds.Contains(x.Id)) || CustomerPackageBalance.HasAvailable(
-                            x.Total, x.Used, x.ReservedSessions, product.OfferType, product.PulseCount)))
+                            x.Total, x.Used, x.ReservedSessions, product.OfferType, product.PulseCount,
+                            PurchaseSessionEntitlement.Released(x))))
             .Select(x => x.PackageId)
             .ToHashSet(StringComparer.Ordinal);
     }
@@ -772,6 +773,7 @@ public sealed class UpdateBookingHandler(
         return owned.FirstOrDefault(x =>
             !alreadyReserved.Contains(x.Id) &&
             CustomerPackageBalance.HasAvailable(
-                x.Total, x.Used, x.ReservedSessions, product.OfferType, product.PulseCount))?.Id;
+                x.Total, x.Used, x.ReservedSessions, product.OfferType, product.PulseCount,
+                PurchaseSessionEntitlement.Released(x)))?.Id;
     }
 }

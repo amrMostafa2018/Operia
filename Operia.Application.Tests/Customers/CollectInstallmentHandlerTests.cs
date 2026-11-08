@@ -4,6 +4,7 @@ using Moq;
 using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
+using Operia.Application.Bookings.Common;
 using Operia.Application.Customers.Commands.CollectInstallment;
 using Operia.Application.Customers.Queries.GetCustomerPurchaseDetails;
 using Operia.Application.Packages;
@@ -20,6 +21,32 @@ namespace Operia.Application.Tests.Customers;
 
 public sealed class CollectInstallmentHandlerTests
 {
+    [Fact]
+    public async Task PulseInstallments_ReleaseOnlyConfirmedUnitsAndRequireUsageProgress()
+    {
+        await using var fixture = await Fixture.CreateAsync("tenant-1");
+        var purchase = await fixture.Db.CustomerPackages.SingleAsync();
+        var offer = await fixture.Db.Packages.SingleAsync();
+        offer.SessionCount = null;
+        offer.PulseCount = 5;
+        var snapshot = PackagePurchaseSnapshot.FromJson(purchase.PurchaseSnapshotJson)!;
+        purchase.PurchaseSnapshotJson = (snapshot with { SessionCount = null, PulseCount = 5 }).ToJson();
+        await fixture.Db.SaveChangesAsync();
+
+        int Available() => CustomerPackageBalance.Remaining(purchase.Total, purchase.Used,
+            purchase.ReservedSessions, OfferType.Package, 5, PurchaseSessionEntitlement.Released(purchase));
+        Available().Should().Be(0);
+        (await fixture.Collect("pulse-first")).ReleasedSessions.Should().Be(2);
+        Available().Should().Be(2);
+        (await fixture.Collect("pulse-first")).ReleasedSessions.Should().Be(2);
+        var early = () => fixture.Collect("pulse-second");
+        await early.Should().ThrowAsync<ConflictException>();
+        purchase.Used = 2;
+        await fixture.Db.SaveChangesAsync();
+        (await fixture.Collect("pulse-second")).ReleasedSessions.Should().Be(5);
+        Available().Should().Be(3);
+    }
+
     [Fact]
     public async Task RejectsLaterInstallmentUntilFirstPaymentIsCollected()
     {

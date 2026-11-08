@@ -61,6 +61,11 @@ public sealed class CollectInstallmentHandler(
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Bookings.InstallmentCollectionInvalid, "amount");
             }
+            var previous = rows.LastOrDefault(x => x.Number < row.Number);
+            if (previous is not null && purchase.Used < previous.CumulativeAvailableSessions)
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Customers.InstallmentNotEligible);
+            }
             if (request.Amount > 0)
             {
                 var enabledMethods = await BookingPaymentMethods.GetEnabledAsync(db, tenantId, token);

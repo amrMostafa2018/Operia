@@ -172,8 +172,7 @@ public static class BookingItemPricing
         };
         if (installment)
         {
-            if (product.SessionCount is not > 0 || product.PulseCount is > 0 ||
-                product.FirstPayment is null || product.Installments.Count != product.InstallmentCount)
+            if (product.FirstPayment is null || product.Installments.Count != product.InstallmentCount)
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageInstallmentUnavailable, "items");
             }

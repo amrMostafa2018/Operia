@@ -52,8 +52,7 @@ internal static class SaleCollectionActivation
                         SaleUnitIndex = unit,
                         PurchasePrice = terms.PurchasePrice,
                         AmountDue = amountDue,
-                        ReleasedSessions = terms.PulseCount is not > 0 &&
-                            terms.PaymentOption == "installment" && amountDue > 0m ? 0 : total,
+                        ReleasedSessions = terms.PaymentOption == "installment" && amountDue > 0m ? 0 : total,
                         PurchaseSnapshotJson = terms.ToJson(),
                         StartedOn = localCollectionDate,
                         Total = total,

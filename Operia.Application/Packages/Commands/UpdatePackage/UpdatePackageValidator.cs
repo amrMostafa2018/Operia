@@ -54,6 +54,7 @@ public sealed class UpdatePackageValidator : AbstractValidator<UpdatePackageComm
             command => command.FirstPayment,
             command => command.InstallmentCount,
             command => command.SessionCount,
+            command => command.PulseCount,
             command => command.Installments);
     }
 }
