@@ -50,4 +50,5 @@ public sealed record CustomerOperationsPageDto(
     decimal TotalRemaining,
     IReadOnlyList<CustomerOperationDto> Rows,
     decimal TotalRefunded = 0m,
-    decimal TotalNetCollected = 0m);
+    decimal TotalNetCollected = 0m,
+    string TimezoneId = "UTC");

@@ -55,6 +55,47 @@ public sealed class CustomerRefundAndBlockTests
     }
 
     [Fact]
+    public async Task RefundKeepsEarlierSameDayBookingAndCancelsFutureBooking()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var localNow = TimeZoneInfo.ConvertTimeFromUtc(fixture.Clock.Object.UtcNow,
+            TimeZoneInfo.FindSystemTimeZoneById("Africa/Cairo"));
+        var pastStart = localNow.Hour * 60 + localNow.Minute - 30;
+        fixture.Db.Bookings.Add(new Booking
+        {
+            Id = "past-booking",
+            TenantId = "tenant-1",
+            BranchId = "branch-1",
+            EmployeeId = "staff-1",
+            CustomerId = "customer-1",
+            ScheduledDate = DateOnly.FromDateTime(localNow),
+            StartMinutes = pastStart,
+            EndMinutes = pastStart + 30,
+            Status = BookingStatus.Booked
+        });
+        fixture.Db.BookingPackageReservations.Add(new BookingPackageReservation
+        {
+            TenantId = "tenant-1",
+            BookingId = "past-booking",
+            CustomerPackageId = "purchase-1",
+            SessionNumber = 5
+        });
+        var purchase = await fixture.Db.CustomerPackages.SingleAsync();
+        purchase.ReservedSessions = 2;
+        await fixture.Db.SaveChangesAsync();
+
+        await fixture.Refund(1500m, "same-day-refund");
+
+        (await fixture.Db.Bookings.SingleAsync(x => x.Id == "past-booking"))
+            .Status.Should().Be(BookingStatus.Booked);
+        (await fixture.Db.Bookings.SingleAsync(x => x.Id == "booking-1"))
+            .Status.Should().Be(BookingStatus.Cancelled);
+        (await fixture.Db.BookingPackageReservations.SingleAsync(x =>
+            x.BookingId == "past-booking")).CancellationAtUtc.Should().BeNull();
+        purchase.ReservedSessionCount.Should().Be(1);
+    }
+
+    [Fact]
     public async Task BlockStateIsSeparateFromPurchase_AndAuditsBothTransitions()
     {
         await using var fixture = await Fixture.CreateAsync();

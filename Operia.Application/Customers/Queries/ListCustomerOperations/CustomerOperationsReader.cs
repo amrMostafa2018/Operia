@@ -16,7 +16,7 @@ public sealed class CustomerOperationsReader(
     IBranchScope branchScope,
     IDateTimeProvider clock)
 {
-    public async Task<IReadOnlyList<CustomerOperationDto>> ReadAsync(
+    public async Task<CustomerOperationsData> ReadAsync(
         CustomerOperationsFilter filter,
         CancellationToken cancellationToken)
     {
@@ -24,6 +24,28 @@ public sealed class CustomerOperationsReader(
             ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
         var branches = await branchScope.GetAllowedBranchIdsAsync(
             currentUser.UserId ?? string.Empty, cancellationToken);
+        var timezoneId = await db.Tenants.AsNoTracking()
+            .Where(x => x.Id == tenantId)
+            .Select(x => x.Timezone)
+            .SingleAsync(cancellationToken);
+        var timezone = TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
+        var localNow = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(clock.UtcNow, DateTimeKind.Utc), timezone);
+        var today = DateOnly.FromDateTime(localNow);
+        var fromUtc = filter.FromDate is { } fromDate
+            ? ToUtc(fromDate.ToDateTime(TimeOnly.MinValue), timezone)
+            : (DateTime?)null;
+        var toUtc = filter.ToDate is { } toDate && toDate != DateOnly.MaxValue
+            ? ToUtc(toDate.AddDays(1).ToDateTime(TimeOnly.MinValue), timezone)
+            : (DateTime?)null;
+        var mobileDigits = string.Concat((filter.Mobile ?? string.Empty).Where(char.IsDigit));
+        var normalizedMobile = mobileDigits.StartsWith("01", StringComparison.Ordinal)
+            ? "20" + mobileDigits[1..]
+            : mobileDigits;
+        var legacyLocalMobile = normalizedMobile.StartsWith("20", StringComparison.Ordinal) &&
+                                normalizedMobile.Length == 12
+            ? "0" + normalizedMobile[2..]
+            : normalizedMobile;
         var sales = from sale in db.Sales.AsNoTracking()
                     join customer in db.Customers.AsNoTracking() on sale.CustomerId equals customer.Id
                     join branch in db.Branches.AsNoTracking() on sale.BranchId equals branch.Id
@@ -38,20 +60,19 @@ public sealed class CustomerOperationsReader(
                         CustomerId = customer.Id,
                         CustomerName = customer.FullName,
                         Mobile = customer.MobileNumber,
+                        NormalizedMobile = customer.NormalizedMobileNumber,
                         CustomerActive = customer.IsActive,
                         CustomerBlocked = customer.IsBlocked,
                         BranchName = branch.Name
                     };
 
-        if (filter.FromDate is { } from)
+        if (fromUtc is { } from)
         {
-            var start = from.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-            sales = sales.Where(x => x.CreatedAt >= start);
+            sales = sales.Where(x => x.CreatedAt >= from);
         }
-        if (filter.ToDate is { } to && to != DateOnly.MaxValue)
+        if (toUtc is { } to)
         {
-            var end = to.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-            sales = sales.Where(x => x.CreatedAt < end);
+            sales = sales.Where(x => x.CreatedAt < to);
         }
         if (!string.IsNullOrWhiteSpace(filter.Customer))
         {
@@ -61,7 +82,10 @@ public sealed class CustomerOperationsReader(
         if (!string.IsNullOrWhiteSpace(filter.Mobile))
         {
             var mobile = filter.Mobile.Trim();
-            sales = sales.Where(x => x.Mobile.Contains(mobile));
+            sales = sales.Where(x => x.Mobile.Contains(mobile) ||
+                mobileDigits.Length >= 2 &&
+                (x.NormalizedMobile.Contains(normalizedMobile) ||
+                 x.NormalizedMobile.Contains(legacyLocalMobile)));
         }
 
         var scopedSaleData = await sales.OrderByDescending(x => x.CreatedAt)
@@ -90,7 +114,6 @@ public sealed class CustomerOperationsReader(
             .GroupBy(x => x.CustomerPackageId)
             .Select(group => new { PurchaseId = group.Key, Amount = group.Sum(x => x.Amount) })
             .ToDictionaryAsync(x => x.PurchaseId, x => x.Amount, cancellationToken);
-        var today = DateOnly.FromDateTime(clock.UtcNow);
         var rows = new List<CustomerOperationDto>();
 
         foreach (var sale in scopedSales)
@@ -132,15 +155,13 @@ public sealed class CustomerOperationsReader(
                                branch.TenantId == tenantId && purchase.SaleId == null &&
                                purchase.BranchId != null && branches.Contains(purchase.BranchId)
                          select new { purchase, customer, branch.Name };
-        if (filter.FromDate is { } historicalFrom)
+        if (fromUtc is { } historicalFrom)
         {
-            historical = historical.Where(x => x.purchase.CreatedAt >=
-                historicalFrom.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+            historical = historical.Where(x => x.purchase.CreatedAt >= historicalFrom);
         }
-        if (filter.ToDate is { } historicalTo && historicalTo != DateOnly.MaxValue)
+        if (toUtc is { } historicalTo)
         {
-            historical = historical.Where(x => x.purchase.CreatedAt <
-                historicalTo.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+            historical = historical.Where(x => x.purchase.CreatedAt < historicalTo);
         }
         if (!string.IsNullOrWhiteSpace(filter.Customer))
         {
@@ -148,7 +169,11 @@ public sealed class CustomerOperationsReader(
         }
         if (!string.IsNullOrWhiteSpace(filter.Mobile))
         {
-            historical = historical.Where(x => x.customer.MobileNumber.Contains(filter.Mobile.Trim()));
+            var mobile = filter.Mobile.Trim();
+            historical = historical.Where(x => x.customer.MobileNumber.Contains(mobile) ||
+                mobileDigits.Length >= 2 &&
+                (x.customer.NormalizedMobileNumber.Contains(normalizedMobile) ||
+                 x.customer.NormalizedMobileNumber.Contains(legacyLocalMobile)));
         }
         var historicalRows = await historical.Select(x => new
         {
@@ -212,9 +237,26 @@ public sealed class CustomerOperationsReader(
         {
             rows = rows.Where(x => x.PaymentType == filter.PaymentType).ToList();
         }
-        return rows.OrderByDescending(x => x.OperationDate)
+        var ordered = rows.OrderByDescending(x => x.OperationDate)
             .ThenByDescending(x => x.Id, StringComparer.Ordinal)
             .ToList();
+        return new CustomerOperationsData(ordered, timezoneId);
+    }
+
+    private static DateTime ToUtc(DateTime local, TimeZoneInfo timezone)
+    {
+        while (timezone.IsInvalidTime(local))
+        {
+            local = local.AddMinutes(1);
+        }
+
+        if (timezone.IsAmbiguousTime(local))
+        {
+            return new DateTimeOffset(local, timezone.GetAmbiguousTimeOffsets(local).Max())
+                .UtcDateTime;
+        }
+
+        return TimeZoneInfo.ConvertTimeToUtc(local, timezone);
     }
 
     private static CustomerOperationDto CreateRow(
@@ -289,3 +331,7 @@ public sealed class CustomerOperationsReader(
         decimal? AmountDue, string? SnapshotJson, bool IsActive, DateOnly? ExpiresOn,
         int Total, int Used);
 }
+
+public sealed record CustomerOperationsData(
+    IReadOnlyList<CustomerOperationDto> Rows,
+    string TimezoneId);

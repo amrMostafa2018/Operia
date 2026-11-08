@@ -10,7 +10,7 @@ public sealed class ExportCustomerOperationsHandler(CustomerOperationsReader rea
         ExportCustomerOperationsQuery request,
         CancellationToken cancellationToken)
     {
-        var rows = await reader.ReadAsync(request.Filter, cancellationToken);
-        return CustomerOperationsWorkbook.Write(rows);
+        var data = await reader.ReadAsync(request.Filter, cancellationToken);
+        return CustomerOperationsWorkbook.Write(data.Rows, data.TimezoneId);
     }
 }

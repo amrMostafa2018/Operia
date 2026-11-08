@@ -34,6 +34,7 @@ public sealed class CustomerOperationsTests
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase($"HistoricalOperations_{Guid.NewGuid()}").Options;
         await using var db = new TestApplicationDbContext(options, clock.Object, user.Object);
+        db.Tenants.Add(new Tenant { Id = "tenant-1", Timezone = "Africa/Cairo" });
         db.Branches.AddRange(
             new Branch { Id = "branch-1", TenantId = "tenant-1", Name = "Allowed" },
             new Branch { Id = "branch-2", TenantId = "tenant-1", Name = "Hidden" });
@@ -110,6 +111,7 @@ public sealed class CustomerOperationsTests
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase($"CustomerOperations_{Guid.NewGuid()}").Options;
         await using var db = new TestApplicationDbContext(options, clock.Object, user.Object);
+        db.Tenants.Add(new Tenant { Id = "tenant-1", Timezone = "Africa/Cairo" });
         db.Branches.Add(new Branch { Id = "branch-1", TenantId = "tenant-1", Name = "Allowed" });
         db.Customers.Add(new Customer
         {
@@ -166,6 +168,7 @@ public sealed class CustomerOperationsTests
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase($"CustomerOperations_{Guid.NewGuid()}").Options;
         await using var db = new TestApplicationDbContext(options, clock.Object, user.Object);
+        db.Tenants.Add(new Tenant { Id = "tenant-1", Timezone = "Africa/Cairo" });
         db.Branches.AddRange(
             new Branch { Id = "branch-1", TenantId = "tenant-1", Name = "Allowed" },
             new Branch { Id = "branch-2", TenantId = "tenant-1", Name = "Hidden" });
@@ -264,5 +267,74 @@ public sealed class CustomerOperationsTests
         var later = await new ListCustomerOperationsHandler(reader)
             .Handle(new ListCustomerOperationsQuery(filter), CancellationToken.None);
         later.Rows[0].InstallmentDueStatus.Should().Be("scheduled");
+    }
+
+    [Fact]
+    public async Task MobileAndDateFiltersUseTheSavedLocalDayInGridAndExport()
+    {
+        var clock = new Mock<IDateTimeProvider>();
+        clock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 11, 8, 9, 0, 0, DateTimeKind.Utc));
+        var user = new Mock<ICurrentUserService>();
+        user.SetupGet(x => x.TenantId).Returns("tenant-1");
+        user.SetupGet(x => x.UserId).Returns("operator-1");
+        var branchScope = new Mock<IBranchScope>();
+        branchScope.Setup(x => x.GetAllowedBranchIdsAsync("operator-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["branch-1"]);
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"LocalCustomerOperations_{Guid.NewGuid()}").Options;
+        await using var db = new TestApplicationDbContext(options, clock.Object, user.Object);
+        db.Tenants.Add(new Tenant { Id = "tenant-1", Timezone = "Africa/Cairo" });
+        db.Branches.Add(new Branch { Id = "branch-1", TenantId = "tenant-1", Name = "Allowed" });
+        db.Customers.Add(new Customer
+        {
+            Id = "customer-1",
+            TenantId = "tenant-1",
+            FullName = "Local customer",
+            MobileNumber = "01012345678",
+            NormalizedMobileNumber = "201012345678"
+        });
+        db.Sales.Add(new Sale
+        {
+            Id = "sale-1",
+            TenantId = "tenant-1",
+            BranchId = "branch-1",
+            CustomerId = "customer-1",
+            ItemsSnapshotJson = JsonSerializer.Serialize(new[]
+            {
+                new ConfirmedSaleItemSnapshot(null, null, "Service", "unlisted", 30, 1,
+                    1, "cash", 100m, 0m, 100m, 100m, null)
+            })
+        });
+        await db.SaveChangesAsync();
+        var savedSale = await db.Sales.SingleAsync(x => x.Id == "sale-1");
+        savedSale.CreatedAt = new DateTime(2026, 11, 7, 22, 30, 0, DateTimeKind.Utc);
+        await db.SaveChangesAsync();
+
+        var reader = new CustomerOperationsReader(db, user.Object, branchScope.Object, clock.Object);
+        var localDay = new DateOnly(2026, 11, 8);
+        var filter = new CustomerOperationsFilter(localDay, localDay, Mobile: "+201012345678");
+        var page = await new ListCustomerOperationsHandler(reader)
+            .Handle(new ListCustomerOperationsQuery(filter), CancellationToken.None);
+
+        page.TotalCount.Should().Be(1);
+        page.TimezoneId.Should().Be("Africa/Cairo");
+        var previousDay = await new ListCustomerOperationsHandler(reader)
+            .Handle(new ListCustomerOperationsQuery(new CustomerOperationsFilter(
+                new DateOnly(2026, 11, 7), new DateOnly(2026, 11, 7),
+                Mobile: "+201012345678")), CancellationToken.None);
+        previousDay.TotalCount.Should().Be(0);
+
+        var bytes = await new ExportCustomerOperationsHandler(reader)
+            .Handle(new ExportCustomerOperationsQuery(filter), CancellationToken.None);
+        using var zip = new ZipArchive(new MemoryStream(bytes));
+        using var sheet = zip.GetEntry("xl/worksheets/sheet1.xml")!.Open();
+        var xml = XDocument.Load(sheet);
+        XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+        var dateCell = xml.Descendants(ns + "c")
+            .Single(x => (string?)x.Attribute("r") == "S2");
+        var localExportDate = DateTime.FromOADate(double.Parse(
+            dateCell.Element(ns + "v")!.Value,
+            System.Globalization.CultureInfo.InvariantCulture));
+        localExportDate.Should().Be(new DateTime(2026, 11, 8, 0, 30, 0));
     }
 }

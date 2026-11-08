@@ -16,8 +16,9 @@ internal static class CustomerOperationsWorkbook
         "Installment Due", "Operation Date"
     ];
 
-    public static byte[] Write(IReadOnlyList<CustomerOperationDto> rows)
+    public static byte[] Write(IReadOnlyList<CustomerOperationDto> rows, string timezoneId)
     {
+        var timezone = TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
         using var output = new MemoryStream();
         using (var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
         {
@@ -62,7 +63,9 @@ internal static class CustomerOperationsWorkbook
                     row.Refunded, row.NetCollected, row.Remaining,
                     row.UnitsRemaining is null ? "—" : $"{row.UnitsRemaining} / {row.UnitsTotal}",
                     row.CustomerRestriction, row.PurchaseStatus, row.PaymentStatus, row.RefundStatus,
-                    row.InstallmentDueStatus, row.OperationDate
+                    row.InstallmentDueStatus,
+                    TimeZoneInfo.ConvertTimeFromUtc(
+                        DateTime.SpecifyKind(row.OperationDate, DateTimeKind.Utc), timezone)
                 ]);
             }
             writer.WriteEndElement();

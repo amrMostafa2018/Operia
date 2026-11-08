@@ -9,7 +9,8 @@ public sealed class ListCustomerOperationsHandler(CustomerOperationsReader reade
         ListCustomerOperationsQuery request,
         CancellationToken cancellationToken)
     {
-        var rows = await reader.ReadAsync(request.Filter, cancellationToken);
+        var data = await reader.ReadAsync(request.Filter, cancellationToken);
+        var rows = data.Rows;
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 5, 100);
         var skip = ((long)page - 1) * pageSize;
@@ -21,6 +22,7 @@ public sealed class ListCustomerOperationsHandler(CustomerOperationsReader reade
             rows.Sum(x => x.Collected ?? 0m),
             rows.Sum(x => x.Remaining ?? 0m),
             skip >= rows.Count ? [] : rows.Skip((int)skip).Take(pageSize).ToArray(),
-            rows.Sum(x => x.Refunded), rows.Sum(x => x.NetCollected ?? 0m));
+            rows.Sum(x => x.Refunded), rows.Sum(x => x.NetCollected ?? 0m),
+            data.TimezoneId);
     }
 }

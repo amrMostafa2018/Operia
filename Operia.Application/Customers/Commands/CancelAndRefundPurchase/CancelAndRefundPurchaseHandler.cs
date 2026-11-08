@@ -74,8 +74,15 @@ public sealed class CancelAndRefundPurchaseHandler(
             throw ConflictException.FromCode(ApiErrorCodes.Customers.RefundExceedsPaid, "amount");
         }
 
-        var now = clock.UtcNow;
-        var today = DateOnly.FromDateTime(now);
+        var now = DateTime.SpecifyKind(clock.UtcNow, DateTimeKind.Utc);
+        var timezoneId = await db.Tenants.AsNoTracking()
+            .Where(x => x.Id == tenantId)
+            .Select(x => x.Timezone)
+            .SingleAsync(token);
+        var localNow = TimeZoneInfo.ConvertTimeFromUtc(now,
+            TimeZoneInfo.FindSystemTimeZoneById(timezoneId));
+        var today = DateOnly.FromDateTime(localNow);
+        var currentMinute = localNow.Hour * 60 + localNow.Minute;
         var futureBookingIds = await (from reservation in db.BookingPackageReservations.AsNoTracking()
                                       join booking in db.Bookings.AsNoTracking()
                                           on reservation.BookingId equals booking.Id
@@ -84,7 +91,9 @@ public sealed class CancelAndRefundPurchaseHandler(
                                             reservation.CustomerPackageId == purchase.Id &&
                                             reservation.CancellationAtUtc == null &&
                                             booking.Status == BookingStatus.Booked &&
-                                            booking.ScheduledDate >= today
+                                            (booking.ScheduledDate > today ||
+                                             booking.ScheduledDate == today &&
+                                             booking.StartMinutes > currentMinute)
                                       select booking.Id).Distinct().ToArrayAsync(token);
         var bookings = await db.Bookings.Where(x => x.TenantId == tenantId &&
             futureBookingIds.Contains(x.Id)).ToListAsync(token);

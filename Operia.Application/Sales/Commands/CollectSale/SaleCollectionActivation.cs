@@ -58,8 +58,7 @@ internal static class SaleCollectionActivation
                         Total = total,
                         ReservedSessions = 0,
                         ExpiresOn = terms.PackageExpiryMonths is > 0
-                            ? DateOnly.FromDateTime(clock.UtcNow)
-                                .AddMonths(terms.PackageExpiryMonths.Value)
+                            ? localCollectionDate.AddMonths(terms.PackageExpiryMonths.Value)
                             : null,
                         IsActive = true
                     };
