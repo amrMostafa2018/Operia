@@ -86,6 +86,8 @@ public sealed class ConfirmSaleHandlerTests
         await using var fixture = await Fixture.CreateAsync();
         var items = new[] { Item("package", "installment"), Item("service", "cash") };
         var quote = await fixture.Quote(items);
+        (await fixture.DashboardRevenue()).Today.Should().Be(0m);
+        (await fixture.Db.Sales.CountAsync()).Should().Be(0);
         var sale = await fixture.Confirm(items, quote, "collect-1");
         (await fixture.DashboardRevenue()).Today.Should().Be(0m);
 

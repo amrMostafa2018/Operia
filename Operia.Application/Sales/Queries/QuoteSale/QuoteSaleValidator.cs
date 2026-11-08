@@ -24,17 +24,17 @@ public sealed class QuoteSaleValidator : AbstractValidator<QuoteSaleQuery>
                 .Must(value => value is "cash" or "installment" or "owned")
                 .WithErrorCode(ApiErrorCodes.Sales.PaymentOptionInvalid);
             item.RuleFor(row => row.UnlistedName)
-                .NotEmpty().MaximumLength(200)
-                .When(row => string.IsNullOrWhiteSpace(row.OfferId) && string.IsNullOrWhiteSpace(row.OwnedCustomerPackageId))
-                .WithErrorCode(ApiErrorCodes.Sales.UnlistedNameInvalid);
+                .NotEmpty().WithErrorCode(ApiErrorCodes.Sales.UnlistedNameInvalid)
+                .MaximumLength(200).WithErrorCode(ApiErrorCodes.Sales.UnlistedNameInvalid)
+                .When(row => string.IsNullOrWhiteSpace(row.OfferId) && string.IsNullOrWhiteSpace(row.OwnedCustomerPackageId));
             item.RuleFor(row => row.UnlistedPrice)
-                .NotNull().InclusiveBetween(0m, 999999999.99m)
-                .When(row => string.IsNullOrWhiteSpace(row.OfferId) && string.IsNullOrWhiteSpace(row.OwnedCustomerPackageId))
-                .WithErrorCode(ApiErrorCodes.Sales.UnlistedPriceInvalid);
+                .NotNull().WithErrorCode(ApiErrorCodes.Sales.UnlistedPriceInvalid)
+                .InclusiveBetween(0m, 999999999.99m).WithErrorCode(ApiErrorCodes.Sales.UnlistedPriceInvalid)
+                .When(row => string.IsNullOrWhiteSpace(row.OfferId) && string.IsNullOrWhiteSpace(row.OwnedCustomerPackageId));
             item.RuleFor(row => row.UnlistedDurationMinutes)
-                .NotNull().InclusiveBetween(1, 1440)
-                .When(row => string.IsNullOrWhiteSpace(row.OfferId) && string.IsNullOrWhiteSpace(row.OwnedCustomerPackageId))
-                .WithErrorCode(ApiErrorCodes.Sales.UnlistedDurationInvalid);
+                .NotNull().WithErrorCode(ApiErrorCodes.Sales.UnlistedDurationInvalid)
+                .InclusiveBetween(1, 1440).WithErrorCode(ApiErrorCodes.Sales.UnlistedDurationInvalid)
+                .When(row => string.IsNullOrWhiteSpace(row.OfferId) && string.IsNullOrWhiteSpace(row.OwnedCustomerPackageId));
         });
     }
 }

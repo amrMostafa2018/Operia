@@ -71,7 +71,7 @@ public sealed class SubmitRevenuePaymentHandler(
             {
                 TenantId = tenantId,
                 SaleId = sale.Id,
-                IdempotencyKey = request.IdempotencyKey,
+                IdempotencyKey = request.IdempotencyKey!,
                 Amount = sale.DueNow,
                 PaymentMethod = sale.PaymentMethod,
                 Confirmed = false,
@@ -84,8 +84,14 @@ public sealed class SubmitRevenuePaymentHandler(
             db.SaleCollections.Add(payment);
             auditWriter.Write(tenantId, AuditActions.RevenuePaymentSubmitted,
                 nameof(SaleCollection), payment.Id, payment.Id,
-                new { payment.SaleId, payment.Amount, payment.PaymentMethod,
-                    NewStatus = payment.ReviewStatus, HasProof = payment.ProofContent is not null });
+                new
+                {
+                    payment.SaleId,
+                    payment.Amount,
+                    payment.PaymentMethod,
+                    NewStatus = payment.ReviewStatus,
+                    HasProof = payment.ProofContent is not null
+                });
             await db.SaveChangesAsync(token);
             return new SubmittedRevenuePayment(payment.Id, payment.ReviewStatus);
         }, cancellationToken);

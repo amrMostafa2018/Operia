@@ -14,8 +14,9 @@ public sealed class ConfirmSaleValidator : AbstractValidator<ConfirmSaleCommand>
             .WithErrorCode(ApiErrorCodes.Sales.DirectCustomerSelectionInvalid);
         RuleFor(command => command.BranchId).NotEmpty()
             .WithErrorCode(ApiErrorCodes.Sales.BranchUnavailable);
-        RuleFor(command => command.IdempotencyKey).NotEmpty().MaximumLength(100)
-            .WithErrorCode(ApiErrorCodes.Sales.IdempotencyKeyInvalid);
+        RuleFor(command => command.IdempotencyKey)
+            .NotEmpty().WithErrorCode(ApiErrorCodes.Sales.IdempotencyKeyInvalid)
+            .MaximumLength(100).WithErrorCode(ApiErrorCodes.Sales.IdempotencyKeyInvalid);
         RuleFor(command => command.Disposition)
             .Must(value => value is "Close" or "Later" or "BookNow")
             .WithErrorCode(ApiErrorCodes.Sales.DispositionInvalid);
@@ -32,18 +33,21 @@ public sealed class ConfirmSaleValidator : AbstractValidator<ConfirmSaleCommand>
             item.RuleFor(row => row.PaymentOption)
                 .Must(value => value is "cash" or "installment" or "owned")
                 .WithErrorCode(ApiErrorCodes.Sales.PaymentOptionInvalid);
-            item.RuleFor(row => row.UnlistedName).NotEmpty().MaximumLength(200)
+            item.RuleFor(row => row.UnlistedName)
+                .NotEmpty().WithErrorCode(ApiErrorCodes.Sales.UnlistedNameInvalid)
+                .MaximumLength(200).WithErrorCode(ApiErrorCodes.Sales.UnlistedNameInvalid)
                 .When(row => string.IsNullOrWhiteSpace(row.OfferId) &&
-                    string.IsNullOrWhiteSpace(row.OwnedCustomerPackageId))
-                .WithErrorCode(ApiErrorCodes.Sales.UnlistedNameInvalid);
-            item.RuleFor(row => row.UnlistedPrice).NotNull().InclusiveBetween(0m, 999999999.99m)
+                    string.IsNullOrWhiteSpace(row.OwnedCustomerPackageId));
+            item.RuleFor(row => row.UnlistedPrice)
+                .NotNull().WithErrorCode(ApiErrorCodes.Sales.UnlistedPriceInvalid)
+                .InclusiveBetween(0m, 999999999.99m).WithErrorCode(ApiErrorCodes.Sales.UnlistedPriceInvalid)
                 .When(row => string.IsNullOrWhiteSpace(row.OfferId) &&
-                    string.IsNullOrWhiteSpace(row.OwnedCustomerPackageId))
-                .WithErrorCode(ApiErrorCodes.Sales.UnlistedPriceInvalid);
-            item.RuleFor(row => row.UnlistedDurationMinutes).NotNull().InclusiveBetween(1, 1440)
+                    string.IsNullOrWhiteSpace(row.OwnedCustomerPackageId));
+            item.RuleFor(row => row.UnlistedDurationMinutes)
+                .NotNull().WithErrorCode(ApiErrorCodes.Sales.UnlistedDurationInvalid)
+                .InclusiveBetween(1, 1440).WithErrorCode(ApiErrorCodes.Sales.UnlistedDurationInvalid)
                 .When(row => string.IsNullOrWhiteSpace(row.OfferId) &&
-                    string.IsNullOrWhiteSpace(row.OwnedCustomerPackageId))
-                .WithErrorCode(ApiErrorCodes.Sales.UnlistedDurationInvalid);
+                    string.IsNullOrWhiteSpace(row.OwnedCustomerPackageId));
         });
     }
 }

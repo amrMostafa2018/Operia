@@ -28,7 +28,7 @@ public sealed class RevenueController(IMediator mediator) : ControllerBase
     [Consumes("multipart/form-data")]
     public async Task<SubmittedRevenuePayment> SubmitPaymentReview(
         [FromForm] string saleId,
-        [FromForm] string idempotencyKey,
+        [FromForm] string? idempotencyKey,
         IFormFile? proof,
         CancellationToken cancellationToken)
     {

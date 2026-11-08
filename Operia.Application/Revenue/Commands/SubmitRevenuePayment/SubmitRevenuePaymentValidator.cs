@@ -9,8 +9,9 @@ public sealed class SubmitRevenuePaymentValidator : AbstractValidator<SubmitReve
     {
         RuleFor(x => x.SaleId).NotEmpty()
             .WithErrorCode(ApiErrorCodes.Sales.NotFound);
-        RuleFor(x => x.IdempotencyKey).NotEmpty().MaximumLength(100)
-            .WithErrorCode(ApiErrorCodes.Sales.IdempotencyKeyInvalid);
+        RuleFor(x => x.IdempotencyKey)
+            .NotEmpty().WithErrorCode(ApiErrorCodes.Sales.IdempotencyKeyInvalid)
+            .MaximumLength(100).WithErrorCode(ApiErrorCodes.Sales.IdempotencyKeyInvalid);
         RuleFor(x => x).Must(ValidProof)
             .WithErrorCode(ApiErrorCodes.Revenue.ProofInvalid)
             .OverridePropertyName("proof");

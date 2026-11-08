@@ -117,6 +117,142 @@ public sealed class CollectInstallmentHandlerTests
         purchase.ExpiresOn.Should().Be(new DateOnly(2027, 1, 1));
     }
 
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(2, true)]
+    public async Task NextInstallment_RequiresProgressEvenWhenDueDateHasPassed(
+        int completed, bool eligible)
+    {
+        await using var fixture = await Fixture.CreateAsync("tenant-1");
+        await fixture.Collect("first");
+        var purchase = await fixture.Db.CustomerPackages.Include(x => x.Installments).SingleAsync();
+        purchase.Used = completed;
+        var next = purchase.Installments.Single(x => x.Number == 2);
+        next.DueOn = new DateOnly(2026, 1, 1);
+        await fixture.Db.SaveChangesAsync();
+
+        var details = await fixture.Details();
+        details.NextInstallmentEligible.Should().Be(eligible);
+        if (eligible)
+        {
+            var result = await fixture.Collect("next");
+            result.InstallmentNumber.Should().Be(2);
+            result.AmountRemaining.Should().Be(0m);
+            result.ReleasedSessions.Should().Be(5);
+        }
+        else
+        {
+            var collect = () => fixture.Collect("next");
+            (await collect.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+                .Should().Be(ApiErrorCodes.Customers.InstallmentNotEligible);
+            purchase.AmountDue.Should().Be(5m);
+            purchase.ReleasedSessions.Should().Be(2);
+            next.CollectedAtUtc.Should().BeNull();
+            (await fixture.Db.InstallmentCollections.CountAsync()).Should().Be(1);
+            (await fixture.Db.AuditLogs.CountAsync(x => x.Action == AuditActions.InstallmentCollected))
+                .Should().Be(1);
+        }
+    }
+
+    [Fact]
+    public async Task Collection_UsesPurchaseSnapshotAfterCatalogChanges()
+    {
+        await using var fixture = await Fixture.CreateAsync("tenant-1");
+        var offer = await fixture.Db.Packages.SingleAsync();
+        offer.Name = "Changed offer";
+        offer.SessionCount = 20;
+        offer.InstallmentPrice = 200m;
+        offer.FirstPayment = 100m;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Collect("snapshot");
+
+        result.InstallmentNumber.Should().Be(1);
+        result.Amount.Should().Be(5m);
+        result.AmountRemaining.Should().Be(5m);
+        result.ReleasedSessions.Should().Be(2);
+        var collection = await fixture.Db.InstallmentCollections.SingleAsync();
+        collection.Amount.Should().Be(5m);
+        (await fixture.Db.CustomerPackages.SingleAsync()).ExpiresOn.Should().Be(new DateOnly(2027, 1, 1));
+    }
+
+    [Fact]
+    public async Task FullyPaidPurchase_RejectsNewKeyWithoutAnotherCollectionOrAudit()
+    {
+        await using var fixture = await Fixture.CreateAsync("tenant-1");
+        await fixture.Collect("first");
+        var purchase = await fixture.Db.CustomerPackages.SingleAsync();
+        purchase.Used = 2;
+        await fixture.Db.SaveChangesAsync();
+        await fixture.Collect("final");
+
+        var collectAgain = () => fixture.Collect("new-key");
+        (await collectAgain.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Customers.InstallmentUnavailable);
+        purchase.AmountDue.Should().Be(0m);
+        purchase.ReleasedSessions.Should().Be(5);
+        (await fixture.Db.InstallmentCollections.CountAsync()).Should().Be(2);
+        (await fixture.Db.AuditLogs.CountAsync(x => x.Action == AuditActions.InstallmentCollected))
+            .Should().Be(2);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task InactiveOrExpiredPurchase_CannotBeCollected(bool active, bool expired)
+    {
+        await using var fixture = await Fixture.CreateAsync("tenant-1");
+        var purchase = await fixture.Db.CustomerPackages.SingleAsync();
+        purchase.IsActive = active;
+        if (expired)
+        {
+            purchase.ExpiresOn = new DateOnly(2026, 10, 26);
+        }
+        await fixture.Db.SaveChangesAsync();
+
+        var collect = () => fixture.Collect("inactive");
+        (await collect.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Customers.InstallmentPurchaseInactive);
+        purchase.AmountDue.Should().Be(10m);
+        purchase.ReleasedSessions.Should().BeNull();
+        (await fixture.Db.InstallmentCollections.CountAsync()).Should().Be(0);
+        (await fixture.Db.AuditLogs.CountAsync()).Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData("", "cash", "key", ApiErrorCodes.Customers.PurchaseNotFound)]
+    [InlineData("purchase-1", "", "key", ApiErrorCodes.Customers.InstallmentPaymentMethodUnavailable)]
+    [InlineData("purchase-1", "cash", "", ApiErrorCodes.Customers.InstallmentIdempotencyConflict)]
+    public void CollectionValidator_RejectsMissingInputs(
+        string purchaseId, string method, string key, string expectedCode)
+    {
+        var result = new CollectInstallmentValidator()
+            .Validate(new CollectInstallmentCommand(purchaseId, method, key));
+        result.Errors.Should().Contain(error => error.ErrorCode == expectedCode);
+    }
+
+    [Fact]
+    public async Task AuditFailureBeforeSave_DoesNotPersistCollectionOrRelease()
+    {
+        await using var fixture = await Fixture.CreateAsync("tenant-1");
+        var writer = new Mock<IAuditWriter>();
+        writer.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<object?>()))
+            .Throws(new Exception("Simulated audit failure"));
+
+        var collect = () => fixture.Collect("audit-failure", auditWriter: writer.Object);
+        await collect.Should().ThrowAsync<Exception>().WithMessage("Simulated audit failure");
+
+        await using var reloaded = await Fixture.OpenAsync(fixture.Database, "tenant-1");
+        var purchase = await reloaded.Db.CustomerPackages.SingleAsync();
+        purchase.AmountDue.Should().Be(10m);
+        purchase.ReleasedSessions.Should().BeNull();
+        (await reloaded.Db.CustomerPackageInstallments.SingleAsync(x => x.Number == 1))
+            .CollectedAtUtc.Should().BeNull();
+        (await reloaded.Db.InstallmentCollections.CountAsync()).Should().Be(0);
+        (await reloaded.Db.AuditLogs.CountAsync()).Should().Be(0);
+    }
+
     [Fact]
     public async Task RejectsAnotherTenantAndDisabledPaymentMethodWithoutChangingBalance()
     {
@@ -316,10 +452,11 @@ public sealed class CollectInstallmentHandlerTests
                 new TestApplicationDbContext(options, clock.Object, user.Object), user, clock));
         }
 
-        public Task<CollectInstallmentResult> Collect(string key, string method = "cash")
+        public Task<CollectInstallmentResult> Collect(
+            string key, string method = "cash", IAuditWriter? auditWriter = null)
         {
             var handler = new CollectInstallmentHandler(Db, new InstallmentCollectionStore(Db), _user.Object,
-                new AuditWriter(Db, _user.Object), _clock.Object);
+                auditWriter ?? new AuditWriter(Db, _user.Object), _clock.Object);
             return handler.Handle(new CollectInstallmentCommand("purchase-1", method, key),
                 CancellationToken.None);
         }

@@ -704,6 +704,16 @@ public static partial class E2EDataSeeder
                 30, 10, 1, "installment", 2000, 0, 2000, 500,
                 PackagePurchaseSnapshot.Capture(saleInstallmentOffer, "installment", 2000))
         });
+        var statementTerms = PackagePurchaseSnapshot.Capture(saleInstallmentOffer, "installment", 2000) with
+        {
+            OfferName = "E2E US-20 Saved Statement Package"
+        };
+        var statementItems = JsonSerializer.Serialize(new[]
+        {
+            new ConfirmedSaleItemSnapshot(
+                SaleInstallmentOfferA, null, statementTerms.OfferName, "package",
+                30, 10, 1, "installment", 2000, 0, 2000, 500, statementTerms)
+        });
         db.Sales.AddRange(
             new Sale
             {
@@ -818,7 +828,7 @@ public static partial class E2EDataSeeder
                 PaymentMethod = "cash",
                 GrandTotal = 2000,
                 DueNow = 500,
-                ItemsSnapshotJson = pendingItems,
+                ItemsSnapshotJson = statementItems,
                 Disposition = "Close",
                 Status = "Closed",
                 CreatedAt = DateTime.UtcNow.Date.AddDays(-14).AddHours(10)
@@ -946,9 +956,7 @@ public static partial class E2EDataSeeder
                 PurchasePrice = 2000,
                 AmountDue = 1000,
                 ReleasedSessions = 3,
-                PurchaseSnapshotJson = (PackagePurchaseSnapshot
-                    .Capture(saleInstallmentOffer, "installment", 2000) with
-                { OfferName = "E2E US-20 Saved Statement Package" }).ToJson(),
+                PurchaseSnapshotJson = statementTerms.ToJson(),
                 Total = 10,
                 Used = 1,
                 ReservedSessions = 1,
@@ -1536,6 +1544,7 @@ public static partial class E2EDataSeeder
             TenantId = TenantA,
             CustomerId = CustomerA,
             PackageId = packageId,
+            BranchId = BranchA,
             PurchasePrice = purchasePrice,
             AmountDue = amountDue,
             ReleasedSessions = releasedSessions,

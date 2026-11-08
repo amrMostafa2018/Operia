@@ -202,6 +202,7 @@ public sealed class CustomerStatementTests
         result.Installments[1].DueOn.Should().Be(new DateOnly(2026, 12, 29));
         result.FirstPayment!.PaidAtUtc.Should().Be(clock.Object.UtcNow.AddDays(1));
         result.Purchase.AmountPaid.Should().Be(10000m);
+        result.Purchase.Pulses.Should().Be(new PurchaseBalanceDto(2500, 1000, 1500));
         result.SessionBalance.Should().Be(new PurchaseBalanceDto(3, 0, 3));
         mediator.Verify(x => x.Send(It.Is<GetCustomerPurchaseDetailsQuery>(q =>
             q.PurchaseId == "purchase-1" && q.AllowedBranchIds!.Contains("branch-1")),
