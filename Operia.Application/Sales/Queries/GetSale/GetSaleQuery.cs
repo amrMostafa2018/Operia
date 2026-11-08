@@ -14,4 +14,5 @@ public sealed record SaleStateDto(
     decimal DueNow,
     string? CollectionId,
     bool PaymentConfirmed,
-    string? BookingId);
+    string? BookingId,
+    bool RequiresCollection);

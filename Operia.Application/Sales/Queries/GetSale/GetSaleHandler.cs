@@ -41,6 +41,7 @@ public sealed class GetSaleHandler(
             sale.BranchId, lines.Sum(x => x.DurationMinutes *
                 (x.OfferType == "package" ? 1 : x.Quantity)),
             sale.GrandTotal, sale.DueNow, collection?.Id,
-            collection?.Confirmed ?? false, bookingId);
+            collection?.Confirmed ?? false, bookingId,
+            SaleCollectionRequirement.RequiresCollection(sale));
     }
 }

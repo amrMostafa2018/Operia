@@ -61,6 +61,10 @@ public sealed class CollectSaleHandler(
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Sales.CollectionUnavailable);
             }
+            if (!SaleCollectionRequirement.RequiresCollection(sale))
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Sales.CollectionUnavailable);
+            }
             if (sale.Status != "PendingCollection" && sale.Status != "ReadyToBook")
             {
                 throw ConflictException.FromCode(ApiErrorCodes.Sales.CollectionUnavailable);

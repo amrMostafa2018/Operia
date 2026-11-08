@@ -364,6 +364,9 @@ public sealed class ConfirmSaleHandlerTests
         quote.DueNow.Should().Be(80m);
 
         var first = await fixture.Confirm(items, quote, "mixed-1");
+        var mixedState = await new GetSaleHandler(fixture.Db, fixture.User.Object,
+            fixture.BranchScope.Object).Handle(new GetSaleQuery(first.SaleId), CancellationToken.None);
+        mixedState.RequiresCollection.Should().BeTrue();
         var repeated = await fixture.Confirm(items, quote, "mixed-1");
         repeated.SaleId.Should().Be(first.SaleId);
         (await fixture.Db.Sales.CountAsync()).Should().Be(1);
@@ -470,8 +473,17 @@ public sealed class ConfirmSaleHandlerTests
         quote.DueNow.Should().Be(0m);
         var result = await fixture.Confirm(items, quote, "owned-sale", null);
         result.Status.Should().Be("ReadyToBook");
+        var ownedState = await new GetSaleHandler(fixture.Db, fixture.User.Object,
+            fixture.BranchScope.Object).Handle(new GetSaleQuery(result.SaleId), CancellationToken.None);
+        ownedState.RequiresCollection.Should().BeFalse();
         (await fixture.Db.CustomerPackages.SingleAsync()).Used.Should().Be(0);
         (await fixture.Db.InstallmentCollections.CountAsync()).Should().Be(0);
+        (await fixture.Db.SaleCollections.CountAsync()).Should().Be(0);
+
+        var collect = () => fixture.Collect(result.SaleId, "owned-sale-zero", true);
+        (await collect.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.CollectionUnavailable);
+        (await fixture.Db.SaleCollections.CountAsync()).Should().Be(0);
     }
 
     [Fact]
@@ -496,7 +508,6 @@ public sealed class ConfirmSaleHandlerTests
         quote.GrandTotal.Should().Be(0m);
         var sale = await fixture.Confirm(items, quote, "covered-session", null,
             disposition: "BookNow");
-        await fixture.Collect(sale.SaleId, "covered-session-zero", true);
         fixture.AddBookableEmployee();
         await fixture.Db.SaveChangesAsync();
 
@@ -506,6 +517,7 @@ public sealed class ConfirmSaleHandlerTests
         var purchase = await fixture.Db.CustomerPackages.SingleAsync(x => x.Id == "owned-free-session");
         purchase.Used.Should().Be(0);
         purchase.ReservedSessions.Should().Be(1);
+        (await fixture.Db.SaleCollections.CountAsync()).Should().Be(0);
         (await fixture.Db.Bookings.SingleAsync(x => x.Id == booked.BookingId)).PaidAmount
             .Should().Be(0m);
     }

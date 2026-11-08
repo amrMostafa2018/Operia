@@ -50,7 +50,8 @@ public sealed class BookSaleHandler(
         {
             throw ConflictException.FromCode(ApiErrorCodes.Sales.BookingUnavailable);
         }
-        if (!await db.SaleCollections.AsNoTracking().AnyAsync(x =>
+        if (SaleCollectionRequirement.RequiresCollection(sale) &&
+            !await db.SaleCollections.AsNoTracking().AnyAsync(x =>
                 x.TenantId == tenantId && x.SaleId == sale.Id && x.Confirmed,
                 cancellationToken))
         {
