@@ -14,6 +14,7 @@ public sealed class PermissionBaselineUpgradeTests
     [Theory]
     [InlineData("v3")]
     [InlineData("v4")]
+    [InlineData("v1")]
     public async Task EarlierRolesReceiveOnlyNewPermissions(string previousVersion)
     {
         var roleNames = new[]
@@ -25,6 +26,13 @@ public sealed class PermissionBaselineUpgradeTests
         [
             new Claim("operia.permission-baseline", previousVersion)
         ]);
+        if (previousVersion == "v3")
+        {
+            foreach (var roleClaims in claims.Values)
+            {
+                roleClaims.Insert(0, new Claim("operia.permission-baseline", "v1"));
+            }
+        }
         // A deliberate removal from the previous baseline must remain removed.
         claims[Roles.Reception].Add(new Claim(Policies.PermissionClaimType, Policies.BookingsRead));
 
@@ -73,5 +81,13 @@ public sealed class PermissionBaselineUpgradeTests
                     claim.Type == Policies.PermissionClaimType && claim.Value == permission);
             }
         }
+
+        var removedGrant = claims[Roles.Reception].Single(claim =>
+            claim.Type == Policies.PermissionClaimType && claim.Value == Policies.CustomersCollectInstallment);
+        claims[Roles.Reception].Remove(removedGrant);
+        claims[Roles.Reception].Add(new Claim("operia.permission-baseline", "v1"));
+        await PermissionClaimBootstrapper.EnsureBaselinePermissionsAsync(manager.Object);
+        Assert.DoesNotContain(claims[Roles.Reception], claim =>
+            claim.Type == Policies.PermissionClaimType && claim.Value == Policies.CustomersCollectInstallment);
     }
 }

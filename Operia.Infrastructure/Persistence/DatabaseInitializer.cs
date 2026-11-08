@@ -23,7 +23,7 @@ public static class DatabaseInitializer
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
-        await SeedRolesAsync(roleManager);
+        await SeedRolesAsync(roleManager, dbContext);
         await PromoteTenantOwnersAsync(dbContext, userManager);
         await SeedAdminUserAsync(userManager, logger);
         await SeedSubscriptionPlansAsync(dbContext, logger);
@@ -59,7 +59,7 @@ public static class DatabaseInitializer
         }
     }
 
-    private static async Task SeedRolesAsync(RoleManager<IdentityRole> roleManager)
+    private static async Task SeedRolesAsync(RoleManager<IdentityRole> roleManager, ApplicationDbContext dbContext)
     {
         foreach (var role in new[] { Roles.SuperAdmin, Roles.Admin, Roles.Reception, Roles.Staff, Roles.PlatformAdmin })
         {
@@ -67,7 +67,9 @@ public static class DatabaseInitializer
                 await roleManager.CreateAsync(new IdentityRole(role));
         }
 
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
         await PermissionClaimBootstrapper.EnsureBaselinePermissionsAsync(roleManager);
+        await transaction.CommitAsync();
     }
 
     private static async Task SeedAdminUserAsync(

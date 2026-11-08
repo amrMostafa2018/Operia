@@ -83,18 +83,18 @@ public static class PermissionClaimBootstrapper
                 ?? throw new InvalidOperationException($"Role '{roleName}' was not found.");
             var claims = await roleManager.GetClaimsAsync(role);
 
-            var priorBaseline = claims.FirstOrDefault(claim => claim.Type == BaselineVersionClaimType);
-            if (priorBaseline?.Value == BaselineVersion)
+            var priorBaselines = claims.Where(claim => claim.Type == BaselineVersionClaimType).ToArray();
+            if (priorBaselines.Any(claim => claim.Value == BaselineVersion))
             {
                 continue;
             }
 
             // Upgrades add only newly introduced grants. Existing customizations remain.
-            if (priorBaseline is not null && priorBaseline.Value is not ("v3" or "v4"))
+            if (priorBaselines.Any(claim => claim.Value is not ("v1" or "v2" or "v3" or "v4")))
             {
                 continue;
             }
-            var additions = priorBaseline is null
+            var additions = priorBaselines.Length == 0
                 ? permissions
                 : roleName is Roles.Admin or Roles.SuperAdmin
                     ? new[] { Policies.CustomersCollectInstallment,
@@ -113,19 +113,27 @@ public static class PermissionClaimBootstrapper
                     continue;
                 }
 
-                await roleManager.AddClaimAsync(
+                EnsureSucceeded(await roleManager.AddClaimAsync(
                     role,
-                    new Claim(Policies.PermissionClaimType, permission));
+                    new Claim(Policies.PermissionClaimType, permission)), roleName);
             }
 
-            if (priorBaseline is not null)
+            foreach (var priorBaseline in priorBaselines)
             {
-                await roleManager.RemoveClaimAsync(role, priorBaseline);
+                EnsureSucceeded(await roleManager.RemoveClaimAsync(role, priorBaseline), roleName);
             }
 
-            await roleManager.AddClaimAsync(
+            EnsureSucceeded(await roleManager.AddClaimAsync(
                 role,
-                new Claim(BaselineVersionClaimType, BaselineVersion));
+                new Claim(BaselineVersionClaimType, BaselineVersion)), roleName);
+        }
+    }
+
+    private static void EnsureSucceeded(IdentityResult result, string roleName)
+    {
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException($"Permission baseline update failed for role '{roleName}': {string.Join(", ", result.Errors.Select(error => error.Code))}");
         }
     }
 
