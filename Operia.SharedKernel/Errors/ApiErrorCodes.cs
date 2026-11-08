@@ -135,6 +135,7 @@ public static class ApiErrorCodes
         public const string CustomerUnavailable = "SaleCustomerUnavailable";
         public const string DirectCustomerSelectionInvalid = "SaleDirectCustomerSelectionInvalid";
         public const string DirectServiceOnly = "SaleDirectServiceOnly";
+        public const string DirectPackageIncomeOnly = "SaleDirectPackageIncomeOnly";
         public const string OwnedSessionUnavailable = "SaleOwnedSessionUnavailable";
         public const string UnlistedNameInvalid = "SaleUnlistedNameInvalid";
         public const string UnlistedPriceInvalid = "SaleUnlistedPriceInvalid";

@@ -96,7 +96,8 @@ public sealed class CustomerOperationsReader(
             x.BranchName)).ToList();
         var saleIds = scopedSales.Select(x => x.Id).ToArray();
         var purchases = await db.CustomerPackages.AsNoTracking()
-            .Where(x => x.TenantId == tenantId && x.SaleId != null && saleIds.Contains(x.SaleId))
+            .Where(x => x.TenantId == tenantId && x.SaleId != null && saleIds.Contains(x.SaleId) &&
+                !x.IsTestRecord && x.DeletedAtUtc == null)
             .Select(x => new PurchaseSource(
                 x.Id, x.SaleId!, x.SaleItemIndex, x.PurchasePrice, x.AmountDue,
                 x.PurchaseSnapshotJson, x.IsActive, x.ExpiresOn, x.Total, x.Used))
@@ -154,6 +155,7 @@ public sealed class CustomerOperationsReader(
                          where purchase.TenantId == tenantId && customer.TenantId == tenantId &&
                                branch.TenantId == tenantId && purchase.SaleId == null &&
                                purchase.BranchId != null && branches.Contains(purchase.BranchId)
+                               && !purchase.IsTestRecord && purchase.DeletedAtUtc == null
                          select new { purchase, customer, branch.Name };
         if (fromUtc is { } historicalFrom)
         {

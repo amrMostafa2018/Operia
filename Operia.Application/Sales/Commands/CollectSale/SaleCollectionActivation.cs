@@ -55,6 +55,7 @@ internal static class SaleCollectionActivation
                         ReleasedSessions = terms.PulseCount is not > 0 &&
                             terms.PaymentOption == "installment" && amountDue > 0m ? 0 : total,
                         PurchaseSnapshotJson = terms.ToJson(),
+                        StartedOn = localCollectionDate,
                         Total = total,
                         ReservedSessions = 0,
                         ExpiresOn = terms.PackageExpiryMonths is > 0

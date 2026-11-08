@@ -43,7 +43,8 @@ public sealed class FindCustomerPurchasesHandler(
         }
 
         var purchases = await db.CustomerPackages.AsNoTracking()
-            .Where(x => x.TenantId == tenantId && x.CustomerId == customer.Id)
+            .Where(x => x.TenantId == tenantId && x.CustomerId == customer.Id &&
+                !x.IsTestRecord && x.DeletedAtUtc == null)
             .OrderByDescending(x => x.CreatedAt)
             .ThenBy(x => x.Id)
             .Select(x => new

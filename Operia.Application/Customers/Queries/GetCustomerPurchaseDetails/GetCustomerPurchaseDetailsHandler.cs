@@ -27,7 +27,8 @@ public sealed class GetCustomerPurchaseDetailsHandler(
         }
 
         var purchase = await db.CustomerPackages.AsNoTracking()
-            .Where(x => x.TenantId == tenantId && x.Id == request.PurchaseId)
+            .Where(x => x.TenantId == tenantId && x.Id == request.PurchaseId &&
+                !x.IsTestRecord && x.DeletedAtUtc == null)
             .Select(x => new
             {
                 x.Id,
@@ -35,6 +36,7 @@ public sealed class GetCustomerPurchaseDetailsHandler(
                 x.PackageId,
                 x.SaleId,
                 x.CreatedAt,
+                x.StartedOn,
                 x.ExpiresOn,
                 x.IsActive,
                 x.Total,
@@ -197,7 +199,7 @@ public sealed class GetCustomerPurchaseDetailsHandler(
         return new CustomerPurchaseDetailsDto(
             purchase.Id,
             purchase.CreatedAt,
-            null,
+            purchase.StartedOn,
             purchase.ExpiresOn,
             snapshot?.PackageExpiryMonths,
             packageStatus,

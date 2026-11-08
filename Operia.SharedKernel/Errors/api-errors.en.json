@@ -358,6 +358,10 @@
     "Value": "Installment price must be greater than zero when installments are enabled and cannot be negative."
   },
   { "Name": "PACKAGE_INSTALLMENT_PRICE_PRECISION", "Value": "Enter an installment price with up to 16 whole digits and two decimal places." },
+  { "Name": "PACKAGE_INSTALLMENT_UNAVAILABLE", "Value": "Installments are unavailable for this offer." },
+  { "Name": "BookingInstallmentPurchaseOnly", "Value": "Installments are available only when purchasing a package." },
+  { "Name": "BookingInstallmentEditNotAllowed", "Value": "Installment terms cannot be changed after booking." },
+  { "Name": "BookingInstallmentCollectionInvalid", "Value": "The installment collection does not match the saved plan." },
   {
     "Name": "PACKAGE_CASH_UNAVAILABLE",
     "Value": "Cash purchase is not available for this offer."
@@ -390,7 +394,8 @@
   { "Name": "SaleBranchUnavailable", "Value": "This branch is not available to you." },
   { "Name": "SaleCustomerUnavailable", "Value": "The selected customer is no longer available." },
   { "Name": "SaleDirectCustomerSelectionInvalid", "Value": "Choose either Direct Customer or a registered customer." },
-  { "Name": "SaleDirectServiceOnly", "Value": "Direct Customer can buy services only. Packages and owned sessions need a registered customer." },
+  { "Name": "SaleDirectServiceOnly", "Value": "Direct Customer cannot use a registered customer's package or session balance." },
+  { "Name": "SaleDirectPackageIncomeOnly", "Value": "A walk-in package must be fully paid and closed as an income-only sale." },
   { "Name": "SaleOwnedSessionUnavailable", "Value": "This customer does not have an available session for this item." },
   { "Name": "SaleUnlistedNameInvalid", "Value": "Enter an unlisted service name of at most 200 characters." },
   { "Name": "SaleUnlistedPriceInvalid", "Value": "Enter a price between zero and 999,999,999.99." },

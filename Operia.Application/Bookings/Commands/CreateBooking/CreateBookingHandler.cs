@@ -382,6 +382,7 @@ public sealed class CreateBookingHandler(
                     AmountDue = BookingItemPricing.CashPrice(product),
                     PurchaseSnapshotJson = PackagePurchaseSnapshot.Capture(
                         product, "cash", BookingItemPricing.CashPrice(product)).ToJson(),
+                    StartedOn = today,
                     Total = 1,
                     ReservedSessions = 0,
                     IsActive = true

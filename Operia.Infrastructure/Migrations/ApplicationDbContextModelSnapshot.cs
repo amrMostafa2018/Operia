@@ -826,14 +826,6 @@ namespace Operia.Infrastructure.Migrations
 
             modelBuilder.Entity("Operia.Domain.Entities.CustomerPackage", b =>
                 {
-                    b.Property<string>("BranchAttributionSource")
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<string>("BranchId")
-                        .HasMaxLength(36)
-                        .HasColumnType("nvarchar(36)");
-
                     b.Property<string>("Id")
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
@@ -841,6 +833,14 @@ namespace Operia.Infrastructure.Migrations
                     b.Property<decimal?>("AmountDue")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("BranchAttributionSource")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("BranchId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -854,10 +854,16 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
 
+                    b.Property<DateTime?>("DeletedAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateOnly?>("ExpiresOn")
                         .HasColumnType("date");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsTestRecord")
                         .HasColumnType("bit");
 
                     b.Property<DateTime?>("LastModifiedAt")
@@ -895,6 +901,9 @@ namespace Operia.Infrastructure.Migrations
                     b.Property<int?>("SaleUnitIndex")
                         .HasColumnType("int");
 
+                    b.Property<DateOnly?>("StartedOn")
+                        .HasColumnType("date");
+
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(36)
@@ -919,7 +928,9 @@ namespace Operia.Infrastructure.Migrations
                     b.HasIndex("PackageId");
 
                     b.HasIndex("SaleId");
+
                     b.HasIndex("TenantId", "BranchId");
+
                     b.HasIndex("TenantId", "OriginBookingId");
 
                     b.HasIndex("TenantId", "CustomerId", "IsActive");
@@ -947,9 +958,6 @@ namespace Operia.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateOnly?>("DueOn")
-                        .HasColumnType("date");
-
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
@@ -960,6 +968,9 @@ namespace Operia.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
+
+                    b.Property<DateOnly?>("DueOn")
+                        .HasColumnType("date");
 
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("datetime2");
@@ -1684,9 +1695,6 @@ namespace Operia.Infrastructure.Migrations
                     b.Property<DateTime>("AttemptedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("ConfirmedAtUtc")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("CollectedByUserId")
                         .IsRequired()
                         .HasMaxLength(450)
@@ -1694,6 +1702,9 @@ namespace Operia.Infrastructure.Migrations
 
                     b.Property<bool>("Confirmed")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ConfirmedAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -1722,16 +1733,16 @@ namespace Operia.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("ReviewStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<DateTime?>("ReviewedAtUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ReviewedByUserId")
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("ReviewStatus")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("SaleId")
                         .IsRequired()

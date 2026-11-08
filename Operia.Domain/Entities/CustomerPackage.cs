@@ -22,6 +22,10 @@ public sealed class CustomerPackage : Entity, ITenantScoped
     public decimal? AmountDue { get; set; }
     /// <summary>Number of session positions released by confirmed installment collections.</summary>
     public int? ReleasedSessions { get; set; }
+    /// <summary>Business-local date when this purchase became usable; null on unknown legacy rows.</summary>
+    public DateOnly? StartedOn { get; set; }
+    public bool IsTestRecord { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
     /// <summary>Immutable sale terms captured when this purchase was created.</summary>
     public string? PurchaseSnapshotJson { get; set; }
 

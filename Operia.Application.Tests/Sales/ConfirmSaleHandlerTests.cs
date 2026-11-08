@@ -11,6 +11,7 @@ using Operia.Application.Sales.Commands.CollectSale;
 using Operia.Application.Sales.Commands.BookSale;
 using Operia.Application.Sales.Queries.GetSale;
 using Operia.Application.Revenue.Queries.ListActivityRevenue;
+using Operia.Application.Revenue.Queries.GetActivityRevenueReport;
 using Operia.Application.Dashboard.Queries.GetDashboardRevenue;
 using Operia.Application.Sales.Queries.QuoteSale;
 using Operia.Application.Bookings.Commands.CancelBooking;
@@ -345,17 +346,44 @@ public sealed class ConfirmSaleHandlerTests
     }
 
     [Fact]
-    public async Task DirectCustomer_CannotBuyPackageOrUseOwnedSession()
+    public async Task DirectPackageIsFullyPaidIncomeOnlyWithoutPurchaseEntitlement()
     {
         await using var fixture = await Fixture.CreateAsync();
-        var package = () => fixture.Quote([Item("package", "cash")], direct: true);
-        (await package.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
-            .Should().Be(ApiErrorCodes.Sales.DirectServiceOnly);
+        var items = new[] { Item("package", "cash") };
+        var quote = await fixture.Quote(items, direct: true);
+        quote.DueNow.Should().Be(quote.GrandTotal);
+
+        var deferred = () => fixture.Confirm(items, quote, "walk-in-deferred", direct: true);
+        (await deferred.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.DirectPackageIncomeOnly);
+        var sale = await fixture.Confirm(items, quote, "walk-in-package", direct: true,
+            disposition: "Close");
+        var receipt = await fixture.Collect(sale.SaleId, "walk-in-package-paid", true);
+        receipt.AmountCollected.Should().Be(quote.GrandTotal);
+        receipt.SaleStatus.Should().Be("Closed");
+        (await fixture.Db.CustomerPackages.CountAsync(x => x.SaleId == sale.SaleId))
+            .Should().Be(0);
+        (await fixture.Db.Bookings.CountAsync(x => x.SaleId == sale.SaleId)).Should().Be(0);
+
+        var clock = new Mock<IDateTimeProvider>();
+        clock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 10, 27, 9, 0, 0,
+            DateTimeKind.Utc));
+        var report = await new GetActivityRevenueReportHandler(fixture.Db,
+            fixture.User.Object, fixture.BranchScope.Object, clock.Object)
+            .Handle(new GetActivityRevenueReportQuery(
+                new DateOnly(2026, 10, 27), new DateOnly(2026, 10, 27)),
+                CancellationToken.None);
+        report.Items.Should().ContainSingle(x => x.SaleId == sale.SaleId &&
+            x.Service == "Package" && x.Amount == quote.GrandTotal && x.Status == "Paid");
+
+        var installment = () => fixture.Quote([Item("package", "installment")], direct: true);
+        (await installment.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.DirectPackageIncomeOnly);
         var owned = () => fixture.Quote(
             [new QuoteSaleItem(null, "owned-1", null, null, null, "owned")], direct: true);
         (await owned.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
             .Should().Be(ApiErrorCodes.Sales.DirectServiceOnly);
-        (await fixture.Db.Customers.CountAsync(customer => customer.IsDirect)).Should().Be(0);
+        (await fixture.Db.Customers.CountAsync(customer => customer.IsDirect)).Should().Be(1);
     }
 
     [Fact]

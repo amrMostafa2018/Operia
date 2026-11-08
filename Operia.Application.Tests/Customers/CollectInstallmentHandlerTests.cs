@@ -98,6 +98,11 @@ public sealed class CollectInstallmentHandlerTests
         (await disabled.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
             .Should().Be(ApiErrorCodes.Customers.InstallmentPaymentMethodUnavailable);
         (await fixture.Db.CustomerPackages.SingleAsync()).AmountDue.Should().Be(10m);
+        (await fixture.Db.CustomerPackages.SingleAsync()).ReleasedSessions.Should().BeNull();
+        (await fixture.Db.CustomerPackageInstallments.SingleAsync(x => x.Number == 1))
+            .CollectedAtUtc.Should().BeNull();
+        (await fixture.Db.AuditLogs.CountAsync(x => x.Action == AuditActions.InstallmentCollected))
+            .Should().Be(0);
 
         await using var otherTenant = await Fixture.OpenAsync(fixture.Database, "tenant-2");
         var crossTenant = () => otherTenant.Collect("cross-tenant");

@@ -82,6 +82,55 @@ public sealed class FindCustomerPurchasesHandlerTests
     }
 
     [Fact]
+    public async Task ExcludesTestAndDeletedPurchasesFromInquiryCount()
+    {
+        var clock = new Mock<IDateTimeProvider>();
+        clock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 10, 27, 8, 0, 0, DateTimeKind.Utc));
+        var user = User("tenant-1");
+        await using var db = Context($"Inquiry_{Guid.NewGuid()}", clock.Object, user.Object);
+        db.Customers.Add(new Customer
+        {
+            Id = "customer-1",
+            TenantId = "tenant-1",
+            FullName = "Customer",
+            MobileNumber = "01012345678",
+            NormalizedMobileNumber = "01012345678"
+        });
+        db.Packages.Add(new Package
+        {
+            Id = "offer-1",
+            TenantId = "tenant-1",
+            Name = "Offer",
+            OfferType = OfferType.Package
+        });
+        db.CustomerPackages.AddRange(
+            new CustomerPackage
+            {
+                Id = "real-purchase", TenantId = "tenant-1", CustomerId = "customer-1",
+                PackageId = "offer-1", Total = 3
+            },
+            new CustomerPackage
+            {
+                Id = "test-purchase", TenantId = "tenant-1", CustomerId = "customer-1",
+                PackageId = "offer-1", Total = 3, IsTestRecord = true
+            },
+            new CustomerPackage
+            {
+                Id = "deleted-purchase", TenantId = "tenant-1", CustomerId = "customer-1",
+                PackageId = "offer-1", Total = 3,
+                DeletedAtUtc = clock.Object.UtcNow
+            });
+        await db.SaveChangesAsync();
+
+        var result = await new FindCustomerPurchasesHandler(db, user.Object, clock.Object)
+            .Handle(new FindCustomerPurchasesQuery("01012345678"), CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.OperationCount.Should().Be(1);
+        result.Purchases.Should().ContainSingle(x => x.Id == "real-purchase");
+    }
+
+    [Fact]
     public async Task FindsLegacyLocalMobileWhenSearchUsesTheSupportedLocalFormat()
     {
         var clock = new Mock<IDateTimeProvider>();

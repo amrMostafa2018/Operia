@@ -63,6 +63,11 @@ public sealed class ConfirmSaleHandler(
         {
             throw ConflictException.FromCode(ApiErrorCodes.Sales.QuoteChanged, "items");
         }
+        if (request.DirectCustomer && quote.Items.Any(line => line.OfferType == "package") &&
+            (request.Disposition != "Close" || quote.DueNow != quote.GrandTotal))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Sales.DirectPackageIncomeOnly, "items");
+        }
 
         var method = request.PaymentMethod?.Trim().ToLowerInvariant();
         if (quote.DueNow > 0)

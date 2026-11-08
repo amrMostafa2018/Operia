@@ -121,9 +121,11 @@ public sealed class QuoteSaleHandler(
                 {
                     throw ConflictException.FromCode(ApiErrorCodes.Sales.OfferUnavailable, "items");
                 }
-                if (request.DirectCustomer && offer.OfferType != OfferType.SingleSession)
+                if (request.DirectCustomer && offer.OfferType == OfferType.Package &&
+                    item.PaymentOption != "cash")
                 {
-                    throw ConflictException.FromCode(ApiErrorCodes.Sales.DirectServiceOnly, "items");
+                    throw ConflictException.FromCode(
+                        ApiErrorCodes.Sales.DirectPackageIncomeOnly, "items");
                 }
                 lines.Add(PriceOffer(offer, item));
                 continue;

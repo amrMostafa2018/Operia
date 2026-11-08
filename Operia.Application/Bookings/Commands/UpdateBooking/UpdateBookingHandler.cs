@@ -604,6 +604,7 @@ public sealed class UpdateBookingHandler(
             PurchasePrice = purchasePrice,
             AmountDue = purchasePrice,
             PurchaseSnapshotJson = snapshot.ToJson(),
+            StartedOn = DateOnly.FromDateTime(clock.UtcNow),
             Total = 1,
             ReservedSessions = 1,
             IsActive = true

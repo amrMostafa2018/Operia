@@ -103,6 +103,10 @@ public sealed class BookSaleHandler(
 
         var lines = JsonSerializer.Deserialize<ConfirmedSaleItemSnapshot[]>(sale.ItemsSnapshotJson)
             ?? [];
+        if (customer.IsDirect && lines.Any(line => line.OfferType == "package"))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Sales.DirectPackageIncomeOnly);
+        }
         var offerIds = lines.Where(x => x.OfferId is not null)
             .Select(x => x.OfferId!).Distinct().ToArray();
         var offers = await db.Packages.AsNoTracking().Include(x => x.AvailableStaff)

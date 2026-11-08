@@ -57,6 +57,7 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
             Used = 2500,
             PurchasePrice = 20000m,
             AmountDue = 15000m,
+            StartedOn = new DateOnly(2026, 10, 12),
             PurchaseSnapshotJson = snapshot.ToJson(),
             ExpiresOn = new DateOnly(2027, 1, 1)
         });
@@ -139,7 +140,7 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
         result.AmountRemaining.Should().Be(15000m);
         result.Pulses.Should().Be(new PurchaseBalanceDto(8000, 2500, 5500));
         result.Sessions.Should().BeNull();
-        result.StartsOn.Should().BeNull();
+        result.StartsOn.Should().Be(new DateOnly(2026, 10, 12));
         result.NextInstallmentNumber.Should().Be(1);
         result.Installments.Should().OnlyContain(x => x.Status == "due");
         result.CompletedSessions.Should().ContainSingle()

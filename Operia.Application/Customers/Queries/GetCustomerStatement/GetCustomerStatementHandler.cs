@@ -34,6 +34,7 @@ public sealed class GetCustomerStatementHandler(
                             from sale in saleGroup.DefaultIfEmpty()
                             join customer in db.Customers.AsNoTracking() on purchase.CustomerId equals customer.Id
                             where purchase.TenantId == tenantId && customer.TenantId == tenantId &&
+                                  !purchase.IsTestRecord && purchase.DeletedAtUtc == null &&
                                   purchase.Id == request.PurchaseId &&
                                   purchase.CustomerId == request.CustomerId &&
                                   (sale == null || sale.CustomerId == request.CustomerId) &&
@@ -62,6 +63,7 @@ public sealed class GetCustomerStatementHandler(
                                         on purchase.SaleId equals linkedSale.Id into saleGroup
                                     from sale in saleGroup.DefaultIfEmpty()
                                     where purchase.TenantId == tenantId &&
+                                          !purchase.IsTestRecord && purchase.DeletedAtUtc == null &&
                                           purchase.CustomerId == request.CustomerId &&
                                           (sale == null || sale.CustomerId == request.CustomerId) &&
                                           allowedBranches.Contains(purchase.BranchId ?? sale!.BranchId)
