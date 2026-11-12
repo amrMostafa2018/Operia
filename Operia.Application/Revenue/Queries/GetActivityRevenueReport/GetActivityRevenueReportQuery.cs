@@ -9,7 +9,12 @@ public sealed record GetActivityRevenueReportQuery(
     string? ServiceId = null,
     int Page = 1,
     int PageSize = 10,
-    bool AllRows = false) : IRequest<ActivityRevenueReport>;
+    bool AllRows = false,
+    string? Search = null,
+    string? Status = null,
+    string? Mobile = null,
+    string? CustomerName = null,
+    string? EmployeeId = null) : IRequest<ActivityRevenueReport>;
 
 public sealed record ActivityRevenueReport(
     DateOnly FromDate,
@@ -46,4 +51,5 @@ public sealed record RevenueTransactionRow(
     string? PurchaseId,
     string? PaymentId,
     string? RefundId,
-    bool HasProof);
+    bool HasProof,
+    string? CollectedByUserId = null);

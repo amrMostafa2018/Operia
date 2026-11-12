@@ -280,6 +280,45 @@ public sealed class ActivityRevenueSummaryTests
     }
 
     [Fact]
+    public async Task TableFiltersNarrowRowsWithoutChangingPeriodCards()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var collection = await fixture.Db.SaleCollections.SingleAsync(x =>
+            x.SaleId == "sale-today" && x.Confirmed);
+        collection.CollectedByUserId = "collector-1";
+        fixture.Db.Employees.Add(new Employee
+        {
+            Id = "emp-1",
+            TenantId = "tenant-1",
+            IdentityUserId = "collector-1",
+            FullName = "Nora",
+            Code = "E1"
+        });
+        await fixture.Db.SaveChangesAsync();
+        var handler = new GetActivityRevenueReportHandler(fixture.Db,
+            fixture.User.Object, fixture.Scope.Object, fixture.Clock.Object);
+        var all = await handler.Handle(new GetActivityRevenueReportQuery(), CancellationToken.None);
+        var byEmployee = await handler.Handle(
+            new GetActivityRevenueReportQuery(EmployeeId: "emp-1"), CancellationToken.None);
+        byEmployee.Total.Should().Be(1);
+        byEmployee.Items.Should().ContainSingle(x =>
+            x.CollectedByUserId == "collector-1" && x.Status == "Paid");
+        byEmployee.Today.Should().BeEquivalentTo(all.Today);
+        byEmployee.Month.Should().BeEquivalentTo(all.Month);
+        var missingEmployee = await handler.Handle(
+            new GetActivityRevenueReportQuery(EmployeeId: "missing"), CancellationToken.None);
+        missingEmployee.Total.Should().Be(0);
+        missingEmployee.Today.Should().BeEquivalentTo(all.Today);
+        var byName = await handler.Handle(
+            new GetActivityRevenueReportQuery(CustomerName: "cust"), CancellationToken.None);
+        byName.Total.Should().Be(all.Total);
+        var none = await handler.Handle(
+            new GetActivityRevenueReportQuery(Search: "no-such-invoice"), CancellationToken.None);
+        none.Total.Should().Be(0);
+        none.Today.TransactionCount.Should().Be(all.Today.TransactionCount);
+    }
+
+    [Fact]
     public async Task CardsCountConfirmedMovementsAndSubtractRefundOnlyFromNet()
     {
         await using var fixture = await Fixture.CreateAsync();

@@ -75,6 +75,7 @@ public sealed class GetActivityRevenueReportHandler(
                 collection.PaymentMethod,
                 collection.Confirmed,
                 collection.ReviewStatus,
+                collection.CollectedByUserId,
                 HasProof = collection.ProofContent != null,
                 collection.AttemptedAtUtc,
                 collection.ConfirmedAtUtc,
@@ -104,6 +105,7 @@ public sealed class GetActivityRevenueReportHandler(
                 collection.Id,
                 collection.Amount,
                 collection.PaymentMethod,
+                collection.CollectedByUserId,
                 collection.ConfirmedAtUtc,
                 collection.CustomerPackageId,
                 purchase.PackageId,
@@ -129,6 +131,7 @@ public sealed class GetActivityRevenueReportHandler(
             {
                 refund.Id,
                 refund.Amount,
+                refund.RecordedByUserId,
                 refund.RecordedAtUtc,
                 refund.CustomerPackageId,
                 purchase.PackageId,
@@ -155,7 +158,7 @@ public sealed class GetActivityRevenueReportHandler(
                 string.Join(", ", items.Select(x => x.Name)), row.Branch,
                 row.Amount, row.PaymentMethod,
                 row.ReviewStatus ?? (row.Confirmed ? "Paid" : "Failed"), row.SaleId,
-                null, row.Id, null, row.HasProof));
+                null, row.Id, null, row.HasProof, row.CollectedByUserId));
         }
 
         foreach (var row in installmentRows)
@@ -169,7 +172,7 @@ public sealed class GetActivityRevenueReportHandler(
                 row.CustomerName, row.Mobile,
                 PackagePurchaseSnapshot.FromJson(row.PurchaseSnapshotJson)?.OfferName ?? string.Empty,
                 row.Branch, row.Amount, row.PaymentMethod, "Paid", row.SaleId,
-                row.CustomerPackageId, row.Id, null, false));
+                row.CustomerPackageId, row.Id, null, false, row.CollectedByUserId));
         }
 
         foreach (var row in refundRows)
@@ -183,11 +186,16 @@ public sealed class GetActivityRevenueReportHandler(
                 row.CustomerName, row.Mobile,
                 PackagePurchaseSnapshot.FromJson(row.PurchaseSnapshotJson)?.OfferName ?? string.Empty,
                 row.Branch, -row.Amount, string.Empty, "Refunded", row.SaleId,
-                row.CustomerPackageId, null, row.Id, false));
+                row.CustomerPackageId, null, row.Id, false, row.RecordedByUserId));
         }
 
+        var collectorUserId = await CollectorUserIdAsync(request.EmployeeId, tenantId, cancellationToken);
+        var collectorMissing = request.EmployeeId is not null &&
+            !string.IsNullOrWhiteSpace(request.EmployeeId) &&
+            string.IsNullOrEmpty(collectorUserId);
         var ordered = rows
             .Where(x => x.TransactionAtUtc >= range.FromUtc && x.TransactionAtUtc < range.ToUtc)
+            .Where(x => MatchesTableFilter(x, request, collectorUserId, collectorMissing))
             .OrderByDescending(x => x.TransactionAtUtc)
             .ThenByDescending(x => x.TransactionId, StringComparer.Ordinal)
             .ToArray();
@@ -235,5 +243,67 @@ public sealed class GetActivityRevenueReportHandler(
 
         return Math.Round(
             (current - previous) / previous * 100m, 0, MidpointRounding.AwayFromZero);
+    }
+
+    private async Task<string?> CollectorUserIdAsync(
+        string? employeeId, string tenantId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(employeeId))
+        {
+            return null;
+        }
+
+        return await db.Employees.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.Id == employeeId)
+            .Select(x => x.IdentityUserId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private static bool MatchesTableFilter(
+        RevenueTransactionRow row,
+        GetActivityRevenueReportQuery request,
+        string? collectorUserId,
+        bool collectorMissing)
+    {
+        if (collectorMissing)
+        {
+            return false;
+        }
+
+        if (collectorUserId is not null &&
+            !string.Equals(row.CollectedByUserId, collectorUserId, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Status) &&
+            !string.Equals(row.Status, request.Status.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Mobile) &&
+            !row.Mobile.Contains(request.Mobile.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.CustomerName) &&
+            !row.CustomerName.Contains(request.CustomerName.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Search))
+        {
+            return true;
+        }
+
+        var search = request.Search.Trim();
+        return row.TransactionId.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            row.CustomerName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            row.Mobile.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            row.Service.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            row.Branch.Contains(search, StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -92,9 +92,19 @@ public sealed class RevenueController(IMediator mediator) : ControllerBase
         [FromQuery] string? serviceId = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string? mobile = null,
+        [FromQuery] string? customerName = null,
+        [FromQuery] string? employeeId = null,
         CancellationToken cancellationToken = default) =>
         mediator.Send(new GetActivityRevenueReportQuery(
-            fromDate, toDate, branchId, serviceId, page, pageSize), cancellationToken);
+            fromDate, toDate, branchId, serviceId, page, pageSize,
+            Search: search,
+            Status: status,
+            Mobile: mobile,
+            CustomerName: customerName,
+            EmployeeId: employeeId), cancellationToken);
 
     [HttpGet("report/export")]
     [Authorize(Policy = Policies.RevenueExport)]
@@ -103,10 +113,16 @@ public sealed class RevenueController(IMediator mediator) : ControllerBase
         [FromQuery] DateOnly? toDate = null,
         [FromQuery] string? branchId = null,
         [FromQuery] string? serviceId = null,
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string? mobile = null,
+        [FromQuery] string? customerName = null,
+        [FromQuery] string? employeeId = null,
         CancellationToken cancellationToken = default)
     {
         var workbook = await mediator.Send(new ExportActivityRevenueQuery(
-            fromDate, toDate, branchId, serviceId), cancellationToken);
+            fromDate, toDate, branchId, serviceId,
+            search, status, mobile, customerName, employeeId), cancellationToken);
         return File(workbook,
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "activity-revenue.xlsx");

@@ -10,7 +10,12 @@ public sealed class ExportActivityRevenueHandler(IMediator mediator)
     {
         var report = await mediator.Send(new GetActivityRevenueReportQuery(
             request.FromDate, request.ToDate, request.BranchId, request.ServiceId,
-            AllRows: true), token);
+            AllRows: true,
+            Search: request.Search,
+            Status: request.Status,
+            Mobile: request.Mobile,
+            CustomerName: request.CustomerName,
+            EmployeeId: request.EmployeeId), token);
         return ActivityRevenueWorkbook.Write(report);
     }
 }
