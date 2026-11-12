@@ -50,4 +50,10 @@ public sealed record CustomerStatementDto(
     PurchaseBalanceDto? SessionBalance,
     StatementFirstPaymentDto? FirstPayment,
     IReadOnlyList<StatementPaymentDto> Installments,
-    string CustomerRestriction = "active");
+    string CustomerRestriction = "active",
+    DateTime RegisteredAt = default,
+    bool NextInstallmentEligible = false,
+    int? NextInstallmentNumber = null,
+    decimal? NextInstallmentAmount = null,
+    IReadOnlyList<string>? PaymentMethods = null,
+    IReadOnlyList<string>? CollectionIdempotencyKeys = null);

@@ -31,9 +31,11 @@ internal sealed class RevenuePeriods(
         var localNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, timezone);
         var today = localNow.Date;
         var month = new DateTime(today.Year, today.Month, 1);
+        var previousMonth = month.AddMonths(-1);
         return new RevenuePeriodBounds(
             ToUtc(today, timezone), ToUtc(today.AddDays(1), timezone),
-            ToUtc(month, timezone), ToUtc(month.AddMonths(1), timezone));
+            ToUtc(month, timezone), ToUtc(month.AddMonths(1), timezone),
+            ToUtc(today.AddDays(-1), timezone), ToUtc(previousMonth, timezone));
     }
 
     public async Task<RevenueReportBounds> ReportAsync(
@@ -85,7 +87,9 @@ internal sealed record RevenuePeriodBounds(
     DateTime TodayFromUtc,
     DateTime TodayToUtc,
     DateTime MonthFromUtc,
-    DateTime MonthToUtc);
+    DateTime MonthToUtc,
+    DateTime YesterdayFromUtc,
+    DateTime PreviousMonthFromUtc);
 
 internal sealed record RevenueReportBounds(
     DateOnly FromDate, DateOnly ToDate, string TimezoneId,

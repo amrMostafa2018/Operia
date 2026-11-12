@@ -255,7 +255,11 @@ public sealed class ActivityRevenueSummaryTests
         report.Totals.NetCollected.Should().Be(3500m);
         report.Items.Should().ContainSingle(x => x.Status == "Failed" && x.Amount == 900m);
         report.Today.TransactionCount.Should().Be(1);
+        report.Today.CountChangePercent.Should().BeNull();
+        report.Today.AmountChangePercent.Should().BeNull();
         report.Month.GrossCollections.Should().Be(5000m);
+        report.Month.CountChangePercent.Should().Be(0m);
+        report.Month.AmountChangePercent.Should().Be(0m);
     }
 
     [Fact]

@@ -48,6 +48,7 @@ public sealed class GetCustomerStatementHandler(
                                 customer.MobileNumber,
                                 customer.IsActive,
                                 customer.IsBlocked,
+                                customer.CreatedAt,
                                 ItemsSnapshotJson = sale == null ? null : sale.ItemsSnapshotJson,
                                 SaleId = sale == null ? null : sale.Id
                             }).SingleOrDefaultAsync(cancellationToken)
@@ -161,7 +162,13 @@ public sealed class GetCustomerStatementHandler(
                 purchaseDetails.PurchasePrice is null ? null : paid - refunded,
                 refunded == 0m ? "none" : refunded >= paid ? "full" : "partial"),
             sessionBalance, firstPayment, installments,
-            source.IsBlocked ? "blocked" : source.IsActive ? "active" : "inactive");
+            source.IsBlocked ? "blocked" : source.IsActive ? "active" : "inactive",
+            source.CreatedAt,
+            purchaseDetails.NextInstallmentEligible,
+            purchaseDetails.NextInstallmentNumber,
+            purchaseDetails.NextInstallmentAmount,
+            purchaseDetails.PaymentMethods,
+            collections.Select(collection => collection.IdempotencyKey).ToArray());
     }
 
 }

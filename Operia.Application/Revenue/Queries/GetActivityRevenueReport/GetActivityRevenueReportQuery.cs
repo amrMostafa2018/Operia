@@ -25,7 +25,11 @@ public sealed record ActivityRevenueReport(
 
 public sealed record RevenueReportTotals(decimal GrossCollections, decimal Refunds, decimal NetCollected);
 
-public sealed record RevenueReportCard(int TransactionCount, decimal GrossCollections);
+public sealed record RevenueReportCard(
+    int TransactionCount,
+    decimal GrossCollections,
+    decimal? CountChangePercent = null,
+    decimal? AmountChangePercent = null);
 
 public sealed record RevenueTransactionRow(
     string TransactionId,

@@ -28,6 +28,27 @@ public sealed class GetActivityRevenueReportHandler(
         var periods = new RevenuePeriods(db, currentUser, clock);
         var range = await periods.ReportAsync(request.FromDate, request.ToDate, cancellationToken);
         var current = await periods.CurrentAsync(cancellationToken);
+        var queryFrom = range.FromUtc;
+        if (current.YesterdayFromUtc < queryFrom)
+        {
+            queryFrom = current.YesterdayFromUtc;
+        }
+
+        if (current.PreviousMonthFromUtc < queryFrom)
+        {
+            queryFrom = current.PreviousMonthFromUtc;
+        }
+
+        var queryTo = range.ToUtc;
+        if (current.TodayToUtc > queryTo)
+        {
+            queryTo = current.TodayToUtc;
+        }
+
+        if (current.MonthToUtc > queryTo)
+        {
+            queryTo = current.MonthToUtc;
+        }
         if (request.ServiceId is not null && !await db.Packages.AsNoTracking().AnyAsync(
                 x => x.TenantId == tenantId && x.Id == request.ServiceId,
                 cancellationToken))
@@ -45,8 +66,8 @@ public sealed class GetActivityRevenueReportHandler(
             join branch in db.Branches.AsNoTracking() on sale.BranchId equals branch.Id
             where sale.TenantId == tenantId && customer.TenantId == tenantId &&
                   branch.TenantId == tenantId &&
-                  (collection.ConfirmedAtUtc ?? collection.AttemptedAtUtc) >= range.FromUtc &&
-                  (collection.ConfirmedAtUtc ?? collection.AttemptedAtUtc) < range.ToUtc
+                  (collection.ConfirmedAtUtc ?? collection.AttemptedAtUtc) >= queryFrom &&
+                  (collection.ConfirmedAtUtc ?? collection.AttemptedAtUtc) < queryTo
             select new
             {
                 collection.Id,
@@ -76,8 +97,8 @@ public sealed class GetActivityRevenueReportHandler(
             join branch in db.Branches.AsNoTracking() on purchase.BranchId equals branch.Id
             where purchase.TenantId == tenantId &&
                   customer.TenantId == tenantId && branch.TenantId == tenantId &&
-                  collection.ConfirmedAtUtc >= range.FromUtc &&
-                  collection.ConfirmedAtUtc < range.ToUtc
+                  collection.ConfirmedAtUtc >= queryFrom &&
+                  collection.ConfirmedAtUtc < queryTo
             select new
             {
                 collection.Id,
@@ -102,8 +123,8 @@ public sealed class GetActivityRevenueReportHandler(
             join branch in db.Branches.AsNoTracking() on sale.BranchId equals branch.Id
             where purchase.TenantId == tenantId && sale.TenantId == tenantId &&
                   customer.TenantId == tenantId && branch.TenantId == tenantId &&
-                  refund.RecordedAtUtc >= range.FromUtc &&
-                  refund.RecordedAtUtc < range.ToUtc
+                  refund.RecordedAtUtc >= queryFrom &&
+                  refund.RecordedAtUtc < queryTo
             select new
             {
                 refund.Id,
@@ -165,9 +186,13 @@ public sealed class GetActivityRevenueReportHandler(
                 row.CustomerPackageId, null, row.Id, false));
         }
 
-        var ordered = rows.OrderByDescending(x => x.TransactionAtUtc)
-            .ThenByDescending(x => x.TransactionId, StringComparer.Ordinal).ToArray();
+        var ordered = rows
+            .Where(x => x.TransactionAtUtc >= range.FromUtc && x.TransactionAtUtc < range.ToUtc)
+            .OrderByDescending(x => x.TransactionAtUtc)
+            .ThenByDescending(x => x.TransactionId, StringComparer.Ordinal)
+            .ToArray();
         var paid = ordered.Where(x => x.Status == "Paid").ToArray();
+        var cardRows = rows.Where(x => x.Status == "Paid").ToArray();
         var gross = paid.Sum(x => x.Amount);
         var refunds = -ordered.Where(x => x.Kind == "Refund").Sum(x => x.Amount);
         var page = Math.Clamp(request.Page, 1, 100_000);
@@ -175,17 +200,40 @@ public sealed class GetActivityRevenueReportHandler(
         return new ActivityRevenueReport(range.FromDate, range.ToDate, range.TimezoneId,
             ordered.Length,
             page, pageSize, new RevenueReportTotals(gross, refunds, gross - refunds),
-            Card(paid, current.TodayFromUtc, current.TodayToUtc),
-            Card(paid, current.MonthFromUtc, current.MonthToUtc),
+            Card(cardRows, current.TodayFromUtc, current.TodayToUtc,
+                current.YesterdayFromUtc, current.TodayFromUtc),
+            Card(cardRows, current.MonthFromUtc, current.MonthToUtc,
+                current.PreviousMonthFromUtc, current.MonthFromUtc),
             request.AllRows ? ordered : ordered.Skip((page - 1) * pageSize)
                 .Take(pageSize).ToArray());
     }
 
     private static RevenueReportCard Card(
-        IEnumerable<RevenueTransactionRow> rows, DateTime from, DateTime to)
+        IEnumerable<RevenueTransactionRow> rows,
+        DateTime from,
+        DateTime to,
+        DateTime previousFrom,
+        DateTime previousTo)
     {
         var matching = rows.Where(x => x.TransactionAtUtc >= from && x.TransactionAtUtc < to)
             .ToArray();
-        return new RevenueReportCard(matching.Length, matching.Sum(x => x.Amount));
+        var previous = rows.Where(x =>
+            x.TransactionAtUtc >= previousFrom && x.TransactionAtUtc < previousTo).ToArray();
+        return new RevenueReportCard(
+            matching.Length,
+            matching.Sum(x => x.Amount),
+            ChangePercent(matching.Length, previous.Length),
+            ChangePercent(matching.Sum(x => x.Amount), previous.Sum(x => x.Amount)));
+    }
+
+    private static decimal? ChangePercent(decimal current, decimal previous)
+    {
+        if (previous == 0m)
+        {
+            return current == 0m ? 0m : null;
+        }
+
+        return Math.Round(
+            (current - previous) / previous * 100m, 0, MidpointRounding.AwayFromZero);
     }
 }

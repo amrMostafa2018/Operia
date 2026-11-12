@@ -79,6 +79,10 @@ public sealed class CustomerStatementTests
         var result = await handler.Handle(new GetCustomerStatementQuery(
             "customer-1", "purchase-1"), CancellationToken.None);
         result.OperationCount.Should().Be(1);
+        result.RegisteredAt.Should().Be(clock.Object.UtcNow);
+        result.NextInstallmentEligible.Should().BeTrue();
+        result.NextInstallmentNumber.Should().Be(1);
+        result.NextInstallmentAmount.Should().Be(7500m);
         result.Purchase.AmountPaid.Should().Be(5000m);
         result.Installments.Should().HaveCount(2);
         result.Installments[0].Status.Should().Be("due");
