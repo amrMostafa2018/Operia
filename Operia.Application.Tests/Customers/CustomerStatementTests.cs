@@ -73,7 +73,8 @@ public sealed class CustomerStatementTests
                 "purchase-1", clock.Object.UtcNow, null, null, null, "active", "partial",
                 new PurchaseBalanceDto(3, 0, 3), null, 20000m, 5000m, 15000m,
                 1, 2, [], [], true, 7500m, [], []));
-        var handler = new GetCustomerStatementHandler(db, user.Object, scope.Object, mediator.Object);
+        var handler = new GetCustomerStatementHandler(
+            db, user.Object, Identity().Object, scope.Object, mediator.Object);
 
         var result = await handler.Handle(new GetCustomerStatementQuery(
             "customer-1", "purchase-1"), CancellationToken.None);
@@ -190,7 +191,8 @@ public sealed class CustomerStatementTests
                     null, null, null, "active", "partial", null,
                     new PurchaseBalanceDto(2500, 1000, 1500), 20000m, 5000m,
                     15000m, 1, 3, [], [], true, 5000m, [], []));
-        var handler = new GetCustomerStatementHandler(db, user.Object, scope.Object, mediator.Object);
+        var handler = new GetCustomerStatementHandler(
+            db, user.Object, Identity().Object, scope.Object, mediator.Object);
         var result = await handler.Handle(
             new GetCustomerStatementQuery("customer-1", "purchase-1"), CancellationToken.None);
 
@@ -247,4 +249,12 @@ public sealed class CustomerStatementTests
             AmountDue = 15000m,
             PurchaseSnapshotJson = snapshot.ToJson()
         };
+
+    private static Mock<IIdentityService> Identity()
+    {
+        var identity = new Mock<IIdentityService>();
+        identity.Setup(x => x.GetUsersSummaryAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, UserSummaryDto>());
+        return identity;
+    }
 }

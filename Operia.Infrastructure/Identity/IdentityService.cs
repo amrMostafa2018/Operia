@@ -227,13 +227,27 @@ public sealed class IdentityService : IIdentityService
     public async Task<Dictionary<string, UserSummaryDto>> GetUsersSummaryAsync(IEnumerable<string> userIds, CancellationToken cancellationToken = default)
     {
         var users = await _userManager.Users.AsNoTracking().Where(x => userIds.Contains(x.Id)).ToListAsync(cancellationToken);
-        return users.ToDictionary(x => x.Id, x => new UserSummaryDto(x.Id, x.UserName ?? string.Empty, x.Email ?? string.Empty, x.PhoneNumber ?? string.Empty, x.LockoutEnd > DateTimeOffset.UtcNow));
+        return users.ToDictionary(x => x.Id, x => new UserSummaryDto(
+            x.Id,
+            x.UserName ?? string.Empty,
+            x.Email ?? string.Empty,
+            x.PhoneNumber ?? string.Empty,
+            x.LockoutEnd > DateTimeOffset.UtcNow,
+            x.FullName ?? string.Empty));
     }
 
     public async Task<UserSummaryDto?> GetUserSummaryAsync(string userId, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == userId, cancellationToken);
-        return user is null ? null : new UserSummaryDto(user.Id, user.UserName ?? string.Empty, user.Email ?? string.Empty, user.PhoneNumber ?? string.Empty, user.LockoutEnd > DateTimeOffset.UtcNow);
+        return user is null
+            ? null
+            : new UserSummaryDto(
+                user.Id,
+                user.UserName ?? string.Empty,
+                user.Email ?? string.Empty,
+                user.PhoneNumber ?? string.Empty,
+                user.LockoutEnd > DateTimeOffset.UtcNow,
+                user.FullName ?? string.Empty);
     }
 
     public async Task EnsureRetainSuperAdminAsync(IEnumerable<string> activeIdentityUserIds, string targetCurrentRole, bool deactivating, CancellationToken cancellationToken = default)

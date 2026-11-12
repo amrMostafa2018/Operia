@@ -356,15 +356,18 @@ public sealed class CollectInstallmentHandlerTests
         public TestApplicationDbContext Db { get; }
 
         public Task<CustomerPurchaseDetailsDto> Details() =>
-            new GetCustomerPurchaseDetailsHandler(Db, _user.Object, _clock.Object)
+            new GetCustomerPurchaseDetailsHandler(Db, _user.Object, _identity.Object, _clock.Object)
                 .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1"), CancellationToken.None);
 
+        private readonly Mock<IIdentityService> _identity;
+
         private Fixture(string database, TestApplicationDbContext db,
-            Mock<ICurrentUserService> user, Mock<IDateTimeProvider> clock)
+            Mock<ICurrentUserService> user, Mock<IIdentityService> identity, Mock<IDateTimeProvider> clock)
         {
             Database = database;
             Db = db;
             _user = user;
+            _identity = identity;
             _clock = clock;
         }
 
@@ -448,8 +451,11 @@ public sealed class CollectInstallmentHandlerTests
                 .Returns(new DateTime(2026, 10, 27, 8, 0, 0, DateTimeKind.Utc));
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase(database).Options;
+            var identity = new Mock<IIdentityService>();
+            identity.Setup(x => x.GetUsersSummaryAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Dictionary<string, UserSummaryDto>());
             return Task.FromResult(new Fixture(database,
-                new TestApplicationDbContext(options, clock.Object, user.Object), user, clock));
+                new TestApplicationDbContext(options, clock.Object, user.Object), user, identity, clock));
         }
 
         public Task<CollectInstallmentResult> Collect(

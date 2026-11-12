@@ -133,7 +133,7 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var result = await new GetCustomerPurchaseDetailsHandler(db, user.Object, clock.Object)
+        var result = await new GetCustomerPurchaseDetailsHandler(db, user.Object, Identity().Object, clock.Object)
             .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1"), CancellationToken.None);
 
         result.PurchasePrice.Should().Be(20000m);
@@ -147,21 +147,21 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
         result.CompletedSessions.Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new CompletedPurchaseSessionDto(
                 1, new DateOnly(2026, 10, 20), 600, null, 2500, "Performed", "Original offer"));
-        var outsideBranch = await new GetCustomerPurchaseDetailsHandler(db, user.Object, clock.Object)
+        var outsideBranch = await new GetCustomerPurchaseDetailsHandler(db, user.Object, Identity().Object, clock.Object)
             .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1", ["branch-2"]), CancellationToken.None);
         outsideBranch.CompletedSessions.Should().BeEmpty();
 
         var storedPurchase = await db.CustomerPackages.SingleAsync(x => x.Id == "purchase-1");
         storedPurchase.ExpiresOn = DateOnly.FromDateTime(clock.Object.UtcNow).AddDays(-1);
         await db.SaveChangesAsync();
-        var expired = await new GetCustomerPurchaseDetailsHandler(db, user.Object, clock.Object)
+        var expired = await new GetCustomerPurchaseDetailsHandler(db, user.Object, Identity().Object, clock.Object)
             .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1"), CancellationToken.None);
         expired.Pulses!.Bookable.Should().Be(0);
         storedPurchase.ExpiresOn = new DateOnly(2027, 1, 1);
         storedPurchase.AmountDue = 10000m;
         storedPurchase.ReleasedSessions = 5000;
         await db.SaveChangesAsync();
-        var afterCollection = await new GetCustomerPurchaseDetailsHandler(db, user.Object, clock.Object)
+        var afterCollection = await new GetCustomerPurchaseDetailsHandler(db, user.Object, Identity().Object, clock.Object)
             .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1"), CancellationToken.None);
         afterCollection.Pulses!.Released.Should().Be(5000);
         afterCollection.Installments.Select(x => x.Status).Should().Equal("paid", "due", "due");
@@ -178,7 +178,7 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
             IdempotencyKey = "confirmed-installment"
         });
         await db.SaveChangesAsync();
-        var cancelled = await new GetCustomerPurchaseDetailsHandler(db, user.Object, clock.Object)
+        var cancelled = await new GetCustomerPurchaseDetailsHandler(db, user.Object, Identity().Object, clock.Object)
             .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1"), CancellationToken.None);
         cancelled.Pulses!.Released.Should().Be(5000);
         cancelled.Pulses.Bookable.Should().Be(0);
@@ -305,7 +305,7 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var result = await new GetCustomerPurchaseDetailsHandler(db, user.Object, clock.Object)
+        var result = await new GetCustomerPurchaseDetailsHandler(db, user.Object, Identity().Object, clock.Object)
             .Handle(new GetCustomerPurchaseDetailsQuery(purchase.Id), CancellationToken.None);
 
         result.AmountPaid.Should().Be(10000m);
@@ -352,10 +352,80 @@ public sealed class GetCustomerPurchaseDetailsHandlerTests
 
         var user = User("tenant-1");
         await using var currentDb = Context(database, clock.Object, user.Object);
-        var act = () => new GetCustomerPurchaseDetailsHandler(currentDb, user.Object, clock.Object)
+        var act = () => new GetCustomerPurchaseDetailsHandler(currentDb, user.Object, Identity().Object, clock.Object)
             .Handle(new GetCustomerPurchaseDetailsQuery("purchase-2"), CancellationToken.None);
 
         await act.Should().ThrowAsync<ApiNotFoundException>();
+    }
+
+    [Fact]
+    public async Task ResolvesRecorderFromIdentityWhenNoEmployeeExists()
+    {
+        var user = User("tenant-1");
+        var clock = Clock();
+        var identity = new Mock<IIdentityService>();
+        identity.Setup(x => x.GetUsersSummaryAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, UserSummaryDto>
+            {
+                ["admin-user"] = new UserSummaryDto(
+                    "admin-user", "admin", "admin@example.com", string.Empty, false, "Tenant Admin")
+            });
+        await using var db = Context($"PurchaseRecorder_{Guid.NewGuid()}", clock.Object, user.Object);
+        db.Packages.Add(new Package { Id = "offer-1", TenantId = "tenant-1", Name = "Offer" });
+        db.Customers.Add(new Customer
+        {
+            Id = "customer-1",
+            TenantId = "tenant-1",
+            FullName = "Customer",
+            MobileNumber = "01012345678",
+            NormalizedMobileNumber = "01012345678"
+        });
+        var snapshot = new PackagePurchaseSnapshot(
+            "Offer", OfferType.Package, 4, null, null, 12, "category-1", null,
+            "installment", 2500m, 2500m, null, 1000m,
+            [new PurchaseInstallmentSnapshot(1, 500m, 0, 1),
+             new PurchaseInstallmentSnapshot(2, 500m, 0, 2),
+             new PurchaseInstallmentSnapshot(3, 500m, 0, 3)]);
+        db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "purchase-1",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "offer-1",
+            SaleId = "sale-1",
+            Total = 4,
+            PurchasePrice = 2500m,
+            AmountDue = 1500m,
+            PurchaseSnapshotJson = snapshot.ToJson()
+        });
+        db.SaleCollections.Add(new SaleCollection
+        {
+            Id = "sale-collection-1",
+            TenantId = "tenant-1",
+            SaleId = "sale-1",
+            Amount = 1000m,
+            PaymentMethod = "cash",
+            Confirmed = true,
+            IdempotencyKey = "sale-key",
+            CollectedByUserId = "admin-user",
+            AttemptedAtUtc = new DateTime(2026, 11, 10, 8, 0, 0, DateTimeKind.Utc),
+            ConfirmedAtUtc = new DateTime(2026, 11, 10, 8, 0, 0, DateTimeKind.Utc)
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new GetCustomerPurchaseDetailsHandler(db, user.Object, identity.Object, clock.Object)
+            .Handle(new GetCustomerPurchaseDetailsQuery("purchase-1"), CancellationToken.None);
+
+        result.Collections.Should().ContainSingle();
+        result.Collections[0].RecordedBy.Should().Be("Tenant Admin");
+    }
+
+    private static Mock<IIdentityService> Identity()
+    {
+        var identity = new Mock<IIdentityService>();
+        identity.Setup(x => x.GetUsersSummaryAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, UserSummaryDto>());
+        return identity;
     }
 
     private static Mock<ICurrentUserService> User(string tenantId)

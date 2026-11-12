@@ -14,6 +14,7 @@ namespace Operia.Application.Customers.Queries.GetCustomerPurchaseDetails;
 public sealed class GetCustomerPurchaseDetailsHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
+    IIdentityService identity,
     IDateTimeProvider clock) : IRequestHandler<GetCustomerPurchaseDetailsQuery, CustomerPurchaseDetailsDto>
 {
     public async Task<CustomerPurchaseDetailsDto> Handle(
@@ -181,9 +182,8 @@ public sealed class GetCustomerPurchaseDetailsHandler(
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct()
             .ToArray();
-        var recorders = await db.Employees.AsNoTracking()
-            .Where(x => x.TenantId == tenantId && recorderIds.Contains(x.IdentityUserId))
-            .ToDictionaryAsync(x => x.IdentityUserId, x => x.FullName, cancellationToken);
+        var recorders = await PaymentRecorderNameResolver.ResolveAsync(
+            db, identity, tenantId, recorderIds, cancellationToken);
         var collections = new List<PurchaseCollectionDto>();
         var savedFirstPayment = savedPlan.FirstOrDefault(x => x.Number == 0);
         if (snapshot?.PaymentOption == "installment" &&
@@ -197,7 +197,7 @@ public sealed class GetCustomerPurchaseDetailsHandler(
                     confirmedSale.PaymentMethod,
                     confirmedSale.ConfirmedAtUtc ?? confirmedSale.AttemptedAtUtc,
                     confirmedSale.IdempotencyKey,
-                    RecorderName(confirmedSale.CollectedByUserId, recorders))
+                    PaymentRecorderNameResolver.DisplayName(confirmedSale.CollectedByUserId, recorders))
                 : new PurchaseCollectionDto(
                     savedFirstPayment!.Id,
                     0,
@@ -213,7 +213,7 @@ public sealed class GetCustomerPurchaseDetailsHandler(
             x.PaymentMethod,
             x.ConfirmedAtUtc,
             x.IdempotencyKey,
-            RecorderName(x.CollectedByUserId, recorders))));
+            PaymentRecorderNameResolver.DisplayName(x.CollectedByUserId, recorders))));
         IReadOnlyList<string> methods = eligible
             ? await BookingPaymentMethods.GetEnabledAsync(db, tenantId, cancellationToken)
             : [];
@@ -359,13 +359,6 @@ public sealed class GetCustomerPurchaseDetailsHandler(
 
         return result.OrderBy(x => x.Date).ThenBy(x => x.StartMinutes).ThenBy(x => x.SessionNumber).ToArray();
     }
-
-    private static string? RecorderName(
-        string userId,
-        IReadOnlyDictionary<string, string> names) =>
-        string.IsNullOrWhiteSpace(userId)
-            ? null
-            : names.TryGetValue(userId, out var name) ? name : userId;
 
     private sealed record SavedInstallmentRow(
         string Id,

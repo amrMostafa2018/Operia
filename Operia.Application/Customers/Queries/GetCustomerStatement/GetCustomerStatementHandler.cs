@@ -15,6 +15,7 @@ namespace Operia.Application.Customers.Queries.GetCustomerStatement;
 public sealed class GetCustomerStatementHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
+    IIdentityService identity,
     IBranchScope branchScope,
     IMediator mediator)
     : IRequestHandler<GetCustomerStatementQuery, CustomerStatementDto>
@@ -84,9 +85,8 @@ public sealed class GetCustomerStatementHandler(
         var recorderIds = collections.Select(x => x.CollectedByUserId)
             .Append(confirmedSale?.CollectedByUserId ?? string.Empty)
             .Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToArray();
-        var recorders = await db.Employees.AsNoTracking()
-            .Where(x => x.TenantId == tenantId && recorderIds.Contains(x.IdentityUserId))
-            .ToDictionaryAsync(x => x.IdentityUserId, x => x.FullName, cancellationToken);
+        var recorders = await PaymentRecorderNameResolver.ResolveAsync(
+            db, identity, tenantId, recorderIds, cancellationToken);
 
         var planRows = savedPlan.Where(x => x.Number > 0)
             .Select(x => (x.Number, x.Amount, x.DueOn, x.CollectedAtUtc, x.PaymentMethod))
@@ -107,7 +107,9 @@ public sealed class GetCustomerStatementHandler(
                         ? purchaseDetails.PackageStatus == "cancelled" ? "cancelled" : "due"
                         : "paid", collection?.ConfirmedAtUtc ?? plan.CollectedAtUtc,
                     collection?.PaymentMethod ?? plan.PaymentMethod,
-                    collection is null ? null : RecorderName(collection.CollectedByUserId, recorders),
+                    collection is null
+                        ? null
+                        : PaymentRecorderNameResolver.DisplayName(collection.CollectedByUserId, recorders),
                     null, plan.DueOn);
             }).ToArray();
         var savedFirstPayment = savedPlan.FirstOrDefault(x => x.Number == 0);
@@ -115,7 +117,7 @@ public sealed class GetCustomerStatementHandler(
             ? new StatementFirstPaymentDto(snapshot.FirstPayment.Value,
                 confirmedSale.ConfirmedAtUtc ?? confirmedSale.AttemptedAtUtc,
                 confirmedSale.PaymentMethod,
-                RecorderName(confirmedSale.CollectedByUserId, recorders))
+                PaymentRecorderNameResolver.DisplayName(confirmedSale.CollectedByUserId, recorders))
             : savedFirstPayment?.CollectedAtUtc is { } firstCollectedAt
                 ? new StatementFirstPaymentDto(savedFirstPayment.Amount, firstCollectedAt,
                     savedFirstPayment.PaymentMethod ?? string.Empty, null)
@@ -162,6 +164,4 @@ public sealed class GetCustomerStatementHandler(
             source.IsBlocked ? "blocked" : source.IsActive ? "active" : "inactive");
     }
 
-    private static string RecorderName(string userId, IReadOnlyDictionary<string, string> names) =>
-        names.TryGetValue(userId, out var name) ? name : userId;
 }
