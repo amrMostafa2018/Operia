@@ -116,6 +116,7 @@ public sealed class CreateBookingHandler(
                 .ToListAsync(cancellationToken);
         IReadOnlySet<string> ownedCatalogPackageIds = ownedBalances
             .Where(x => catalog.TryGetValue(x.PackageId, out var product) &&
+                        !InstallmentDueStatus.IsDueNow(x) &&
                         CustomerPackageBalance.HasAvailable(
                             x.Total, x.Used, x.ReservedSessions, product.OfferType,
                             product.PulseCount, PurchaseSessionEntitlement.Released(x)))
@@ -293,8 +294,17 @@ public sealed class CreateBookingHandler(
                          x.IsActive &&
                          (x.ExpiresOn == null || x.ExpiresOn >= today),
                     cancellationToken);
-                if (owned is null ||
-                    !CustomerPackageBalance.HasAvailable(
+                if (owned is null)
+                {
+                    throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");
+                }
+
+                if (InstallmentDueStatus.IsDueNow(owned))
+                {
+                    throw ConflictException.FromCode(ApiErrorCodes.Bookings.InstallmentDueNow, "items");
+                }
+
+                if (!CustomerPackageBalance.HasAvailable(
                         owned.Total,
                         owned.Used,
                         owned.ReservedSessions,
@@ -428,6 +438,7 @@ public sealed class CreateBookingHandler(
             .ToListAsync(cancellationToken);
 
         var reservedCount = 0;
+        var blockedByDueInstallment = false;
         foreach (var owned in ownedBalances)
         {
             if (reservedCount >= ownedUnits)
@@ -435,8 +446,18 @@ public sealed class CreateBookingHandler(
                 break;
             }
 
-            if (alreadyReserved.Contains(owned.Id) ||
-                !CustomerPackageBalance.HasAvailable(
+            if (alreadyReserved.Contains(owned.Id))
+            {
+                continue;
+            }
+
+            if (InstallmentDueStatus.IsDueNow(owned))
+            {
+                blockedByDueInstallment = true;
+                continue;
+            }
+
+            if (!CustomerPackageBalance.HasAvailable(
                     owned.Total,
                     owned.Used,
                     owned.ReservedSessions,
@@ -454,7 +475,11 @@ public sealed class CreateBookingHandler(
 
         if (reservedCount != ownedUnits)
         {
-            throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");
+            throw ConflictException.FromCode(
+                reservedCount == 0 && blockedByDueInstallment
+                    ? ApiErrorCodes.Bookings.InstallmentDueNow
+                    : ApiErrorCodes.Bookings.PackageSessionUnavailable,
+                "items");
         }
     }
 

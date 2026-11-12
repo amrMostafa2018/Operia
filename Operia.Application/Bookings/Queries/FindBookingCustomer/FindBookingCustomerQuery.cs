@@ -21,7 +21,8 @@ public sealed record BookingCustomerPackageDto(
     DateOnly? ExpiresOn,
     string OfferType,
     int? SessionCount,
-    int? PulseCount);
+    int? PulseCount,
+    bool InstallmentDueNow);
 
 /// <summary>Carries booking customer dto data across the operation boundary.</summary>
 public sealed record BookingCustomerDto(

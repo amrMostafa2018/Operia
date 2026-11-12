@@ -123,7 +123,7 @@ public sealed class CreateBookingHandlerTests
             _scheduledDate, 720, 780,
             [new CreateBookingItemInput("package-1", purchaseId, 1)]), CancellationToken.None);
         (await beforeRelease.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
-            .Should().Be(ApiErrorCodes.Bookings.PackageSessionUnavailable);
+            .Should().Be(ApiErrorCodes.Bookings.InstallmentDueNow);
 
         var outOfOrder = () => collector.Handle(
             new CollectInstallmentCommand(purchaseId, 1, 600m, "cash"), CancellationToken.None);
@@ -936,6 +936,131 @@ public sealed class CreateBookingHandlerTests
         pulse.TotalSessions.Should().Be(5000);
         found.Packages.Single(x => x.PackageId == "package-1").PulseCount.Should().BeNull();
         found.Packages.Single(x => x.PackageId == "package-1").SessionCount.Should().Be(6);
+    }
+
+    [Fact]
+    public async Task InstallmentDueNow_StaysVisibleAndCannotBeBookedUntilCollected()
+    {
+        await SeedAsync();
+        var dueTerms = new PackagePurchaseSnapshot(
+            "5000 Plus", OfferType.Package, 30, null, 5000, 12, "category-1", null,
+            "installment", 20000m, 20000m, null, 5000m,
+            [
+                new PurchaseInstallmentSnapshot(1, 7500m, 2500, 2500),
+                new PurchaseInstallmentSnapshot(2, 7500m, 2500, 5000)
+            ]);
+        var scheduledTerms = dueTerms with { OfferName = "Scheduled package" };
+        _db.Packages.AddRange(
+            new Package
+            {
+                Id = "due-package",
+                TenantId = "tenant-1",
+                BusinessId = "business-1",
+                Name = "5000 Plus",
+                Description = "Pulses",
+                OfferType = OfferType.Package,
+                ServiceCategoryId = "category-1",
+                SessionDurationMinutes = 30,
+                PulseCount = 5000,
+                Price = 20000,
+                Status = PackageStatus.Active
+            },
+            new Package
+            {
+                Id = "scheduled-package",
+                TenantId = "tenant-1",
+                BusinessId = "business-1",
+                Name = "Scheduled package",
+                Description = "Pulses",
+                OfferType = OfferType.Package,
+                ServiceCategoryId = "category-1",
+                SessionDurationMinutes = 30,
+                PulseCount = 5000,
+                Price = 20000,
+                Status = PackageStatus.Active
+            });
+        _db.CustomerPackages.AddRange(
+            new CustomerPackage
+            {
+                Id = "owned-due",
+                TenantId = "tenant-1",
+                CustomerId = "customer-1",
+                PackageId = "due-package",
+                PurchasePrice = 20000m,
+                AmountDue = 15000m,
+                ReleasedSessions = 2500,
+                PurchaseSnapshotJson = dueTerms.ToJson(),
+                Total = 5000,
+                Used = 0,
+                IsActive = true,
+                ExpiresOn = new DateOnly(2026, 12, 31)
+            },
+            new CustomerPackage
+            {
+                Id = "owned-due-empty",
+                TenantId = "tenant-1",
+                CustomerId = "customer-1",
+                PackageId = "due-package",
+                PurchasePrice = 20000m,
+                AmountDue = 15000m,
+                ReleasedSessions = 0,
+                PurchaseSnapshotJson = dueTerms.ToJson(),
+                Total = 5000,
+                Used = 0,
+                IsActive = true,
+                ExpiresOn = new DateOnly(2026, 12, 31)
+            },
+            new CustomerPackage
+            {
+                Id = "owned-scheduled",
+                TenantId = "tenant-1",
+                CustomerId = "customer-1",
+                PackageId = "scheduled-package",
+                PurchasePrice = 20000m,
+                AmountDue = 7500m,
+                ReleasedSessions = 2500,
+                PurchaseSnapshotJson = scheduledTerms.ToJson(),
+                Total = 5000,
+                Used = 0,
+                IsActive = true,
+                ExpiresOn = new DateOnly(2026, 12, 31)
+            });
+        await _db.SaveChangesAsync();
+
+        var found = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
+            .Handle(new FindBookingCustomerQuery("01012345678"), CancellationToken.None);
+        found!.Packages.Single(x => x.CustomerPackageId == "owned-due").InstallmentDueNow.Should().BeTrue();
+        found.Packages.Single(x => x.CustomerPackageId == "owned-due").AvailableSessions.Should().Be(2500);
+        found.Packages.Should().Contain(x => x.CustomerPackageId == "owned-due-empty" && x.InstallmentDueNow);
+        found.Packages.Single(x => x.CustomerPackageId == "owned-scheduled").InstallmentDueNow.Should().BeFalse();
+
+        var blocked = () => CreateHandler().Handle(
+            new CreateBookingCommand(
+                "due-installment",
+                "customer-1",
+                "branch-1",
+                "employee-1",
+                _scheduledDate,
+                600,
+                630,
+                [new CreateBookingItemInput("due-package", "owned-due", 1)]),
+            CancellationToken.None);
+        (await blocked.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Bookings.InstallmentDueNow);
+        (await _db.Bookings.CountAsync()).Should().Be(0);
+
+        var booked = await CreateHandler().Handle(
+            new CreateBookingCommand(
+                "scheduled-installment",
+                "customer-1",
+                "branch-1",
+                "employee-1",
+                _scheduledDate,
+                600,
+                630,
+                [new CreateBookingItemInput("scheduled-package", "owned-scheduled", 1)]),
+            CancellationToken.None);
+        booked.Id.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]

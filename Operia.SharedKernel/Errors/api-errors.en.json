@@ -122,6 +122,10 @@
     "Value": "The selected package has no session available to reserve."
   },
   {
+    "Name": "BookingInstallmentDueNow",
+    "Value": "This package has an installment due now. Collect it before booking the package."
+  },
+  {
     "Name": "BookingTerminalReadOnly",
     "Value": "Completed and cancelled bookings are read-only."
   },

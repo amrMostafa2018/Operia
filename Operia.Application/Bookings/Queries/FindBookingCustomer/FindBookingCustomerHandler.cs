@@ -63,6 +63,7 @@ public sealed class FindBookingCustomerHandler(
             var released = PurchaseSessionEntitlement.Released(owned);
             var available = CustomerPackageBalance.Remaining(owned.Total, owned.Used,
                 owned.ReservedSessions, offerType, pulseCount, released);
+            var installmentDueNow = InstallmentDueStatus.IsDueNow(owned);
             return new
             {
                 Owned = owned,
@@ -70,10 +71,11 @@ public sealed class FindBookingCustomerHandler(
                 Snapshot = snapshot,
                 OfferType = offerType,
                 PulseCount = pulseCount,
-                Available = available
+                Available = available,
+                InstallmentDueNow = installmentDueNow
             };
         })
-        .Where(x => x.Available > 0 || request.BookingId is not null &&
+        .Where(x => x.Available > 0 || x.InstallmentDueNow || request.BookingId is not null &&
             x.Owned.Reservations.Any(r => r.BookingId == request.BookingId))
         .Select(x => new BookingCustomerPackageDto(
             x.Owned.Id,
@@ -87,7 +89,8 @@ public sealed class FindBookingCustomerHandler(
             x.Owned.ExpiresOn,
             x.OfferType == OfferType.Package ? "package" : "session",
             x.Snapshot?.SessionCount ?? x.Offer.SessionCount,
-            x.PulseCount))
+            x.PulseCount,
+            x.InstallmentDueNow))
         .ToArray();
         return new BookingCustomerDto(customer.Id, customer.FullName, customer.MobileNumber, rows);
     }

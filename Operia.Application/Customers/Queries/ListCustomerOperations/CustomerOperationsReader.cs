@@ -281,7 +281,7 @@ public sealed class CustomerOperationsReader(
             : collected > 0m ? "partial" : "unpaid";
         var snapshot = PackagePurchaseSnapshot.FromJson(purchase?.SnapshotJson);
         var installmentStatus = purchase is { IsActive: false } ? "cancelled"
-            : InstallmentStatus(snapshot, financialDue, collected, purchase?.Used ?? 0);
+            : InstallmentDueStatus.Resolve(snapshot, financialDue, collected, purchase?.Used ?? 0);
         return new CustomerOperationDto(
             id, sale.Id, sale.CustomerId, sale.CustomerName, sale.Mobile,
             sale.BranchName, line.Name,
@@ -292,35 +292,6 @@ public sealed class CustomerOperationsReader(
             status, paymentStatus,
             installmentStatus, refunded, collected - refunded,
             refunded == 0m ? "none" : refunded >= collected ? "full" : "partial");
-    }
-
-    private static string InstallmentStatus(
-        PackagePurchaseSnapshot? snapshot,
-        decimal remaining,
-        decimal collected,
-        int used)
-    {
-        if (snapshot?.PaymentOption != "installment")
-        {
-            return "none";
-        }
-        if (remaining == 0m)
-        {
-            return "paid";
-        }
-
-        var ordered = snapshot.Installments.OrderBy(x => x.Number).ToArray();
-        var cumulative = snapshot.FirstPayment ?? 0m;
-        for (var index = 0; index < ordered.Length; index++)
-        {
-            cumulative += ordered[index].Amount;
-            if (collected < cumulative)
-            {
-                return index == 0 || used >= ordered[index - 1].CumulativeAvailableSessions
-                    ? "due" : "scheduled";
-            }
-        }
-        return "due";
     }
 
     private sealed record SaleSource(

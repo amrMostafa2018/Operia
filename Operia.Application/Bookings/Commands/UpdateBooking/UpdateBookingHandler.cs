@@ -381,7 +381,8 @@ public sealed class UpdateBookingHandler(
             .ToListAsync(cancellationToken);
         return balances
             .Where(x => catalog.TryGetValue(x.PackageId, out var product) &&
-                        ((x.OriginBookingId != bookingId && reservedIds.Contains(x.Id)) || CustomerPackageBalance.HasAvailable(
+                        ((x.OriginBookingId != bookingId && reservedIds.Contains(x.Id)) ||
+                         !InstallmentDueStatus.IsDueNow(x) && CustomerPackageBalance.HasAvailable(
                             x.Total, x.Used, x.ReservedSessions, product.OfferType, product.PulseCount,
                             PurchaseSessionEntitlement.Released(x))))
             .Select(x => x.PackageId)
@@ -552,8 +553,17 @@ public sealed class UpdateBookingHandler(
                      x.IsActive &&
                      (x.ExpiresOn == null || x.ExpiresOn >= today),
                 cancellationToken);
-        if (owned is null ||
-            !CustomerPackageBalance.HasAvailable(
+        if (owned is null)
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.PackageSessionUnavailable, "items");
+        }
+
+        if (InstallmentDueStatus.IsDueNow(owned))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.InstallmentDueNow, "items");
+        }
+
+        if (!CustomerPackageBalance.HasAvailable(
                 owned.Total,
                 owned.Used,
                 owned.ReservedSessions,
@@ -779,6 +789,7 @@ public sealed class UpdateBookingHandler(
             .ToHashSet(StringComparer.Ordinal);
         return owned.FirstOrDefault(x =>
             !alreadyReserved.Contains(x.Id) &&
+            !InstallmentDueStatus.IsDueNow(x) &&
             CustomerPackageBalance.HasAvailable(
                 x.Total, x.Used, x.ReservedSessions, product.OfferType, product.PulseCount,
                 PurchaseSessionEntitlement.Released(x)))?.Id;

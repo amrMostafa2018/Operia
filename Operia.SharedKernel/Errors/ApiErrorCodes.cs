@@ -198,6 +198,7 @@ public static class ApiErrorCodes
         public const string ReusedServiceQuantityOne = "BookingReusedServiceQuantityOne";
         public const string OwnedPackageRequired = "BookingOwnedPackageRequired";
         public const string PackageSessionUnavailable = "BookingPackageSessionUnavailable";
+        public const string InstallmentDueNow = "BookingInstallmentDueNow";
         public const string TerminalReadOnly = "BookingTerminalReadOnly";
         public const string PackageEditNotAllowed = "BookingPackageEditNotAllowed";
         public const string PaymentMethodUnavailable = "BookingPaymentMethodUnavailable";
