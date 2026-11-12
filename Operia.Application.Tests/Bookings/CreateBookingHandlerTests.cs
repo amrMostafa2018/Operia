@@ -453,18 +453,20 @@ public sealed class CreateBookingHandlerTests
         await SeedAsync();
         var owned = await _db.CustomerPackages.SingleAsync();
         owned.PurchasePrice = 1200m;
-        owned.AmountDue = 800m;
+        owned.AmountDue = 400m;
         owned.ReleasedSessions = 3;
         owned.PurchaseSnapshotJson = new PackagePurchaseSnapshot(
             "Laser Package", OfferType.Package, 60, 6, null, 12, "category-1", null,
             "installment", 1200m, 1200m, null, 400m,
             [new PurchaseInstallmentSnapshot(1, 400m, 3, 3),
-             new PurchaseInstallmentSnapshot(2, 400m, 0, 3)]).ToJson();
+             new PurchaseInstallmentSnapshot(2, 400m, 3, 6)]).ToJson();
         await _db.SaveChangesAsync();
 
         var before = await new FindBookingCustomerHandler(_db, _user.Object, _clock.Object)
             .Handle(new FindBookingCustomerQuery("01012345678"), CancellationToken.None);
-        before!.Packages.Single(x => x.CustomerPackageId == owned.Id).AvailableSessions.Should().Be(1);
+        var released = before!.Packages.Single(x => x.CustomerPackageId == owned.Id);
+        released.InstallmentDueNow.Should().BeFalse();
+        released.AvailableSessions.Should().Be(1);
         await CreateHandler().Handle(Command("released-one", 600, 660), CancellationToken.None);
 
         var second = () => CreateHandler().Handle(Command("locked-next", 720, 780), CancellationToken.None);
