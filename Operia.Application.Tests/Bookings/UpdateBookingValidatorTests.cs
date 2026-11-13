@@ -35,4 +35,35 @@ public sealed class UpdateBookingValidatorTests
         result.Errors.Should().NotContain(error => error.ErrorCode == ApiErrorCodes.Bookings.ItemsRequired);
         result.IsValid.Should().BeTrue();
     }
+
+    [Fact]
+    public void UpdateBooking_UnlistedSnapshot_RequiresNamePriceAndDuration()
+    {
+        var result = _validator.Validate(
+            new UpdateBookingCommand(
+                "booking-1",
+                "version-1",
+                [new CreateBookingItemInput("", null, 1, "unlisted")]));
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(error => error.ErrorCode == ApiErrorCodes.Sales.UnlistedNameInvalid);
+        result.Errors.Should().Contain(error => error.ErrorCode == ApiErrorCodes.Sales.UnlistedPriceInvalid);
+        result.Errors.Should().Contain(error => error.ErrorCode == ApiErrorCodes.Sales.UnlistedDurationInvalid);
+    }
+
+    [Fact]
+    public void UpdateBooking_SecondUnlistedSnapshot_FailsWithUnlistedLimit()
+    {
+        var result = _validator.Validate(
+            new UpdateBookingCommand(
+                "booking-1",
+                "version-1",
+                [
+                    new CreateBookingItemInput("", null, 1, "unlisted", null, "Peel", 80m, 30),
+                    new CreateBookingItemInput("", null, 1, "unlisted", null, "Mask", 40m, 20)
+                ]));
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(error => error.ErrorCode == ApiErrorCodes.Sales.UnlistedLimit);
+    }
 }

@@ -179,20 +179,22 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
-    public async Task EditingOwnedBooking_CannotAddAnUncollectedService()
+    public async Task EditingOwnedBooking_CanAddAServiceWithoutCustomerPackage()
     {
         await SeedAsync();
         var booked = await CreateHandler().Handle(Command("owned-only", 600, 690), CancellationToken.None);
         var handler = new UpdateBookingHandler(_db, _user.Object, _branchScope.Object,
             new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object);
-        var action = () => handler.Handle(new UpdateBookingCommand(booked.Id, booked.Version,
+
+        var updated = await handler.Handle(new UpdateBookingCommand(booked.Id, booked.Version,
             [new CreateBookingItemInput("package-1", "owned-1", 1),
              new CreateBookingItemInput("service-1", null, 1)]), CancellationToken.None);
 
-        (await action.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
-            .Should().Be(ApiErrorCodes.Bookings.PaymentCollectionRequired);
-        (await _db.Bookings.SingleAsync()).TotalAmount.Should().Be(0m);
-        (await _db.CustomerPackages.CountAsync()).Should().Be(1);
+        updated.Id.Should().Be(booked.Id);
+        var booking = await _db.Bookings.Include(x => x.Items).SingleAsync();
+        booking.Items.Should().Contain(x => x.PackageId == "service-1" && x.UnitPrice == 250m);
+        booking.TotalAmount.Should().Be(250m);
+        (await _db.CustomerPackages.CountAsync(x => x.IsActive)).Should().Be(2);
     }
 
     [Fact]
@@ -233,6 +235,52 @@ public sealed class CreateBookingHandlerTests
         saved.Items.Should().ContainSingle(x => x.Type == BookingItemType.UnlistedService && x.UnitPrice == 125m);
         (await _db.BookingHistory.CountAsync()).Should().Be(historyCount);
         (await _db.AuditLogs.CountAsync()).Should().Be(auditCount);
+    }
+
+    [Fact]
+    public async Task Update_AddingUnlistedSnapshot_StoresNamePriceAndDurationWithoutACatalogOffer()
+    {
+        await SeedAsync();
+        var created = await CreateHandler().Handle(Command("add-unlisted", 600, 660), CancellationToken.None);
+        var packageCount = await _db.Packages.CountAsync();
+
+        await new UpdateBookingHandler(_db, _user.Object, _branchScope.Object,
+                new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object)
+            .Handle(new UpdateBookingCommand(created.Id, created.Version,
+                [
+                    new CreateBookingItemInput("package-1", "owned-1", 1),
+                    new CreateBookingItemInput("", null, 1, "unlisted", null, "Custom peel", 80m, 45)
+                ]), CancellationToken.None);
+
+        var booking = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == created.Id);
+        var unlisted = booking.Items.Should().ContainSingle(x => x.Type == BookingItemType.UnlistedService).Subject;
+        unlisted.PackageId.Should().BeNull();
+        unlisted.Name.Should().Be("Custom peel");
+        unlisted.UnitPrice.Should().Be(80m);
+        unlisted.DurationMinutes.Should().Be(45);
+        unlisted.PaymentOption.Should().Be("cash");
+        booking.Items.Should().Contain(x => x.PackageId == "package-1");
+        booking.TotalAmount.Should().Be(80m);
+        (await _db.Packages.CountAsync()).Should().Be(packageCount);
+        (await _db.CustomerPackages.CountAsync(x => x.Id == "owned-1" && x.ReservedSessions == 1)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Update_UnlistedNameMatchingCatalogOffer_IsRejected()
+    {
+        await SeedAsync();
+        var created = await CreateHandler().Handle(Command("unlisted-name", 600, 660), CancellationToken.None);
+
+        var action = () => new UpdateBookingHandler(_db, _user.Object, _branchScope.Object,
+                new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object)
+            .Handle(new UpdateBookingCommand(created.Id, created.Version,
+                [
+                    new CreateBookingItemInput("package-1", "owned-1", 1),
+                    new CreateBookingItemInput("", null, 1, "unlisted", null, "Laser Package", 80m, 30)
+                ]), CancellationToken.None);
+
+        (await action.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Sales.UnlistedMatchesCatalogOffer);
     }
 
     [Fact]

@@ -43,8 +43,9 @@ public sealed class UpdateBookingHandler(
         IReadOnlyDictionary<string, Package> catalog = new Dictionary<string, Package>(StringComparer.Ordinal);
         if (itemsChanged)
         {
+            await RejectUnlistedCatalogNameAsync(tenantId, request.Items, cancellationToken);
             catalog = await LoadCatalogAsync(tenantId, request.Items, cancellationToken);
-            BookingItemPricing.ValidatePackageSelection(request.Items, catalog);
+            BookingItemPricing.ValidatePackageSelection(CatalogItems(request.Items), catalog);
         }
         var containsInstallment = booking.Items.Any(x =>
             string.Equals(x.PaymentOption, "installment", StringComparison.OrdinalIgnoreCase));
@@ -54,10 +55,6 @@ public sealed class UpdateBookingHandler(
             throw ConflictException.FromCode(ApiErrorCodes.Bookings.InstallmentEditNotAllowed, "items");
         }
 
-        if (itemsChanged && request.Items.Any(item => string.IsNullOrWhiteSpace(item.CustomerPackageId)))
-        {
-            throw ConflictException.FromCode(ApiErrorCodes.Bookings.PaymentCollectionRequired, "items");
-        }
         if (itemsChanged && await db.Customers.AsNoTracking().AnyAsync(x =>
                 x.TenantId == tenantId && x.Id == booking.CustomerId && x.IsDirect,
                 cancellationToken))
@@ -178,7 +175,7 @@ public sealed class UpdateBookingHandler(
         IReadOnlyList<CreateBookingItemInput> items,
         CancellationToken cancellationToken)
     {
-        var ids = items.Select(x => x.PackageId).Distinct().ToList();
+        var ids = CatalogItems(items).Select(x => x.PackageId).Distinct().ToList();
         var catalog = await db.Packages.AsNoTracking()
             .Include(x => x.AvailableStaff)
             .Where(x => x.TenantId == tenantId && ids.Contains(x.Id) && x.Status == PackageStatus.Active)
@@ -190,19 +187,45 @@ public sealed class UpdateBookingHandler(
         return catalog;
     }
 
+    /// <summary>Rejects an unlisted name that already belongs to a catalog offer.</summary>
+    private async Task RejectUnlistedCatalogNameAsync(
+        string tenantId,
+        IReadOnlyList<CreateBookingItemInput> items,
+        CancellationToken cancellationToken)
+    {
+        foreach (var item in items.Where(x => x.IsUnlistedSnapshot()))
+        {
+            var name = item.UnlistedName!.Trim();
+            if (await db.Packages.AsNoTracking().AnyAsync(offer =>
+                    offer.TenantId == tenantId && offer.Name.ToLower() == name.ToLower(),
+                    cancellationToken))
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Sales.UnlistedMatchesCatalogOffer, "items");
+            }
+        }
+    }
+
+    /// <summary>Catalog lines on an update, excluding a one-off unlisted snapshot.</summary>
+    private static List<CreateBookingItemInput> CatalogItems(IReadOnlyList<CreateBookingItemInput> items) =>
+        items.Where(item => !item.IsUnlistedSnapshot()).ToList();
+
     /// <summary>Compares the product and quantity selection without depending on item order.</summary>
     private static bool HasItemsChanged(
         IEnumerable<BookingItem> existingItems,
         IReadOnlyList<CreateBookingItemInput> requestedItems)
     {
         var existingSelection = existingItems
-            .Select(x => (PackageId: x.PackageId, x.Quantity))
-            .OrderBy(x => x.PackageId, StringComparer.Ordinal)
+            .Select(ItemSelection.FromExisting)
+            .OrderBy(x => x.Kind, StringComparer.Ordinal)
+            .ThenBy(x => x.PackageId, StringComparer.Ordinal)
+            .ThenBy(x => x.Name, StringComparer.Ordinal)
             .ThenBy(x => x.Quantity)
             .ToList();
         var requestedSelection = requestedItems
-            .Select(x => (PackageId: (string?)x.PackageId, x.Quantity))
-            .OrderBy(x => x.PackageId, StringComparer.Ordinal)
+            .Select(ItemSelection.FromRequested)
+            .OrderBy(x => x.Kind, StringComparer.Ordinal)
+            .ThenBy(x => x.PackageId, StringComparer.Ordinal)
+            .ThenBy(x => x.Name, StringComparer.Ordinal)
             .ThenBy(x => x.Quantity)
             .ToList();
         return !existingSelection.SequenceEqual(requestedSelection);
@@ -283,6 +306,22 @@ public sealed class UpdateBookingHandler(
         db.BookingItems.RemoveRange(booking.Items);
         booking.Items = requestedItems.Select(input =>
         {
+            if (input.IsUnlistedSnapshot())
+            {
+                return new BookingItem
+                {
+                    TenantId = tenantId,
+                    BookingId = booking.Id,
+                    Type = BookingItemType.UnlistedService,
+                    PackageId = null,
+                    Name = input.UnlistedName!.Trim(),
+                    Quantity = input.Quantity,
+                    DurationMinutes = input.UnlistedDurationMinutes!.Value,
+                    UnitPrice = input.UnlistedPrice!.Value,
+                    PaymentOption = "cash"
+                };
+            }
+
             var product = catalog[input.PackageId];
             existingItems.TryGetValue(input.PackageId, out var matchingItems);
             var existingItem = matchingItems?.Count > 0 ? matchingItems.Dequeue() : null;
@@ -425,6 +464,32 @@ public sealed class UpdateBookingHandler(
     /// <summary>Item details retained in edit history.</summary>
     private sealed record BookingItemSnapshot(string? PackageId, string Name, int Quantity);
 
+    /// <summary>Stable selection key for catalog lines and unlisted snapshots.</summary>
+    private readonly record struct ItemSelection(
+        string Kind,
+        string PackageId,
+        string Name,
+        decimal Price,
+        int Duration,
+        int Quantity)
+    {
+        public static ItemSelection FromExisting(BookingItem item) =>
+            item.Type == BookingItemType.UnlistedService && item.PackageId is null
+                ? new("unlisted", "", item.Name, item.UnitPrice, item.DurationMinutes, item.Quantity)
+                : new("catalog", item.PackageId ?? "", "", 0m, 0, item.Quantity);
+
+        public static ItemSelection FromRequested(CreateBookingItemInput item) =>
+            item.IsUnlistedSnapshot()
+                ? new(
+                    "unlisted",
+                    "",
+                    item.UnlistedName!.Trim(),
+                    item.UnlistedPrice!.Value,
+                    item.UnlistedDurationMinutes!.Value,
+                    item.Quantity)
+                : new("catalog", item.PackageId, "", 0m, 0, item.Quantity);
+    }
+
     /// <summary>Returns the booking identity, status, and current concurrency version.</summary>
     private static UpdateBookingResult ToResult(Booking booking) =>
         new(booking.Id, booking.Status.ToString(), Convert.ToBase64String(booking.Version));
@@ -449,12 +514,14 @@ public sealed class UpdateBookingHandler(
 
         var requestedOwned = requestedItems
             .Where(x =>
+                !x.IsUnlistedSnapshot() &&
                 catalog[x.PackageId].OfferType == OfferType.SingleSession &&
                 !string.IsNullOrWhiteSpace(x.CustomerPackageId))
             .GroupBy(x => x.CustomerPackageId!, StringComparer.Ordinal)
             .ToDictionary(x => x.Key, x => x.Sum(item => item.Quantity), StringComparer.Ordinal);
         var requestedNewPurchases = requestedItems
             .Where(x =>
+                !x.IsUnlistedSnapshot() &&
                 catalog[x.PackageId].OfferType == OfferType.SingleSession &&
                 string.IsNullOrWhiteSpace(x.CustomerPackageId))
             .GroupBy(x => x.PackageId, StringComparer.Ordinal)
@@ -651,7 +718,8 @@ public sealed class UpdateBookingHandler(
             .ToList();
         var pending = new List<(CreateBookingItemInput Item, int Needed, List<BookingPackageReservation> Retained)>();
 
-        foreach (var item in requestedItems.Where(x => catalog[x.PackageId].OfferType == OfferType.Package))
+        foreach (var item in requestedItems.Where(x =>
+                     !x.IsUnlistedSnapshot() && catalog[x.PackageId].OfferType == OfferType.Package))
         {
             var desired = BookingItemPricing.IsPackagePurchaseOnly(item) ? item.Quantity : 1;
             var replacingOwnedWithPurchase = BookingItemPricing.IsExplicitNewPurchase(item) &&

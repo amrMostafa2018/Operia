@@ -4,7 +4,20 @@ namespace Operia.Application.Bookings.Commands.CreateBooking;
 
 /// <summary>Carries create booking item input data across the operation boundary.</summary>
 public sealed record CreateBookingItemInput(
-    string PackageId, string? CustomerPackageId, int Quantity, string? Type = null, string? PaymentOption = null);
+    string PackageId,
+    string? CustomerPackageId,
+    int Quantity,
+    string? Type = null,
+    string? PaymentOption = null,
+    string? UnlistedName = null,
+    decimal? UnlistedPrice = null,
+    int? UnlistedDurationMinutes = null)
+{
+    /// <summary>True for a one-off service stored on the booking, not a catalog offer.</summary>
+    public bool IsUnlistedSnapshot() =>
+        string.Equals(Type, "unlisted", StringComparison.OrdinalIgnoreCase) &&
+        string.IsNullOrWhiteSpace(PackageId);
+}
 
 /// <summary>Requests the create booking state change.</summary>
 public sealed record CreateBookingCommand(
