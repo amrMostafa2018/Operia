@@ -8,7 +8,7 @@ using Operia.Application.Customers.Commands.CancelAndRefundPurchase;
 using Operia.Application.Customers.Commands.SetCustomerBlock;
 using Operia.Application.Customers.Queries.GetCustomerAction;
 using Operia.Application.Customers.Queries.GetCustomerActionHistory;
-using Operia.Application.Dashboard.Queries.GetDashboardRevenue;
+using Operia.Application.Dashboard.Queries.GetDashboardSummary;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
@@ -48,10 +48,10 @@ public sealed class CustomerRefundAndBlockTests
         (await fixture.Db.AuditLogs.CountAsync(x => x.Action == AuditActions.RefundPosted))
             .Should().Be(2);
 
-        var revenue = await new GetDashboardRevenueHandler(fixture.Db, fixture.User.Object,
+        var summary = await new GetDashboardSummaryHandler(fixture.Db, fixture.User.Object,
             fixture.Scope.Object, fixture.Clock.Object)
-            .Handle(new GetDashboardRevenueQuery(), CancellationToken.None);
-        revenue.Today.Should().Be(0m);
+            .Handle(new GetDashboardSummaryQuery(), CancellationToken.None);
+        summary.TodayRevenue.Should().Be(0m);
     }
 
     [Fact]

@@ -93,10 +93,6 @@ public sealed class CreateBookingHandler(
             }
         }
         BookingItemPricing.ValidatePackageSelection(request.Items, catalog);
-        if (request.EndMinutes - request.StartMinutes < BookingDuration.RequiredMinutes(request.Items, catalog))
-        {
-            throw ConflictException.FromCode(ApiErrorCodes.Bookings.DurationMismatch, "endMinutes");
-        }
         if (request.DirectCustomer && request.Items.Any(item =>
                 !string.IsNullOrWhiteSpace(item.CustomerPackageId) ||
                 catalog[item.PackageId].OfferType == OfferType.Package))

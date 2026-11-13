@@ -12,7 +12,7 @@ using Operia.Application.Sales.Commands.BookSale;
 using Operia.Application.Sales.Queries.GetSale;
 using Operia.Application.Revenue.Queries.ListActivityRevenue;
 using Operia.Application.Revenue.Queries.GetActivityRevenueReport;
-using Operia.Application.Dashboard.Queries.GetDashboardRevenue;
+using Operia.Application.Dashboard.Queries.GetDashboardSummary;
 using Operia.Application.Sales.Queries.QuoteSale;
 using Operia.Application.Bookings.Commands.CancelBooking;
 using Operia.Application.Customers.Queries.ListDirectCustomerSales;
@@ -86,16 +86,16 @@ public sealed class ConfirmSaleHandlerTests
         await using var fixture = await Fixture.CreateAsync();
         var items = new[] { Item("package", "installment"), Item("service", "cash") };
         var quote = await fixture.Quote(items);
-        (await fixture.DashboardRevenue()).Today.Should().Be(0m);
+        (await fixture.DashboardRevenue()).TodayRevenue.Should().Be(0m);
         (await fixture.Db.Sales.CountAsync()).Should().Be(0);
         var sale = await fixture.Confirm(items, quote, "collect-1");
-        (await fixture.DashboardRevenue()).Today.Should().Be(0m);
+        (await fixture.DashboardRevenue()).TodayRevenue.Should().Be(0m);
 
         var failed = await fixture.Collect(sale.SaleId, "attempt-1", false);
         failed.AmountCollected.Should().Be(0m);
         (await fixture.Db.CustomerPackages.CountAsync()).Should().Be(0);
         (await fixture.Db.SaleCollections.CountAsync(x => x.Confirmed)).Should().Be(0);
-        (await fixture.DashboardRevenue()).Today.Should().Be(0m);
+        (await fixture.DashboardRevenue()).TodayRevenue.Should().Be(0m);
 
         fixture.Db.Packages.Single(x => x.Id == "package").InstallmentPrice = 999m;
         await fixture.Db.SaveChangesAsync();
@@ -126,7 +126,7 @@ public sealed class ConfirmSaleHandlerTests
             .Handle(new ListActivityRevenueQuery(), CancellationToken.None);
         revenue.ConfirmedTotal.Should().Be(80m);
         revenue.Items.Should().ContainSingle();
-        (await fixture.DashboardRevenue()).Today.Should().Be(80m);
+        (await fixture.DashboardRevenue()).TodayRevenue.Should().Be(80m);
     }
 
     [Fact]
@@ -850,9 +850,9 @@ public sealed class ConfirmSaleHandlerTests
                 CancellationToken.None);
         }
 
-        public Task<DashboardRevenueDto> DashboardRevenue() =>
-            new GetDashboardRevenueHandler(Db, _user.Object, BranchScope.Object,
-                RevenueClock()).Handle(new GetDashboardRevenueQuery(), CancellationToken.None);
+        public Task<DashboardSummaryDto> DashboardRevenue() =>
+            new GetDashboardSummaryHandler(Db, _user.Object, BranchScope.Object,
+                RevenueClock()).Handle(new GetDashboardSummaryQuery(), CancellationToken.None);
 
         private static IDateTimeProvider RevenueClock()
         {

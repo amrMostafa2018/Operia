@@ -10,7 +10,7 @@ using Operia.SharedKernel.Interfaces;
 
 namespace Operia.Application.Bookings.Queries.GetEligibleBookingEmployees;
 
-/// <summary>Finds branch staff eligible for all selected offers and free for their sequential duration.</summary>
+/// <summary>Finds branch staff eligible for all selected offers and free for the selected appointment.</summary>
 public sealed class GetEligibleBookingEmployeesHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
@@ -36,14 +36,7 @@ public sealed class GetEligibleBookingEmployeesHandler(
             throw ApiNotFoundException.FromCode(ApiErrorCodes.Packages.PackageNotFound, "items");
         }
 
-        var required = BookingDuration.RequiredMinutes(request.Items, offers) +
-            request.UnlistedDurationMinutes;
         var end = request.EndMinutes;
-        if (end - request.StartMinutes < required)
-        {
-            return [];
-        }
-
         var dayCode = request.ScheduledDate.DayOfWeek.ToString()[..3].ToLowerInvariant();
         var startTime = TimeOnly.FromTimeSpan(TimeSpan.FromMinutes(request.StartMinutes));
         var endTime = end == 1440 ? TimeOnly.MaxValue : TimeOnly.FromTimeSpan(TimeSpan.FromMinutes(end));

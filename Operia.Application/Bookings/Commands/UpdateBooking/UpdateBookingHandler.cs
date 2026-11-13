@@ -64,11 +64,6 @@ public sealed class UpdateBookingHandler(
         {
             throw ConflictException.FromCode(ApiErrorCodes.Bookings.DirectCustomerItemsReadOnly, "items");
         }
-        if (itemsChanged &&
-            booking.EndMinutes - booking.StartMinutes < BookingDuration.RequiredMinutes(request.Items, catalog))
-        {
-            throw ConflictException.FromCode(ApiErrorCodes.Bookings.DurationMismatch, "items");
-        }
         if (itemsChanged)
         {
             var employee = await db.Employees.AsNoTracking().SingleOrDefaultAsync(

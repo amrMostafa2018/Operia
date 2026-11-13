@@ -254,20 +254,32 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
-    public async Task Create_RejectsItemsLongerThanSelectedSlot()
+    public async Task Create_KeepsSelectedSlotWhenItemsNeedMoreTime()
     {
         await SeedAsync();
+        _db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "owned-service",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "service-1",
+            Total = 1,
+            Used = 0,
+            ReservedSessions = 0,
+            IsActive = true
+        });
+        await _db.SaveChangesAsync();
         var request = new CreateBookingCommand(
             "short-slot", "customer-1", "branch-1", "employee-1", _scheduledDate,
             600, 660,
             [new CreateBookingItemInput("package-1", "owned-1", 1),
-             new CreateBookingItemInput("service-1", null, 1)]);
+             new CreateBookingItemInput("service-1", "owned-service", 1)]);
 
-        var act = () => CreateHandler().Handle(request, CancellationToken.None);
+        var booking = await CreateHandler().Handle(request, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
-            .Should().Be(ApiErrorCodes.Bookings.DurationMismatch);
-        (await _db.Bookings.CountAsync()).Should().Be(0);
+        var saved = await _db.Bookings.SingleAsync(x => x.Id == booking.Id);
+        saved.StartMinutes.Should().Be(600);
+        saved.EndMinutes.Should().Be(660);
     }
 
     [Fact]
@@ -342,7 +354,7 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
-    public async Task EligibleEmployees_AccountsForSaleOnlyUnlistedServiceDuration()
+    public async Task EligibleEmployees_KeepsStaffFreeForTheSelectedSlotWhenServicesRunLonger()
     {
         await SeedAsync();
         var handler = new GetEligibleBookingEmployeesHandler(
@@ -351,7 +363,8 @@ public sealed class CreateBookingHandlerTests
 
         var tooShort = new GetEligibleBookingEmployeesQuery(
             "branch-1", _scheduledDate, 600, 660, items, 30);
-        (await handler.Handle(tooShort, CancellationToken.None)).Should().BeEmpty();
+        (await handler.Handle(tooShort, CancellationToken.None)).Select(x => x.Id)
+            .Should().ContainSingle().Which.Should().Be("employee-1");
 
         var fullSlot = tooShort with { EndMinutes = 690 };
         (await handler.Handle(fullSlot, CancellationToken.None)).Select(x => x.Id)

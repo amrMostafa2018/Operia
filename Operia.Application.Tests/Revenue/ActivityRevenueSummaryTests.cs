@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
-using Operia.Application.Dashboard.Queries.GetDashboardRevenue;
+using Operia.Application.Dashboard.Queries.GetDashboardSummary;
 using Operia.Application.Revenue.Queries.GetActivityRevenueSummary;
 using Operia.Application.Revenue.Queries.GetActivityRevenueReport;
 using Operia.Application.Revenue.Commands.SubmitRevenuePayment;
@@ -329,12 +329,12 @@ public sealed class ActivityRevenueSummaryTests
         summary.Today.NetCollected.Should().Be(3500m);
         summary.Month.Should().BeEquivalentTo(summary.Today);
 
-        var dashboard = await new GetDashboardRevenueHandler(fixture.Db,
+        var dashboard = await new GetDashboardSummaryHandler(fixture.Db,
             fixture.User.Object, fixture.Scope.Object, fixture.Clock.Object).Handle(
-                new GetDashboardRevenueQuery(),
+                new GetDashboardSummaryQuery(),
                 CancellationToken.None);
-        dashboard.Today.Should().Be(summary.Today.NetCollected);
-        dashboard.Month.Should().Be(summary.Month.NetCollected);
+        dashboard.TodayRevenue.Should().Be(summary.Today.NetCollected);
+        dashboard.MonthlyRevenue.Should().Be(summary.Month.NetCollected);
     }
 
     [Fact]

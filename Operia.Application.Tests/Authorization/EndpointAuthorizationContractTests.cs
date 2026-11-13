@@ -118,9 +118,7 @@ public sealed class EndpointAuthorizationContractTests
             ["RevenueController.CancelPayment"] = Policies.RevenueReview,
             ["RevenueController.PaymentProof"] = Policies.RevenueRead,
             ["RevenueController.PaymentHistory"] = Policies.RevenueRead,
-            ["DashboardController.Revenue"] = Policies.DashboardRead,
-            ["DashboardController.NewCustomers"] = Policies.DashboardRead,
-            ["DashboardController.MonthlyBookings"] = Policies.DashboardRead,
+            ["DashboardController.Summary"] = Policies.DashboardRead,
 
             ["OnboardingController.GetStatus"] = Policies.AuthenticatedUser,
             ["OnboardingController.GetPlans"] = null,

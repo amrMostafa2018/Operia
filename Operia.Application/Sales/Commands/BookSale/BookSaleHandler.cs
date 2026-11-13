@@ -119,13 +119,6 @@ public sealed class BookSaleHandler(
             throw ConflictException.FromCode(ApiErrorCodes.Packages.PackageStaffUnavailable,
                 "employeeId");
         }
-        var duration = lines.Sum(x => x.DurationMinutes *
-            (x.OfferType == "package" ? 1 : x.Quantity));
-        if (request.EndMinutes - request.StartMinutes < duration)
-        {
-            throw ConflictException.FromCode(ApiErrorCodes.Sales.DurationMismatch,
-                "endMinutes");
-        }
         var purchases = await db.CustomerPackages.AsNoTracking()
             .Where(x => x.TenantId == tenantId && x.SaleId == sale.Id)
             .ToListAsync(cancellationToken);
