@@ -216,7 +216,8 @@ public sealed class UpdateBookingHandler(
     }
 
     /// <summary>
-    /// True when the edit adds a package or service the customer is not already using on this booking.
+    /// True when the edit adds a catalog package or service the customer is not already using on this booking.
+    /// An unlisted snapshot is stored on the booking and does not require a collected sale.
     /// </summary>
     private static bool RequiresCollectedSale(
         Booking booking,
@@ -230,17 +231,6 @@ public sealed class UpdateBookingHandler(
         {
             if (item.IsUnlistedSnapshot())
             {
-                var alreadyStored = booking.Items.Any(existing =>
-                    existing.PackageId is null &&
-                    existing.Type == BookingItemType.UnlistedService &&
-                    existing.Name == item.UnlistedName!.Trim() &&
-                    existing.Quantity == item.Quantity &&
-                    existing.UnitPrice == item.UnlistedPrice);
-                if (!alreadyStored && item.UnlistedPrice is > 0)
-                {
-                    return true;
-                }
-
                 continue;
             }
 
