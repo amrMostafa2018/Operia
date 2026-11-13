@@ -63,7 +63,14 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
     [HttpPut("{id}")]
     [Authorize(Policy = Policies.BookingsManage)]
     public Task<UpdateBookingResult> Update(string id, UpdateBookingRequest request, CancellationToken cancellationToken) =>
-        mediator.Send(new UpdateBookingCommand(id, request.Version, request.Items, request.PaymentMethod), cancellationToken);
+        mediator.Send(
+            new UpdateBookingCommand(
+                id,
+                request.Version,
+                request.Items,
+                request.PaymentMethod,
+                request.CollectedSaleId),
+            cancellationToken);
 
     /// <summary>Finds a registered customer and eligible owned purchases by mobile number.</summary>
     [HttpGet("customers/by-mobile")]

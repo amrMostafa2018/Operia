@@ -8,7 +8,8 @@ public sealed record UpdateBookingCommand(
     string BookingId,
     string Version,
     IReadOnlyList<CreateBookingItemInput> Items,
-    string? PaymentMethod = null) : IRequest<UpdateBookingResult>;
+    string? PaymentMethod = null,
+    string? CollectedSaleId = null) : IRequest<UpdateBookingResult>;
 
 /// <summary>Carries update booking result data across the operation boundary.</summary>
 public sealed record UpdateBookingResult(string Id, string Status, string Version);

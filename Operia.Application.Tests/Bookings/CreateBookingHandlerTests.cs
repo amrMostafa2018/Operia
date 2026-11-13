@@ -179,22 +179,78 @@ public sealed class CreateBookingHandlerTests
     }
 
     [Fact]
-    public async Task EditingOwnedBooking_CanAddAServiceWithoutCustomerPackage()
+    public async Task EditingOwnedBooking_AddingUnownedService_RequiresCollection()
     {
         await SeedAsync();
         var booked = await CreateHandler().Handle(Command("owned-only", 600, 690), CancellationToken.None);
         var handler = new UpdateBookingHandler(_db, _user.Object, _branchScope.Object,
             new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object);
 
-        var updated = await handler.Handle(new UpdateBookingCommand(booked.Id, booked.Version,
+        var action = () => handler.Handle(new UpdateBookingCommand(booked.Id, booked.Version,
             [new CreateBookingItemInput("package-1", "owned-1", 1),
              new CreateBookingItemInput("service-1", null, 1)]), CancellationToken.None);
 
-        updated.Id.Should().Be(booked.Id);
-        var booking = await _db.Bookings.Include(x => x.Items).SingleAsync();
-        booking.Items.Should().Contain(x => x.PackageId == "service-1" && x.UnitPrice == 250m);
-        booking.TotalAmount.Should().Be(250m);
-        (await _db.CustomerPackages.CountAsync(x => x.IsActive)).Should().Be(2);
+        (await action.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be(ApiErrorCodes.Bookings.PaymentCollectionRequired);
+        (await _db.CustomerPackages.CountAsync(x => x.PackageId == "service-1")).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task EditingOwnedBooking_AddingUnownedService_ReservesTheCollectedSale()
+    {
+        await SeedAsync();
+        var booked = await CreateHandler().Handle(Command("owned-only", 600, 690), CancellationToken.None);
+        _db.Sales.Add(new Sale
+        {
+            Id = "sale-added",
+            TenantId = "tenant-1",
+            BranchId = "branch-1",
+            CustomerId = "customer-1",
+            Status = "ReadyToBook",
+            GrandTotal = 250m,
+            DueNow = 250m
+        });
+        _db.SaleCollections.Add(new SaleCollection
+        {
+            TenantId = "tenant-1",
+            SaleId = "sale-added",
+            IdempotencyKey = "collection-added",
+            Amount = 250m,
+            Confirmed = true,
+            AttemptedAtUtc = _clock.Object.UtcNow
+        });
+        _db.CustomerPackages.Add(new CustomerPackage
+        {
+            Id = "sold-service",
+            TenantId = "tenant-1",
+            CustomerId = "customer-1",
+            PackageId = "service-1",
+            SaleId = "sale-added",
+            PurchasePrice = 250m,
+            AmountDue = 0m,
+            Total = 1,
+            ReservedSessions = 0,
+            IsActive = true
+        });
+        await _db.SaveChangesAsync();
+        var bookingBefore = await _db.Bookings.SingleAsync(x => x.Id == booked.Id);
+
+        await new UpdateBookingHandler(_db, _user.Object, _branchScope.Object,
+                new AuditWriter(_db, _user.Object), _identity.Object, _clock.Object)
+            .Handle(new UpdateBookingCommand(
+                bookingBefore.Id,
+                Convert.ToBase64String(bookingBefore.Version),
+                [
+                    new CreateBookingItemInput("package-1", "owned-1", 1),
+                    new CreateBookingItemInput("service-1", null, 1)
+                ],
+                CollectedSaleId: "sale-added"), CancellationToken.None);
+
+        var booking = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.Id == bookingBefore.Id);
+        booking.Items.Should().Contain(x => x.PackageId == "service-1" && x.UnitPrice == 0m);
+        (await _db.CustomerPackages.CountAsync(x => x.PackageId == "service-1")).Should().Be(1);
+        (await _db.CustomerPackages.SingleAsync(x => x.Id == "sold-service")).ReservedSessions.Should().Be(1);
+        (await _db.Sales.SingleAsync(x => x.Id == "sale-added")).Status.Should().Be("Booked");
     }
 
     [Fact]

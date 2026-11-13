@@ -25,11 +25,14 @@ public sealed class GetDashboardSummaryTests
     {
         var user = User("tenant-1", "operator");
         var branchScope = BranchScope("branch-1");
-        var clock = Clock(TodayUtc);
+        var clock = Clock(new DateTime(2026, 10, 15, 10, 0, 0, DateTimeKind.Utc));
         await using var db = await CreateDb(user.Object, clock.Object);
-        db.Customers.Add(Customer("cust-1", "tenant-1", periodsMonthStart: true));
-        db.Customers.Add(Customer("cust-walkin", "tenant-1", isDirect: true, periodsMonthStart: true));
-        db.Customers.Add(Customer("cust-old", "tenant-1", periodsMonthStart: false));
+        db.Customers.Add(Customer("cust-old", "tenant-1"));
+        await db.SaveChangesAsync();
+
+        clock.SetupGet(x => x.UtcNow).Returns(TodayUtc);
+        db.Customers.Add(Customer("cust-1", "tenant-1"));
+        db.Customers.Add(Customer("cust-walkin", "tenant-1", isDirect: true));
         db.Bookings.Add(Booking("today", "tenant-1", "branch-1", "employee-1", BusinessToday));
         db.Bookings.Add(Booking(
             "month", "tenant-1", "branch-1", "employee-1", new DateOnly(2026, 11, 1)));
@@ -84,11 +87,7 @@ public sealed class GetDashboardSummaryTests
         return branchScope;
     }
 
-    private static Customer Customer(
-        string id,
-        string tenantId,
-        bool isDirect = false,
-        bool periodsMonthStart = true) =>
+    private static Customer Customer(string id, string tenantId, bool isDirect = false) =>
         new()
         {
             Id = id,
@@ -97,9 +96,6 @@ public sealed class GetDashboardSummaryTests
             MobileNumber = "01000000001",
             NormalizedMobileNumber = "01000000001",
             IsDirect = isDirect,
-            CreatedAt = periodsMonthStart
-                ? new DateTime(2026, 11, 5, 8, 0, 0, DateTimeKind.Utc)
-                : new DateTime(2026, 10, 15, 8, 0, 0, DateTimeKind.Utc),
         };
 
     private static Booking Booking(

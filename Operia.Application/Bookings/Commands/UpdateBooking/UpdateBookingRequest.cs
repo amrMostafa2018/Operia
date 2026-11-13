@@ -6,4 +6,5 @@ namespace Operia.Application.Bookings.Commands.UpdateBooking;
 public sealed record UpdateBookingRequest(
     string Version,
     IReadOnlyList<CreateBookingItemInput> Items,
-    string? PaymentMethod);
+    string? PaymentMethod,
+    string? CollectedSaleId = null);

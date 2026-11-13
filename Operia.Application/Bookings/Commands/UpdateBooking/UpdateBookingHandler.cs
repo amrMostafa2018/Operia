@@ -8,6 +8,7 @@ using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Exceptions;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Packages;
+using Operia.Application.Sales;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
 using Operia.SharedKernel.Errors;
@@ -112,9 +113,36 @@ public sealed class UpdateBookingHandler(
 
         var before = SnapshotItems(booking.Items);
         var beforePaymentMethod = booking.PaymentMethod;
+        var previousTotal = booking.TotalAmount;
+        Sale? collectedSale = null;
+        var items = request.Items;
+        if (itemsChanged && RequiresCollectedSale(booking, request.Items))
+        {
+            if (string.IsNullOrWhiteSpace(request.CollectedSaleId))
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Bookings.PaymentCollectionRequired, "items");
+            }
+
+            (items, collectedSale) = await ApplyCollectedSaleAsync(
+                booking,
+                request.Items,
+                request.CollectedSaleId,
+                tenantId,
+                cancellationToken);
+        }
         if (itemsChanged)
         {
-            await ReplaceItemsAsync(booking, request.Items, catalog, tenantId, cancellationToken);
+            await ReplaceItemsAsync(booking, items, catalog, tenantId, cancellationToken);
+        }
+
+        if (collectedSale is not null)
+        {
+            collectedSale.Status = "Booked";
+            var addedToBooking = booking.TotalAmount - previousTotal;
+            if (addedToBooking > 0)
+            {
+                booking.PaidAmount += Math.Min(collectedSale.DueNow, addedToBooking);
+            }
         }
 
         booking.PaymentMethod = request.PaymentMethod;
@@ -185,6 +213,144 @@ public sealed class UpdateBookingHandler(
             throw ApiNotFoundException.FromCode(ApiErrorCodes.Packages.PackageNotFound, "items");
         }
         return catalog;
+    }
+
+    /// <summary>
+    /// True when the edit adds a package or service the customer is not already using on this booking.
+    /// </summary>
+    private static bool RequiresCollectedSale(
+        Booking booking,
+        IReadOnlyList<CreateBookingItemInput> items)
+    {
+        var remaining = booking.Items
+            .Where(item => item.PackageId is not null)
+            .GroupBy(item => item.PackageId!, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Sum(item => item.Quantity), StringComparer.Ordinal);
+        foreach (var item in items)
+        {
+            if (item.IsUnlistedSnapshot())
+            {
+                var alreadyStored = booking.Items.Any(existing =>
+                    existing.PackageId is null &&
+                    existing.Type == BookingItemType.UnlistedService &&
+                    existing.Name == item.UnlistedName!.Trim() &&
+                    existing.Quantity == item.Quantity &&
+                    existing.UnitPrice == item.UnlistedPrice);
+                if (!alreadyStored && item.UnlistedPrice is > 0)
+                {
+                    return true;
+                }
+
+                continue;
+            }
+
+            var existingQuantity = remaining.GetValueOrDefault(item.PackageId);
+            var kept = Math.Min(existingQuantity, item.Quantity);
+            remaining[item.PackageId] = existingQuantity - kept;
+            if (item.Quantity > kept && string.IsNullOrWhiteSpace(item.CustomerPackageId))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Reserves the collected sale's purchases for the newly added units and keeps the lines already on the booking.
+    /// </summary>
+    private async Task<(IReadOnlyList<CreateBookingItemInput> Items, Sale Sale)> ApplyCollectedSaleAsync(
+        Booking booking,
+        IReadOnlyList<CreateBookingItemInput> requestedItems,
+        string saleId,
+        string tenantId,
+        CancellationToken cancellationToken)
+    {
+        var sale = await db.Sales.SingleOrDefaultAsync(
+            item => item.TenantId == tenantId && item.Id == saleId,
+            cancellationToken);
+        if (sale is null ||
+            sale.CustomerId != booking.CustomerId ||
+            sale.BranchId != booking.BranchId ||
+            sale.Status != "ReadyToBook")
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.PaymentCollectionRequired, "items");
+        }
+
+        if (SaleCollectionRequirement.RequiresCollection(sale) &&
+            !await db.SaleCollections.AsNoTracking().AnyAsync(
+                item => item.TenantId == tenantId && item.SaleId == sale.Id && item.Confirmed,
+                cancellationToken))
+        {
+            throw ConflictException.FromCode(ApiErrorCodes.Bookings.PaymentCollectionRequired, "items");
+        }
+
+        var purchases = await db.CustomerPackages
+            .Where(item => item.TenantId == tenantId && item.SaleId == sale.Id && item.IsActive)
+            .OrderBy(item => item.SaleItemIndex)
+            .ThenBy(item => item.SaleUnitIndex)
+            .ThenBy(item => item.Id)
+            .ToListAsync(cancellationToken);
+        var available = purchases
+            .GroupBy(item => item.PackageId, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => new Queue<CustomerPackage>(group),
+                StringComparer.Ordinal);
+        var remaining = booking.Items
+            .Where(item => item.PackageId is not null)
+            .GroupBy(item => item.PackageId!, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Sum(item => item.Quantity), StringComparer.Ordinal);
+        var prepared = new List<CreateBookingItemInput>();
+        foreach (var item in requestedItems)
+        {
+            if (item.IsUnlistedSnapshot())
+            {
+                prepared.Add(item);
+                continue;
+            }
+
+            var existingQuantity = remaining.GetValueOrDefault(item.PackageId);
+            var kept = Math.Min(existingQuantity, item.Quantity);
+            remaining[item.PackageId] = existingQuantity - kept;
+            if (kept > 0)
+            {
+                prepared.Add(item with { Quantity = kept });
+            }
+
+            var extra = item.Quantity - kept;
+            if (extra == 0)
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(item.CustomerPackageId))
+            {
+                prepared.Add(item with { Quantity = extra });
+                continue;
+            }
+
+            if (!available.TryGetValue(item.PackageId, out var owned) || owned.Count < extra)
+            {
+                throw ConflictException.FromCode(ApiErrorCodes.Bookings.PaymentCollectionRequired, "items");
+            }
+
+            for (var unit = 0; unit < extra; unit++)
+            {
+                var purchase = owned.Dequeue();
+                prepared.Add(new CreateBookingItemInput(
+                    item.PackageId,
+                    purchase.Id,
+                    1,
+                    item.Type,
+                    item.PaymentOption,
+                    item.UnlistedName,
+                    item.UnlistedPrice,
+                    item.UnlistedDurationMinutes));
+            }
+        }
+
+        return (prepared, sale);
     }
 
     /// <summary>Rejects an unlisted name that already belongs to a catalog offer.</summary>
