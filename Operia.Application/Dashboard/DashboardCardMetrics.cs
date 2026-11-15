@@ -15,7 +15,8 @@ internal sealed record DashboardCardMetricsResult(
     int TodayBookings,
     int MonthlyBookings,
     decimal TodayRevenue,
-    decimal MonthlyRevenue);
+    decimal MonthlyRevenue,
+    int PendingReviewCount);
 
 /// <summary>Dashboard summary card calculations.</summary>
 internal sealed class DashboardCardMetrics(
@@ -24,7 +25,9 @@ internal sealed class DashboardCardMetrics(
     IBranchScope branchScope,
     IDateTimeProvider clock)
 {
-    public async Task<DashboardCardMetricsResult> ComputeAsync(CancellationToken cancellationToken)
+    public async Task<DashboardCardMetricsResult> ComputeAsync(
+        string? branchId,
+        CancellationToken cancellationToken)
     {
         var tenantId = currentUser.TenantId
             ?? throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantContextRequired);
@@ -34,7 +37,12 @@ internal sealed class DashboardCardMetrics(
         var periods = await new RevenuePeriods(db, currentUser, clock)
             .CurrentAsync(cancellationToken);
         var allowed = await branchScope.GetAllowedBranchIdsAsync(userId, cancellationToken);
-        var branches = allowed.ToArray();
+        if (branchId is not null && !allowed.Contains(branchId, StringComparer.Ordinal))
+        {
+            throw ForbiddenException.FromCode(ApiErrorCodes.Access.TenantAccessDenied, "branchId");
+        }
+
+        var branches = branchId is null ? allowed.ToArray() : [branchId];
 
         string[]? assignedEmployeeIds = null;
         if (currentUser.IsInRole(Roles.Staff))
@@ -72,18 +80,21 @@ internal sealed class DashboardCardMetrics(
             cancellationToken);
 
         var ledger = await new RevenueLedger(db, currentUser, branchScope)
-            .ScopedAsync(null, cancellationToken);
+            .ScopedAsync(branchId, cancellationToken);
         var todayRevenue = await ledger.ForPeriodAsync(
             periods.TodayFromUtc, periods.TodayToUtc, cancellationToken);
         var monthRevenue = await ledger.ForPeriodAsync(
             periods.MonthFromUtc, periods.MonthToUtc, cancellationToken);
+        var pendingReview = await PendingRevenuePaymentsCounter.CountAsync(
+            db, currentUser, branchScope, branchId, cancellationToken);
 
         return new DashboardCardMetricsResult(
             newCustomersMonth,
             todayBookings,
             monthlyBookings,
             todayRevenue.Net,
-            monthRevenue.Net);
+            monthRevenue.Net,
+            pendingReview);
     }
 
     private Task<int> CountBookingsAsync(

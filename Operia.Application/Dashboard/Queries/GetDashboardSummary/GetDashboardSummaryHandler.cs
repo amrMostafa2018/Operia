@@ -15,13 +15,14 @@ public sealed class GetDashboardSummaryHandler(
         CancellationToken cancellationToken)
     {
         var metrics = await new DashboardCardMetrics(db, currentUser, branchScope, clock)
-            .ComputeAsync(cancellationToken);
+            .ComputeAsync(request.BranchId, cancellationToken);
 
         return new DashboardSummaryDto(
             metrics.NewCustomersMonth,
             metrics.TodayBookings,
             metrics.MonthlyBookings,
             metrics.TodayRevenue,
-            metrics.MonthlyRevenue);
+            metrics.MonthlyRevenue,
+            metrics.PendingReviewCount);
     }
 }

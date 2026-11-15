@@ -1,9 +1,13 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using Operia.Application.Common.Auditing;
 using Operia.Application.Common.Authorization;
 using Operia.Application.Common.Interfaces;
 using Operia.Application.Dashboard.Queries.GetDashboardSummary;
+using Operia.Application.Revenue.Commands.ReviewRevenuePayment;
+using Operia.Application.Revenue.Commands.SubmitRevenuePayment;
+using Operia.Application.Revenue.Queries.GetActivityRevenueReport;
 using Operia.Application.Tests.Helpers;
 using Operia.Domain.Entities;
 using Operia.Domain.Enums;
@@ -50,6 +54,98 @@ public sealed class GetDashboardSummaryTests
         summary.MonthlyBookings.Should().Be(2);
         summary.TodayRevenue.Should().Be(0m);
         summary.MonthlyRevenue.Should().Be(0m);
+        summary.PendingReviewCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task PendingReviewCountMatchesUnderReviewReportRows()
+    {
+        var user = User("tenant-1", "operator");
+        var branchScope = BranchScope("branch-1");
+        var clock = Clock(TodayUtc);
+        await using var db = await CreateDb(user.Object, clock.Object);
+        db.Sales.Add(new Sale
+        {
+            Id = "pending-sale",
+            TenantId = "tenant-1",
+            BranchId = "branch-1",
+            CustomerId = "customer-1",
+            DueNow = 900m,
+            PaymentMethod = "bank_transfer",
+            Status = "PendingCollection"
+        });
+        await db.SaveChangesAsync();
+
+        var store = new SaleCollectionStore(db);
+        var audit = new AuditWriter(db, user.Object);
+        var submitHandler = new SubmitRevenuePaymentHandler(
+            db, store, user.Object, branchScope.Object, audit, clock.Object);
+        var pending = await submitHandler.Handle(
+            new SubmitRevenuePaymentCommand("pending-sale", "pending-key", null, null),
+            CancellationToken.None);
+
+        var summaryHandler = new GetDashboardSummaryHandler(
+            db, user.Object, branchScope.Object, clock.Object);
+        var dashboard = await summaryHandler.Handle(
+            new GetDashboardSummaryQuery(), CancellationToken.None);
+        dashboard.PendingReviewCount.Should().Be(1);
+
+        var report = await new GetActivityRevenueReportHandler(
+            db, user.Object, branchScope.Object, clock.Object)
+            .Handle(new GetActivityRevenueReportQuery(Status: "UnderReview"), CancellationToken.None);
+        report.Total.Should().Be(1);
+        report.Items.Single().PaymentId.Should().Be(pending.PaymentId);
+
+        var review = new ReviewRevenuePaymentHandler(
+            db, store, user.Object, branchScope.Object, audit, clock.Object);
+        await review.Handle(new ReviewRevenuePaymentCommand(pending.PaymentId, true),
+            CancellationToken.None);
+
+        dashboard = await summaryHandler.Handle(
+            new GetDashboardSummaryQuery(), CancellationToken.None);
+        dashboard.PendingReviewCount.Should().Be(0);
+        dashboard.TodayRevenue.Should().Be(900m);
+    }
+
+    [Fact]
+    public async Task PendingReviewCountDropsAfterCancelWithoutRevenue()
+    {
+        var user = User("tenant-1", "operator");
+        var branchScope = BranchScope("branch-1");
+        var clock = Clock(TodayUtc);
+        await using var db = await CreateDb(user.Object, clock.Object);
+        db.Sales.Add(new Sale
+        {
+            Id = "cancel-sale",
+            TenantId = "tenant-1",
+            BranchId = "branch-1",
+            CustomerId = "customer-1",
+            DueNow = 500m,
+            PaymentMethod = "instapay",
+            Status = "PendingCollection"
+        });
+        await db.SaveChangesAsync();
+
+        var store = new SaleCollectionStore(db);
+        var audit = new AuditWriter(db, user.Object);
+        var pending = await new SubmitRevenuePaymentHandler(
+            db, store, user.Object, branchScope.Object, audit, clock.Object)
+            .Handle(new SubmitRevenuePaymentCommand("cancel-sale", "cancel-key", null, null),
+                CancellationToken.None);
+
+        var summaryHandler = new GetDashboardSummaryHandler(
+            db, user.Object, branchScope.Object, clock.Object);
+        (await summaryHandler.Handle(new GetDashboardSummaryQuery(), CancellationToken.None))
+            .PendingReviewCount.Should().Be(1);
+
+        await new ReviewRevenuePaymentHandler(
+            db, store, user.Object, branchScope.Object, audit, clock.Object)
+            .Handle(new ReviewRevenuePaymentCommand(pending.PaymentId, false),
+                CancellationToken.None);
+
+        var after = await summaryHandler.Handle(new GetDashboardSummaryQuery(), CancellationToken.None);
+        after.PendingReviewCount.Should().Be(0);
+        after.TodayRevenue.Should().Be(0m);
     }
 
     private static async Task<TestApplicationDbContext> CreateDb(
@@ -59,6 +155,19 @@ public sealed class GetDashboardSummaryTests
             .UseInMemoryDatabase($"DashboardSummary_{Guid.NewGuid()}").Options;
         var db = new TestApplicationDbContext(options, clock, user);
         db.Tenants.Add(new Tenant { Id = "tenant-1", Timezone = "Africa/Cairo" });
+        db.Customers.Add(Customer("customer-1", "tenant-1"));
+        db.Branches.Add(new Branch
+        {
+            Id = "branch-1",
+            TenantId = "tenant-1",
+            BusinessId = "business-1",
+            Name = "Branch 1",
+            Address = "Addr",
+            PhoneNumber = "01000000000",
+            GoogleMapsUrl = "https://maps.example/1",
+            Latitude = 0,
+            Longitude = 0
+        });
         await db.SaveChangesAsync();
         return db;
     }

@@ -12,6 +12,8 @@ public sealed class DashboardController(IMediator mediator) : ControllerBase
 {
     [HttpGet("summary")]
     [Authorize(Policy = Policies.DashboardRead)]
-    public Task<DashboardSummaryDto> Summary(CancellationToken cancellationToken) =>
-        mediator.Send(new GetDashboardSummaryQuery(), cancellationToken);
+    public Task<DashboardSummaryDto> Summary(
+        [FromQuery] string? branchId,
+        CancellationToken cancellationToken) =>
+        mediator.Send(new GetDashboardSummaryQuery(branchId), cancellationToken);
 }
