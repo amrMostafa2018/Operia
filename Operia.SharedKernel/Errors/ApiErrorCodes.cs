@@ -16,6 +16,7 @@ public static class ApiErrorCodes
         public const string EmailInvalid = "EmailInvalid";
         public const string PasswordRequired = "PasswordRequired";
         public const string PasswordMinLength = "PasswordMinLength";
+        public const string TemporaryPasswordMinLength = "TemporaryPasswordMinLength";
         public const string PasswordMismatch = "PasswordMismatch";
         public const string PhoneRequired = "PhoneRequired";
         public const string PhoneInvalid = "PhoneInvalid";

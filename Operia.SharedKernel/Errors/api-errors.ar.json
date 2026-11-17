@@ -190,6 +190,10 @@
     "Value": "يجب أن تكون كلمة المرور 8 أحرف على الأقل"
   },
   {
+    "Name": "TemporaryPasswordMinLength",
+    "Value": "يجب أن تكون كلمة المرور المؤقتة 5 أحرف على الأقل"
+  },
+  {
     "Name": "PasswordMismatch",
     "Value": "كلمتا المرور غير متطابقتين"
   },

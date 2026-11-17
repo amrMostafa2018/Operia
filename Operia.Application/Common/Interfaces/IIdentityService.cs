@@ -55,6 +55,10 @@ public interface IIdentityService
     Task CompleteFirstLoginAsync(string userId, string resetToken, string newPassword, CancellationToken cancellationToken = default);
 
     // Employee & Settings User Operations
+    /// <summary>
+    /// Creates an Identity user for employee onboarding. Applies only a temporary-password length rule (minimum 5 characters),
+    /// not ASP.NET Identity password-complexity validators. The employee must replace the password on first login.
+    /// </summary>
     Task<string> CreateUserAsync(string fullName, string userName, string email, string mobileNumber, string role, string password, string? tenantId, CancellationToken cancellationToken = default);
     Task UpdateUserAsync(string userId, string fullName, string userName, string email, string mobileNumber, CancellationToken cancellationToken = default);
     Task ChangeRoleAsync(string userId, string newRole, CancellationToken cancellationToken = default);

@@ -11,6 +11,8 @@ namespace Operia.Infrastructure.Identity;
 
 public sealed class IdentityService : IIdentityService
 {
+    private const int EmployeeTemporaryPasswordMinLength = 5;
+
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITokenService _tokenService;
     private readonly IUnitOfWork _unitOfWork;
@@ -164,6 +166,20 @@ public sealed class IdentityService : IIdentityService
 
     public async Task<string> CreateUserAsync(string fullName, string userName, string email, string mobileNumber, string role, string password, string? tenantId, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            throw new ValidationException([
+                ValidationFailureFactory.Create("temporaryPassword", ApiErrorCodes.Auth.PasswordRequired)
+            ]);
+        }
+
+        if (password.Length < EmployeeTemporaryPasswordMinLength)
+        {
+            throw new ValidationException([
+                ValidationFailureFactory.Create("temporaryPassword", ApiErrorCodes.Auth.TemporaryPasswordMinLength)
+            ]);
+        }
+
         var user = new ApplicationUser
         {
             FullName = fullName.Trim(),
@@ -175,7 +191,8 @@ public sealed class IdentityService : IIdentityService
             EmailConfirmed = true,
             PhoneNumberConfirmed = true
         };
-        var result = await _userManager.CreateAsync(user, password);
+        user.PasswordHash = _userManager.PasswordHasher.HashPassword(user, password);
+        var result = await _userManager.CreateAsync(user);
         EnsureIdentityResult(result, "identity");
         var roleResult = await _userManager.AddToRoleAsync(user, role);
         EnsureIdentityResult(roleResult, "role");
